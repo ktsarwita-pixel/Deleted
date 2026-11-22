@@ -144,10 +144,21 @@ function houseBackground(c: CanvasRenderingContext2D) {
   R(c, 624, 104, 56, 14, '#e8cfa0'); R(c, 664, 108, 7, 7, '#f5ad4c'); // warm Kalimantan sun
   poly(c, [[624, 134], [624, 124], [638, 112], [651, 126], [664, 115], [680, 134]], '#3f634b');
   R(c, 624, 133, 56, 9, '#4c8791'); R(c, 634, 136, 24, 2, '#9edce0'); // river reflection
-  // Woven rattan sun-hat (seraung Dayak) hung beside painting
-  poly(c, [[700, 128], [715, 114], [730, 128]], '#d4ad6a');
-  poly(c, [[704, 128], [715, 118], [726, 128]], '#b84835');
-  R(c, 713, 123, 4, 4, '#f2d994');
+  // Carved gabled wall-clock hood & brass weights around (552, 126)
+  poly(c, [[537, 114], [552, 102], [567, 114]], '#4a311f');
+  poly(c, [[540, 114], [552, 105], [564, 114]], '#8c6139');
+  R(c, 547, 148, 3, 9, '#c9a35c'); R(c, 554, 148, 3, 11, '#b58d47'); // hanging brass clock weights
+
+  // Woven rattan sun-hat (seraung Dayak) + trailing pothos vine wall shelf!
+  poly(c, [[700, 124], [715, 110], [730, 124]], '#d4ad6a');
+  poly(c, [[704, 124], [715, 114], [726, 124]], '#b84835');
+  R(c, 713, 119, 4, 4, '#f2d994');
+  R(c, 696, 142, 50, 4, '#8f643b'); R(c, 696, 142, 50, 1, '#cfa468');
+  R(c, 704, 132, 12, 10, '#b85d3b'); R(c, 702, 130, 16, 3, '#d97e58');
+  for (const [vx, vh] of [[700, 18], [706, 24], [713, 15], [718, 21]] as [number, number][]) {
+    R(c, vx, 138, 3, vh, '#487a44');
+    for (let ly = 140; ly < 138 + vh; ly += 5) R(c, vx - 1, ly, 5, 3, ly % 2 ? '#78b35c' : '#589149');
+  }
 
   // === NORTH-WEST LEMARI ULIN HUTCH (obstacle + wallet at 204,176) ===
   cabinet(c, 138, 124, 112, 68);
@@ -268,22 +279,48 @@ function houseBackground(c: CanvasRenderingContext2D) {
   R(c, 229, 450, 18, 16, '#dfb870'); R(c, 233, 454, 10, 8, '#b38944');
   R(c, 251, 448, 16, 18, '#a6743d'); R(c, 249, 446, 20, 4, '#d9ab66'); R(c, 253, 453, 12, 2, '#8c3929');
 
-  // === FRONT THRESHOLD: COIR WELCOME MAT, NEAT SANDALS & CUTAWAY TIMBER WALLS ===
-  // Woven coir welcome mat inside front doorway (x=412..468, y=500..526)
-  R(c, 412, 502, 56, 24, '#7d5936'); R(c, 415, 505, 50, 18, '#b88e58');
-  R(c, 419, 509, 42, 10, '#966d3e'); R(c, 423, 512, 34, 4, '#dfc088');
+  // Handwoven round rattan cat cushion on the rug under Wira's calico cat (372, 304)
+  R(c, 350, 301, 44, 18, '#3b221844');
+  R(c, 352, 298, 40, 18, '#8c3d2b'); R(c, 355, 296, 34, 21, '#c76d44');
+  R(c, 359, 299, 26, 14, '#ecd29c'); R(c, 363, 302, 18, 8, '#dfba78');
+
+  // Tucked-in wooden study chair at the radio desk (within obstacle 580..733, 203..269)
+  R(c, 623, 252, 30, 15, '#47301e'); R(c, 625, 250, 26, 12, '#9e7244');
+  R(c, 627, 252, 22, 6, '#3e6952'); R(c, 625, 247, 26, 4, '#cfa264');
+
+  // Terracotta gentong air (traditional water jar) + woven tampah basket on kitchen wall
+  R(c, 631, 483, 20, 22, '#9e4f33'); R(c, 633, 480, 16, 24, '#ba6342');
+  R(c, 635, 484, 5, 14, '#dc8662'); R(c, 632, 478, 18, 4, '#6e3924'); R(c, 636, 476, 10, 3, '#cfa366');
+  // Round woven bamboo tampah tray mounted by the kitchen
+  R(c, 748, 416, 16, 24, '#b88b4d'); R(c, 750, 419, 12, 18, '#dfc084'); R(c, 753, 423, 6, 10, '#c7523a');
+
+  // Small woven runner mat beside the West Bedroom Door (x=114..132, y=386..436)
+  R(c, 114, 386, 18, 50, '#784830'); R(c, 116, 389, 14, 44, '#c89b5e');
+  for (let ry = 394; ry < 430; ry += 9) R(c, 118, ry, 10, 4, '#3e664d');
+
+  // === FRONT THRESHOLD: COIR WELCOME MAT, SAPU IJUK BROOM, SANDALS & CUTAWAY WALLS ===
+  R(c, 410, 501, 60, 26, '#6e4c2c'); R(c, 413, 504, 54, 20, '#be935a');
+  R(c, 417, 508, 46, 12, '#946a3b');
+  for (let mx = 421; mx < 458; mx += 6) R(c, mx, 512, 4, 4, '#ecd096');
+  // Traditional bamboo-handle sapu ijuk broom leaning in left doorway corner
+  R(c, 387, 482, 3, 34, '#cfa462'); R(c, 382, 513, 13, 14, '#2d2620'); R(c, 383, 512, 11, 3, '#b84835');
   // Neatly parked pair of sandals (sandal jepit) beside the door
   for (const sx of [494, 509]) {
     R(c, sx, 492, 11, 20, '#3e5c4e'); R(c, sx + 1, 493, 9, 17, '#58826e');
     R(c, sx + 2, 497, 7, 3, '#e8c468'); R(c, sx + 4, 495, 3, 3, '#cf4b38');
   }
-  // Cutaway wall framing & front ulin steps
-  R(c, 100, 174, 12, 360, '#473020'); R(c, 103, 174, 4, 357, '#c49458');
-  R(c, 768, 174, 12, 360, '#473020'); R(c, 771, 174, 4, 357, '#bf8f54');
-  R(c, 101, 533, 303, 13, '#4c3423'); R(c, 476, 533, 303, 13, '#4c3423');
-  R(c, 102, 533, 301, 4, '#c49558'); R(c, 477, 533, 298, 4, '#c49558');
-  for (let y = 534; y < 576; y += 9) {
-    R(c, 404, y, 72, 7, '#b28b52'); R(c, 406, y, 68, 2, '#dbb87e'); R(c, 404, y + 6, 72, 2, '#5c4026');
+  // Thick 3D cutaway timber walls with mortised corner blocks & stepped front veranda treads
+  R(c, 99, 174, 14, 202, '#473020'); R(c, 102, 174, 4, 200, '#c49458');
+  R(c, 99, 446, 14, 90, '#473020'); R(c, 102, 446, 4, 88, '#c49458');
+  R(c, 767, 174, 14, 362, '#473020'); R(c, 770, 174, 4, 358, '#bf8f54');
+  R(c, 99, 532, 305, 14, '#473020'); R(c, 476, 532, 305, 14, '#473020');
+  R(c, 101, 533, 301, 4, '#c49558'); R(c, 478, 533, 301, 4, '#c49558');
+  // Mortise timber joint studs along cutaway wall tops
+  for (let wx = 128; wx < 390; wx += 54) R(c, wx, 534, 6, 4, '#8c6239');
+  for (let wx = 496; wx < 764; wx += 54) R(c, wx, 534, 6, 4, '#8c6239');
+  // Exterior ironwood veranda steps below the front double doors
+  for (let y = 538; y < 580; y += 10) {
+    R(c, 402, y, 76, 8, '#ad864e'); R(c, 404, y, 72, 2, '#dbb87e'); R(c, 402, y + 7, 76, 2, '#543920');
   }
   // Subtle warm sunbeams angled across the ulin floor from both north windows
   poly(c, [[423, 180], [511, 180], [584, 286], [472, 286]], '#f7d98e16');

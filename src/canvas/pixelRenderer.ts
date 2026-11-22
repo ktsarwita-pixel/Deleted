@@ -1,6 +1,7 @@
 import type { GameWorld, Viewport } from '../game/model';
-import type { Direction, FireHotspot, PlayerState, SceneType } from '../types/gameTypes';
-import { getBackground, hash, R, text } from './backgrounds';
+import type { CollectibleItem, Direction, FireHotspot, PlayerState, SceneType } from '../types/gameTypes';
+import { getBackground, hash, poly, R, text } from './backgrounds';
+import { createDoorRig, drawHouseBackDoors, drawHouseFrontDoor, drawVillageDoors, updateDoors, type DoorRig } from './doors';
 import {
   catSprite, chickenSprite, drawBucketLive, drawCharacter, drawShadow,
   handPoint, resetRigs, type FrameSpec, type MotionInfo, type Pose, type Who,
@@ -57,6 +58,7 @@ interface Mem {
   bumped: Map<string, number>; catTail: Spring; wind: Wind; lastX: number; lastY: number;
   propBurn: Map<number, number>; wasPierInWater: boolean;
   fillSplashAt: number; fillBubbleNext: number; fillDripNext: number;
+  doors: DoorRig;
   jumpShadows: { ox: number; oy: number; tx: number; dir: -1 | 1; dySwim: number; t0: number; tJump: number; tLand: number; tEnd: number; seed: number; jumped: boolean; landed: boolean }[];
 }
 let mem: Mem | null = null;
@@ -82,7 +84,9 @@ const fx = new FxSystem();
 
 const progressOf = (w: GameWorld) => w.fires.filter(f => f.intensity === 0).length * 10;
 
-function freshMem(w: GameWorld): Mem {
+function freshMem(w: GameWorld, prevDoors?: DoorRig): Mem {
+  const doors = prevDoors ?? createDoorRig(w.scene);
+  if (prevDoors && prevDoors.scene !== w.scene) updateDoors(doors, w, 0.016);
   return {
     scene: w.scene, time: w.time, dt: 0,
     collected: new Set(w.collectibles.filter(c => c.collected).map(c => c.id)),
@@ -96,6 +100,7 @@ function freshMem(w: GameWorld): Mem {
     wind: windAt(w.player.x, w.player.y, w.time), lastX: w.player.x, lastY: w.player.y, propBurn: new Map(),
     wasPierInWater: false,
     fillSplashAt: -1, fillBubbleNext: 0, fillDripNext: 0, jumpShadows: [],
+    doors,
   };
 }
 
@@ -521,25 +526,67 @@ function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, 
   if (spec.dir !== 'up' || bp?.rope) paintBucket();
 }
 
-function drawCollectible(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
-  const bob = Math.round(Math.sin(t * 3 + x) * 2) * 2;
-  R(c, x - 8 + Math.abs(bob) / 2, y + 4, 16 - Math.abs(bob), 4, 'rgba(20,24,18,.28)');
+function drawCollectible(c: CanvasRenderingContext2D, item: CollectibleItem, t: number) {
+  const { x, y, iconType } = item;
+  const bob = Math.round(Math.sin(t * 3 + x) * 1.6) * 2;
+  // Soft warm aura + dynamic shadow
+  c.globalAlpha = 0.16 + 0.06 * Math.sin(t * 3.4 + x);
+  R(c, x - 11, y - 16 + bob, 22, 18, '#ffe699');
+  c.globalAlpha = 1;
+  R(c, x - 9 + Math.abs(bob) / 2, y + 3, 18 - Math.abs(bob), 4, 'rgba(20,24,18,.3)');
   const by = y - 8 + bob;
-  R(c, x - 8, by - 4, 16, 12, '#2a1f17'); R(c, x - 6, by - 6, 12, 14, '#2a1f17');
-  R(c, x - 6, by - 4, 12, 10, '#8a5e36'); R(c, x - 4, by - 6, 8, 2, '#a9774a'); R(c, x - 6, by - 4, 4, 6, '#a9774a');
-  R(c, x - 2, by - 8, 4, 2, '#d8b46b');
-  R(c, x - 2, by, 6, 4, '#e8c46e'); R(c, x - 2, by, 2, 2, '#fbe7a6');
-  const ph = (t * 1.3 + x * 0.01) % 1;
-  if (ph < 0.4) {
-    const arm = Math.round(Math.sin((ph / 0.4) * Math.PI) * 3) * 2;
+
+  if (iconType === 'celengan') {
+    // Handcrafted Bamboo Coin-Bank (Celengan Bambu) with bobbing gold coin at the top slot!
+    R(c, x - 7, by - 9, 14, 18, '#261d14');
+    R(c, x - 5, by - 8, 10, 16, '#849e54'); // green-gold bamboo cylinder
+    R(c, x - 5, by - 8, 3, 16, '#a9c46e'); // sunlit highlight
+    R(c, x + 2, by - 8, 3, 16, '#627a3b'); // shaded side
+    R(c, x - 6, by - 3, 12, 2, '#cfa85c'); // bamboo node ring
+    R(c, x - 6, by + 4, 12, 2, '#cfa85c'); // lower bamboo node ring
+    R(c, x - 3, by - 7, 6, 2, '#261d14'); // dark coin slot
+    const coinDrop = Math.round((0.5 + 0.5 * Math.sin(t * 4.2)) * 2);
+    R(c, x - 2, by - 12 + coinDrop, 4, 4, '#f5ce62'); R(c, x - 1, by - 11 + coinDrop, 2, 2, '#fff5c0');
+  } else if (iconType === 'dompet') {
+    // Stitched Saddle-Leather Bi-Fold Wallet (Dompet) with crisp Rupiah bills peeking out!
+    R(c, x - 9, by - 6, 18, 13, '#261911');
+    // Green & red Rupiah banknotes peeking out the top fold
+    R(c, x - 6, by - 9, 9, 4, '#5fa368'); R(c, x - 1, by - 10, 8, 4, '#cf5c4c');
+    R(c, x - 7, by - 5, 14, 11, '#7d4928'); R(c, x - 7, by - 5, 14, 3, '#a36439');
+    // Cream saddle stitching & brass snap clasp
+    R(c, x - 6, by + 4, 3, 1, '#e8cfa0'); R(c, x - 1, by + 4, 3, 1, '#e8cfa0'); R(c, x + 4, by + 4, 2, 1, '#e8cfa0');
+    R(c, x + 1, by - 2, 6, 4, '#59321a'); R(c, x + 2, by - 1, 3, 2, '#f2cf74');
+  } else if (iconType === 'rotan') {
+    // Handwoven Kalimantan Rattan Craft Bundle with red Dayak twine & wage envelope
+    R(c, x - 9, by - 6, 18, 13, '#2b1e13');
+    R(c, x - 7, by - 5, 14, 11, '#c99b56');
+    for (let rx = -6; rx <= 4; rx += 4) R(c, x + rx, by - 4, 2, 9, '#e6be7a');
+    R(c, x - 7, by - 1, 14, 3, '#b84332'); // red Dayak tie band
+    R(c, x - 2, by - 8, 7, 5, '#f5ebd1'); R(c, x, by - 6, 3, 2, '#629c64');
+  } else {
+    // Official Posko Relief Pouch (Bantuan Posko) with red emblem & brass buckle
+    R(c, x - 9, by - 6, 18, 14, '#242019');
+    R(c, x - 7, by - 5, 14, 12, '#e8dec3'); R(c, x - 7, by - 5, 14, 4, '#d1c3a1');
+    R(c, x - 3, by - 8, 6, 3, '#7a5836'); // carry handle
+    R(c, x - 1, by - 1, 2, 6, '#c94234'); R(c, x - 3, by + 1, 6, 2, '#c94234'); // relief cross
+    R(c, x + 4, by - 2, 2, 3, '#ebb95e');
+  }
+
+  // Crisp 4-point star sparkle
+  const ph = (t * 1.35 + x * 0.013) % 1;
+  if (ph < 0.42) {
+    const arm = Math.round(Math.sin((ph / 0.42) * Math.PI) * 3) * 2;
     const sx = x + 8, sy = by - 10;
-    R(c, sx, sy, 2, 2, '#fff6d6'); R(c, sx - arm, sy, arm, 2, '#fff6d6'); R(c, sx + 2, sy, arm, 2, '#fff6d6'); R(c, sx, sy - arm, 2, arm, '#fff6d6'); R(c, sx, sy + 2, 2, arm, '#fff6d6');
+    R(c, sx, sy, 2, 2, '#fff8dc');
+    R(c, sx - arm, sy, arm, 2, '#fff8dc'); R(c, sx + 2, sy, arm, 2, '#fff8dc');
+    R(c, sx, sy - arm, 2, arm, '#fff8dc'); R(c, sx, sy + 2, 2, arm, '#fff8dc');
   }
 }
 
 function drawCat(c: CanvasRenderingContext2D, w: GameWorld, m: Mem | null, t: number, dt: number) {
   const x = 372, y = 304;
-  const near = Math.hypot(w.player.x - x, w.player.y - y) < 95;
+  const dist = Math.hypot(w.player.x - x, w.player.y - y);
+  const near = dist < 95;
   const awake = near || (t % 18) > 15.5;
   // tail flicks on a spring, faster when the cat wakes
   if (m && !w.reducedMotion) {
@@ -548,57 +595,180 @@ function drawCat(c: CanvasRenderingContext2D, w: GameWorld, m: Mem | null, t: nu
   }
   const tailVal = m ? m.catTail.value : 0;
   const tail = Math.abs(tailVal) > 12 ? 1 + (tailVal > 0 ? 1 : 0) : 0;
-  const spr = catSprite(awake, Math.floor(t / 1.4) % 2, tail);
-  R(c, x - 18, y + 8, 36, 6, 'rgba(20,24,18,.2)');
+  const breath = Math.floor(t / 1.3) % 2;
+  const spr = catSprite(awake, breath, tail);
+  R(c, x - 18, y + 7, 36, 6, 'rgba(20,24,18,.22)');
   c.drawImage(spr, x - 22, y - 18, spr.width * 2, spr.height * 2);
-  if (!awake) for (let i = 0; i < 1; i++) {
-    const ph = ((t * 0.5 + i * 0.5) % 1);
+
+  // Red woven collar + tiny golden bell glint & subtle ear twitch / slow blink (zero canvas allocations!)
+  const hy = awake ? -16 : -10;
+  R(c, x + 5, y + hy + 10, 8, 2, '#bf3e30');
+  R(c, x + 9, y + hy + 11, 3, 3, (Math.floor(t * 3) % 2 === 0) ? '#fae084' : '#cfa24e');
+  if (awake && (t % 4.6) < 0.16) {
+    // Natural slow feline blink
+    R(c, x + 6, y + hy + 6, 2, 2, '#efe6d2'); R(c, x + 12, y + hy + 6, 2, 2, '#efe6d2');
+  }
+  if (awake && (t % 3.4) < 0.22) {
+    // Cute ear flick
+    R(c, x + 12, y + hy - 3, 3, 2, '#f5ebd8');
+  }
+  if (!awake) {
+    const ph = (t * 0.5) % 1;
     c.globalAlpha = 1 - ph;
     text(c, 'z', x + 20 + ph * 12, y - 20 - ph * 24, '#efe2bd', 8 + Math.round(ph * 4));
+    c.globalAlpha = 1;
+  } else if (dist < 68 && !w.reducedMotion) {
+    // Affectionate purr note when Wira stands right beside his cat!
+    const ph = (t * 0.85) % 1;
+    c.globalAlpha = (1 - ph) * 0.85;
+    const px = snap(x + 18 + Math.sin(t * 4) * 3), py = snap(y - 20 - ph * 16);
+    R(c, px, py, 2, 6, '#f5b873'); R(c, px - 2, py + 4, 4, 3, '#f5b873'); R(c, px + 2, py, 4, 2, '#f5b873');
     c.globalAlpha = 1;
   }
 }
 
-function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, t: number, motion: boolean) {
+function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, doors: DoorRig, t: number, motion: boolean) {
   const smoky = w.fires.some(f => f.intensity > 0);
-  if (smoky) for (const [wx, wy, ww, wh] of [[316, 102, 75, 59], [423, 102, 88, 59]]) {
-    c.save(); c.beginPath(); c.rect(wx, wy, ww, wh); c.clip();
-    c.globalAlpha = 0.28; R(c, wx, wy, ww, wh, '#b88552');
-    for (let i = 0; i < 6; i++) {
-      const px = wx - 36 + ((t * (7 + (i % 3) * 3) + i * 31 + wx) % (ww + 72));
-      const py = wy + 5 + i * 9 + Math.sin(t * 0.9 + i) * 3;
-      c.globalAlpha = 0.42; R(c, snap(px), snap(py), 30, 10, i % 2 ? '#9a9184' : '#8d8274');
-      c.globalAlpha = 0.34; R(c, snap(px) + 4, snap(py) - 4, 18, 6, '#bdb3a2');
+  const clampSpan = (px: number, pw: number, lo: number, hi: number): [number, number] | null => {
+    const x0 = Math.max(lo, px), x1 = Math.min(hi, px + pw);
+    return x1 > x0 ? [x0, x1 - x0] : null;
+  };
+
+  // 1. Exterior Window View: Clamped drifting peat smoke OR breezy sunlit ferns (ZERO c.clip()!)
+  for (const [wx, wy, ww, wh] of [[316, 102, 75, 59], [423, 102, 88, 59]] as [number, number, number, number][]) {
+    if (smoky) {
+      c.globalAlpha = 0.28; R(c, wx, wy, ww, wh, '#b88552');
+      for (let i = 0; i < 6; i++) {
+        const px = snap(wx - 36 + ((t * (7 + (i % 3) * 3) + i * 31 + wx) % (ww + 72)));
+        const py = snap(wy + 5 + i * 8 + Math.sin(t * 0.9 + i) * 3);
+        const s1 = clampSpan(px, 30, wx, wx + ww);
+        const y1 = clampSpan(py, 9, wy, wy + wh);
+        if (s1 && y1) { c.globalAlpha = 0.42; R(c, s1[0], y1[0], s1[1], y1[1], i % 2 ? '#9a9184' : '#8d8274'); }
+        const s2 = clampSpan(px + 4, 18, wx, wx + ww);
+        const y2 = clampSpan(py - 4, 6, wy, wy + wh);
+        if (s2 && y2) { c.globalAlpha = 0.34; R(c, s2[0], y2[0], s2[1], y2[1], '#bdb3a2'); }
+      }
+      c.globalAlpha = 0.17 + 0.06 * Math.sin(t * 1.8);
+      R(c, wx, wy + wh - 18, ww, 18, '#df8b46');
+      c.globalAlpha = 1;
+    } else {
+      // Clean-air breeze rustling the tropical fern leaves outside the window sill
+      for (let fx = wx + 8; fx < wx + ww - 10; fx += 16) {
+        const sway = motion ? Math.round(Math.sin(t * 1.9 + fx * 0.08) * 1.5) : 0;
+        R(c, fx + sway, wy + wh - 9, 8, 5, '#68a656');
+        R(c, fx + 2 + sway, wy + wh - 12, 5, 4, '#8cc46e');
+      }
     }
-    c.globalAlpha = 0.18 + 0.06 * Math.sin(t * 1.8); R(c, wx, wy + wh - 18, ww, 18, '#df8b46');
-    c.globalAlpha = 1;
-    c.restore();
-    R(c, wx + ww / 2 - 2, wy, 4, wh, '#735436'); R(c, wx, wy + wh / 2, ww, 4, '#735436');
+    // Crisp timber window muntin crossbars
+    R(c, wx + Math.floor(ww / 2) - 2, wy, 4, wh, '#735436');
+    R(c, wx, wy + Math.floor(wh / 2), ww, 4, '#735436');
   }
-  // pendulum clock
+
+  // 2. Billowing Batik Window Curtains (pinned to curtain rods at y=97, gently breathing in the draft!)
+  R(c, 305, 96, 96, 3, '#4a311e'); R(c, 412, 96, 108, 3, '#4a311e'); // ironwood curtain rods
+  for (const [cx0, side] of [[308, -1], [386, 1], [415, -1], [504, 1]] as [number, number][]) {
+    const breath = motion ? Math.sin(t * 1.55 + cx0 * 0.04) * 2.2 : 0;
+    for (let k = 0; k < 7; k++) {
+      const env = k / 6; // 0 at rod rings -> full billow at hem!
+      const dx = Math.round(breath * env - side * k * 0.25);
+      const wSeg = k === 3 ? 11 : 13; // gathered waist at brass tie-back (k=3)
+      const xSeg = cx0 + dx + (k === 3 ? 1 : 0);
+      const ySeg = 99 + k * 10;
+      R(c, xSeg, ySeg, wSeg, 10, k % 2 ? '#2f5266' : '#3a647a');
+      R(c, xSeg + 2, ySeg, 3, 10, '#4f7f96'); // pleat highlight
+      // Gold-ochre Kalimantan batik diamond dot motif
+      R(c, xSeg + 5, ySeg + 4, 2, 2, '#ebd08a');
+      if (k === 3) R(c, xSeg - 1, ySeg + 3, wSeg + 2, 2, '#d9ad5b'); // brass tie-back cord
+    }
+  }
+
+  // 3. Angled Window Sunbeams / Smoky Amber Shafts + Twinkling Dust Motes across Floorboards
+  c.globalAlpha = smoky ? (0.08 + 0.02 * Math.sin(t * 1.6)) : 0.10;
+  const beamCol = smoky ? '#f0a35a' : '#faeab2';
+  poly(c, [[318, 180], [388, 180], [418, 336], [336, 336]], beamCol);
+  poly(c, [[426, 180], [508, 180], [546, 348], [448, 348]], beamCol);
+  c.globalAlpha = 1;
+  for (let i = 0; i < 9; i++) {
+    const px = 326 + hash(i, 1) * 214 + Math.sin(t * 0.45 + i) * 6;
+    const py = 186 + ((hash(i, 2) * 182 + t * 3.4) % 182);
+    c.globalAlpha = 0.22 + 0.34 * Math.sin(t * 2.1 + i) ** 2;
+    R(c, snap(px), snap(py), 2, 2, smoky ? '#f5ba78' : '#fff0b3');
+  }
+  c.globalAlpha = 1;
+
+  // 4. Warm Breathing Bedside Lamp & Study Desk Tungsten Light Pools
+  const lampPulse = 0.10 + (motion ? 0.025 * Math.sin(t * 2.7) : 0);
+  c.globalAlpha = lampPulse;
+  R(c, 134, 206, 46, 38, '#ffd884'); // warm bedside lamp glow
+  R(c, 682, 198, 42, 32, '#ffe299'); // study desk lamp glow
+  c.globalAlpha = lampPulse * 0.55;
+  R(c, 318, 252, 196, 108, '#ffd98e'); // cozy overhead living-room warmth on the Dayak rug
+  c.globalAlpha = 1;
+
+  // 5. Heirloom Gabled Pendulum Wall Clock (552, 126)
   const cx = 552, cy = 126;
-  R(c, cx - 10, cy - 10, 20, 34, '#3a2a20'); R(c, cx - 8, cy - 8, 16, 16, '#efe2bd'); R(c, cx - 8, cy - 8, 16, 2, '#ffffff');
+  R(c, cx - 11, cy - 11, 22, 36, '#3a2618');
+  R(c, cx - 9, cy - 9, 18, 18, '#f5ebd0'); R(c, cx - 9, cy - 9, 18, 2, '#ffffff');
+  // Cardinal brass hour ticks
+  R(c, cx - 1, cy - 8, 2, 2, '#8c6239'); R(c, cx - 1, cy + 6, 2, 2, '#8c6239');
+  R(c, cx - 8, cy - 1, 2, 2, '#8c6239'); R(c, cx + 6, cy - 1, 2, 2, '#8c6239');
   const ang = t * 0.6, ang2 = t * 0.05;
   for (let i = 0; i < 4; i++) R(c, snap(cx + Math.sin(ang) * i * 1.6) - 1, snap(cy - Math.cos(ang) * i * 1.6) - 1, 2, 2, '#3a2a20');
   for (let i = 0; i < 3; i++) R(c, snap(cx + Math.sin(ang2) * i * 1.4) - 1, snap(cy - Math.cos(ang2) * i * 1.4) - 1, 2, 2, '#9c3b2c');
-  R(c, cx - 6, cy + 10, 12, 12, '#24190f');
-  const sw = motion ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
-  R(c, cx - 1 + sw / 2, cy + 10, 2, 7, '#c9a35c'); R(c, cx - 2 + sw, cy + 17, 4, 4, '#e2bd6c');
-  // radio indicator + sound waves
-  R(c, 648, 197, 4, 2, Math.floor(t * 2) % 2 ? '#b9cd7b' : '#759162');
+  // Glass pendulum window + swinging brass bob
+  R(c, cx - 6, cy + 10, 12, 13, '#1f150d');
+  const sw = motion ? Math.round(Math.sin(t * 3.2) * 3) : 0;
+  R(c, cx - 1 + Math.round(sw * 0.5), cy + 10, 2, 8, '#c9a35c');
+  R(c, cx - 3 + sw, cy + 17, 6, 5, '#ebd078'); R(c, cx - 2 + sw, cy + 18, 2, 2, '#fff9d6');
+
+  // 6. Vintage Emergency Radio: Warm Amber Dial Scale, Hunting Needle, Signal LED & Broadcast Waves
+  R(c, 632, 204, 16, 4, '#47331f'); R(c, 633, 205, 14, 2, '#f5cf7a'); // illuminated tuning scale
+  const needleX = 635 + (motion ? Math.round((0.5 + 0.5 * Math.sin(t * 0.9)) * 9) : 4);
+  R(c, needleX, 204, 2, 4, '#d94534'); // red frequency needle
+  R(c, 648, 197, 4, 2, Math.floor(t * 2.4) % 2 ? '#8cf078' : '#4b7548');
   for (let i = 0; i < 3; i++) {
-    const ph = (t * 1.2 + i / 3) % 1;
-    c.globalAlpha = (1 - ph) * 0.7;
-    const r = 4 + ph * 14;
-    R(c, snap(670 + r), 194, 2, 2 + Math.round(r / 3) * 2, '#d8e0b0'); R(c, snap(670 + r) - 2, 192, 2, 2, '#d8e0b0'); R(c, snap(670 + r) - 2, 196 + Math.round(r / 3) * 2, 2, 2, '#d8e0b0');
-    c.globalAlpha = 1;
+    const ph = (t * 1.15 + i / 3) % 1;
+    c.globalAlpha = (1 - ph) * 0.72;
+    const r = 4 + ph * 15;
+    R(c, snap(668 + r), 193, 2, 2 + Math.round(r / 3) * 2, '#d8ebb5');
+    R(c, snap(668 + r) - 2, 191, 2, 2, '#d8ebb5');
+    R(c, snap(668 + r) - 2, 195 + Math.round(r / 3) * 2, 2, 2, '#d8ebb5');
   }
-  for (let i = 0; i < 6; i++) {
-    const px = 326 + hash(i, 1) * 206 + Math.sin(t * 0.3 + i) * 5;
-    const py = 193 + ((hash(i, 2) * 190 + t * 3) % 190);
-    c.globalAlpha = 0.25 + 0.3 * Math.sin(t * 2 + i) ** 2; R(c, snap(px), snap(py), 2, 2, '#f3d999'); c.globalAlpha = 1;
+  c.globalAlpha = 1;
+  // Fluttering corner of Wira's open notebook on the radio desk in the window draft
+  if (motion && (t % 5.2) < 0.75) {
+    const lift = Math.round(Math.sin(((t % 5.2) / 0.75) * Math.PI) * 3);
+    R(c, 608, 224 - lift, 9, 3, '#fffdf5'); R(c, 608, 227 - lift, 9, 1, '#c9bea6');
   }
-  for (let i = 0; i < 3; i++) { c.globalAlpha = 0.5; R(c, snap(621 + Math.sin(t * 2 + i) * 3), snap(339 - ((t * 8 + i * 6) % 19)), 2, 4, '#eee1bc'); c.globalAlpha = 1; }
+
+  // 7. Dining Table Hot Tea Steam (621, 339) + Dapur Kitchen Stove Blue Simmer Flame & Kettle Steam!
+  for (let i = 0; i < 3; i++) {
+    const ph = ((t * 0.45 + i * 0.33) % 1);
+    c.globalAlpha = (1 - ph) * 0.52;
+    R(c, snap(621 + Math.sin(t * 2.2 + i) * 3), snap(339 - ph * 19), 2, 4, '#f2e8cc');
+  }
+  // Flickering blue gas burner flame under the kitchen kettle (around 684..694, 485)
+  const flameFlicker = motion ? Math.floor(t * 14) % 3 : 1;
+  c.globalAlpha = 0.85;
+  R(c, 682, 485, 12, 2, '#2d8cf0');
+  R(c, 684 + (flameFlicker === 0 ? 1 : 0), 484, 8 - (flameFlicker === 2 ? 2 : 0), 2, '#7ce8ff');
+  // Spouted ceret kettle steam puffs rising in the kitchen corner!
+  for (let i = 0; i < 4; i++) {
+    const ph = ((t * 0.65 + i * 0.25) % 1);
+    c.globalAlpha = (1 - ph) * 0.48;
+    const kx = snap(696 + ph * 8 + Math.sin(t * 3 + i) * 2);
+    const ky = snap(471 - ph * 22);
+    const ksz = ph > 0.5 ? 4 : 2;
+    R(c, kx, ky, ksz, ksz, '#f2f5f0');
+  }
+  // Tiny water glint inside terracotta gentong air jar (637, 478)
+  if (Math.floor(t * 2) % 3 === 0) {
+    c.globalAlpha = 0.65; R(c, 638, 478, 5, 1, '#a8e6e0');
+  }
+  c.globalAlpha = 1;
+
+  // 8. Interior Back & Side Doors (Lemari hinged double doors + West bedroom door + front floor light spill)
+  drawHouseBackDoors(c, doors, smoky);
 }
 
 function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, view: Viewport, t: number) {
@@ -872,7 +1042,10 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   let wind: Wind = windAt(x, y, t);
 
   if (!preview) {
-    if (!mem || mem.scene !== world.scene || world.time < mem.time || (world.time === 0 && mem.time > 0)) { mem = freshMem(world); fx.clear(); pending = []; resetRigs(); }
+    if (!mem || mem.scene !== world.scene || world.time < mem.time || (world.time === 0 && mem.time > 0)) {
+      const keepDoors = mem && world.time >= mem.time && !(world.time === 0 && mem.time > 0) ? mem.doors : undefined;
+      mem = freshMem(world, keepDoors); fx.clear(); pending = []; resetRigs();
+    }
     m = mem;
     const dt = Math.min(0.05, Math.max(0, world.time - m.time));
     m.dt = dt; m.time = world.time;
@@ -957,6 +1130,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
         }
       }
       m.shakeX.update(dt); m.shakeY.update(dt);
+      updateDoors(m.doors, world, dt);
       if (motion) {
         spawnAmbient(world, m, dt, view);
         if (village) updateHens(world, dt);
@@ -978,7 +1152,8 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   c.setTransform(scale, 0, 0, scale, Math.round(width / 2 - x * scale + sx), Math.round(height / 2 - y * scale + sy));
   c.drawImage(getBackground(world.scene), village ? 0 : -200, 0);
 
-  if (village && m) drawVillageGround(c, world, m, view, t); else if (!village) drawHouseLife(c, world, t, motion);
+  const doorRig = m ? m.doors : createDoorRig(world.scene);
+  if (village && m) drawVillageGround(c, world, m, view, t); else if (!village) drawHouseLife(c, world, doorRig, t, motion);
   if (!preview) fx.draw(c, true);
   if (world.destination) {
     const d = world.destination;
@@ -991,7 +1166,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   }
 
   const items: { y: number; draw: () => void }[] = [];
-  world.collectibles.filter(i => i.scene === world.scene && !i.collected).forEach(i => items.push({ y: i.y, draw: () => drawCollectible(c, i.x, i.y, t) }));
+  world.collectibles.filter(i => i.scene === world.scene && !i.collected).forEach(i => items.push({ y: i.y, draw: () => drawCollectible(c, i, t) }));
   const pspec = playerSpec(world, m, t);
   items.push({ y: world.player.y, draw: () => drawPlayer(c, world, pspec, m, t, wind) });
 
@@ -1000,8 +1175,11 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
     items.push({ y: s.depth, draw: () => drawSign(c, { id: s.id, style: s.style, x: s.x, y: s.y, t, dt: m?.dt ?? 0, wind, reduced: !motion, dim: 1 }) });
   }
 
-  if (!village) items.push({ y: 312, draw: () => drawCat(c, world, m, t, m?.dt ?? 0) });
-  else {
+  if (!village) {
+    items.push({ y: 312, draw: () => drawCat(c, world, m, t, m?.dt ?? 0) });
+    items.push({ y: 534, draw: () => drawHouseFrontDoor(c, doorRig) });
+  } else {
+    items.push({ y: 208, draw: () => drawVillageDoors(c, doorRig) });
     const cLeft = x - width / scale / 2 - 150, cRight = x + width / scale / 2 + 150;
     const cTop = y - height / scale / 2 - 150, cBot = y + height / scale / 2 + 170;
     const active = world.fires.filter(f => f.intensity > 0);

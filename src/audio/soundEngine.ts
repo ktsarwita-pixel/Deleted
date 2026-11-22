@@ -70,23 +70,49 @@ class SoundEngine {
     osc.stop(ctx.currentTime + 0.065);
   }
 
+  private lastLatchTime: number = 0;
+
+  public playDoorLatch(opening: boolean = true) {
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (now - this.lastLatchTime < 320) return;
+    this.lastLatchTime = now;
+
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    // Soft wooden latch click + warm hinge creak
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(opening ? 165 : 210, t0);
+    osc.frequency.exponentialRampToValueAtTime(opening ? 245 : 125, t0 + 0.09);
+    gain.gain.setValueAtTime(0.055, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.10);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.11);
+  }
+
   public playDoorOpen() {
     const ctx = this.getContext();
     if (!ctx) return;
-
+    const t0 = ctx.currentTime;
+    // Crisp brass latch unclick followed by warm timber swing
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(140, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(280, ctx.currentTime + 0.18);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(145, t0);
+    osc.frequency.linearRampToValueAtTime(275, t0 + 0.14);
+    osc.frequency.exponentialRampToValueAtTime(190, t0 + 0.22);
 
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    gain.gain.setValueAtTime(0.12, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.23);
+    osc.start(t0);
+    osc.stop(t0 + 0.25);
   }
 
   public playCutsceneAlert() {
