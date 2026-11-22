@@ -57,6 +57,7 @@ interface Mem {
   bumped: Map<string, number>; catTail: Spring; wind: Wind; lastX: number; lastY: number;
   propBurn: Map<number, number>; wasPierInWater: boolean;
   fillSplashAt: number; fillBubbleNext: number; fillDripNext: number;
+  jumpShadows: { ox: number; oy: number; tx: number; dir: -1 | 1; dySwim: number; t0: number; tJump: number; tLand: number; tEnd: number; seed: number; jumped: boolean; landed: boolean }[];
 }
 let mem: Mem | null = null;
 let pending: { at: number; run: () => void }[] = [];
@@ -94,7 +95,7 @@ function freshMem(w: GameWorld): Mem {
     pourNext: 0, splashNext: 0, steamNext: 0, bumped: new Map(), catTail: new Spring(190, 7),
     wind: windAt(w.player.x, w.player.y, w.time), lastX: w.player.x, lastY: w.player.y, propBurn: new Map(),
     wasPierInWater: false,
-    fillSplashAt: -1, fillBubbleNext: 0, fillDripNext: 0,
+    fillSplashAt: -1, fillBubbleNext: 0, fillDripNext: 0, jumpShadows: [],
   };
 }
 
@@ -282,27 +283,40 @@ function spawnAmbient(w: GameWorld, m: Mem, dt: number, view: Viewport) {
       if (isWater(x, y)) m.ripples.add(x, y, 0.5 + rnd() * 0.4, 16 + rnd() * 10);
     }
     if (w.time > m.nextFish) {
-      m.nextFish = w.time + 2.5 + rnd() * 2.8;
-      // Pick open water comfortably clear of the wooden pier so splash droplets never touch the deck
+      m.nextFish = w.time + 2.6 + rnd() * 2.6;
+      // Pick open water comfortably clear of the wooden pier so splash droplets & swim-out stay in open water
       const eastSide = rnd() < 0.45;
-      const x = eastSide ? (504 + rnd() * 92) : (238 + rnd() * 114);
-      const y = LAKE.y0 + 34 + rnd() * 112;
-      const dir: -1 | 1 = eastSide ? (x > 554 ? -1 : 1) : (x > 316 ? -1 : 1);
+      const x = eastSide ? (508 + rnd() * 82) : (246 + rnd() * 102);
+      const y = LAKE.y0 + 36 + rnd() * 104;
+      const dir: -1 | 1 = eastSide ? (x > 552 ? -1 : 1) : (x > 304 ? -1 : 1);
       const dist = 38 + Math.round(rnd() * 8);
-      // A fish must never leap through the wooden bridge or splash on its deck.
-      if (fishJumpStaysInWater(x, y, dir, dist) && Math.abs(x - 442) > 58 && Math.abs(x + dist * dir - 442) > 58) {
-        const life = 0.76 + rnd() * 0.12;
-        m.ripples.add(x, y, 0.88, 30);
-        for (let i = 0; i < 4; i++) m.droplets.add(x, y - 2, (rnd() - 0.5) * 32 - dir * 12, -38 - rnd() * 26, 1.4, 0.3);
-        fx.add({ kind: 'fish', x, y, ox: x, oy: y, tx: x + dist * dir, ty: y, life, seed: rnd() * 99 });
-        pending.push({ at: w.time + life, run: () => {
-          if (!mem || !fishJumpStaysInWater(x, y, dir, dist)) return;
-          const lx = x + dist * dir;
-          mem.ripples.add(lx, y, 1.12, 38);
-          for (let i = 0; i < 7; i++) mem.droplets.add(lx, y - 2, (rnd() - 0.5) * 52 + dir * 10, -52 - rnd() * 38, 1.5, 0.38);
-        } });
+      if (fishJumpStaysInWater(x, y, dir, dist) && Math.abs(x - 442) > 60 && Math.abs(x + dist * dir - 442) > 60) {
+        const life = 0.78 + rnd() * 0.1;
+        const tJump = w.time + 0.62;
+        m.jumpShadows.push({
+          ox: x, oy: y, tx: x + dist * dir, dir, dySwim: (rnd() - 0.5) * 18,
+          t0: w.time, tJump, tLand: tJump + life, tEnd: tJump + life + 1.55,
+          seed: rnd() * 99, jumped: false, landed: false,
+        });
       }
     }
+    for (const jf of m.jumpShadows) {
+      if (!jf.jumped && w.time >= jf.tJump) {
+        jf.jumped = true;
+        const life = jf.tLand - jf.tJump;
+        m.ripples.add(jf.ox, jf.oy, 0.88, 30);
+        for (let i = 0; i < 4; i++) m.droplets.add(jf.ox, jf.oy - 2, (rnd() - 0.5) * 32 - jf.dir * 12, -38 - rnd() * 26, 1.4, 0.3);
+        fx.add({ kind: 'fish', x: jf.ox, y: jf.oy, ox: jf.ox, oy: jf.oy, tx: jf.tx, ty: jf.oy, life, seed: jf.seed });
+      }
+      if (!jf.landed && w.time >= jf.tLand) {
+        jf.landed = true;
+        if (isWater(jf.tx, jf.oy)) {
+          m.ripples.add(jf.tx, jf.oy, 1.12, 38);
+          for (let i = 0; i < 7; i++) m.droplets.add(jf.tx, jf.oy - 2, (rnd() - 0.5) * 50 + jf.dir * 10, -52 - rnd() * 36, 1.5, 0.38);
+        }
+      }
+    }
+    if (m.jumpShadows.length) m.jumpShadows = m.jumpShadows.filter(jf => w.time < jf.tEnd);
   } else if (Math.random() < dt * 0.5) {
     // dust motes catching the light inside the house
     fx.add({ kind: 'leaf', x: 320 + Math.random() * 220, y: 200 + Math.random() * 120, vx: 4, vy: 6, life: 5, color: '#f3d999', alpha: 0.5 });
@@ -593,48 +607,61 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
   const vTop = view.y - view.height / view.scale / 2 - 90;
   const vBot = view.y + view.height / view.scale / 2 + 90;
   const wind = m.wind;
-  // Warung Budi bamboo-bead doorway curtain: each strand lags smoothly in the breeze
+  // Rumah Wira warm porch lantern glow
+  c.globalAlpha = 0.14 + 0.03 * Math.sin(t * 2.4);
+  R(c, 176, 153, 16, 17, '#ffd984');
+  c.globalAlpha = 1;
+
+  // Warung Budi doorway bamboo-reed curtain: pinned at top lintel (y=156), gentle connected pendulum sway at bottom
   for (let i = 0; i < 7; i++) {
     const bx = 474 + i * 5;
+    const tipSway = (Math.sin(t * 1.8 - i * 0.35) * (0.45 + wind.gust * 0.9) + wind.dir * (0.5 + wind.gust * 0.8));
     for (let k = 0; k < 7; k++) {
-      const sw = Math.sin(t * 2.2 - i * 0.45 - k * 0.3) * (0.7 + wind.gust * 2.0) + wind.dir * (0.8 + k * 0.35);
-      R(c, snap(bx + sw), 160 + k * 6, 2, 4, (i + k) % 3 === 0 ? '#e4cfa2' : (i + k) % 2 ? '#ab7e49' : '#7d572e');
+      const env = Math.pow(k / 6, 1.6); // 0 at top rail, smooth curve toward bottom
+      const dx = Math.round(tipSway * env);
+      R(c, bx + dx, 157 + k * 6, 2, 5, (i + k) % 3 === 0 ? '#e4cfa2' : (i + k) % 2 ? '#ab7e49' : '#7d572e');
     }
   }
-  // Warung Budi sloped terracotta-and-cream canopy awning along the upper eave rail (y=133..152, leaving the counter & shelves unobstructed!)
+  // Warung Budi taut timber-framed canvas awning (y=132..146) + stitched scalloped cloth valance (NEVER detaches!)
+  R(c, 446, 132, 238, 2, '#4a311d'); // top mounting rail
   for (let i = 0; i < 12; i++) {
-    const x = 446 + i * 20;
+    const x = 446 + i * 20 - (i === 11 ? 2 : 0), wS = i === 11 ? 18 : 20;
     const cream = i % 2 === 1;
-    const flap = Math.sin(t * 2.7 - i * 0.55) + wind.dir * wind.gust * 1.3;
-    const lift = Math.round(flap * 1.1) * 2;
-    R(c, x, 133, 20, 4, cream ? '#f7ebd0' : '#cc5c42');
-    R(c, x, 137, 20, 8, cream ? '#e8d4a6' : '#b24731');
-    R(c, x, 144, 20, 2, cream ? '#c4ad7e' : '#823120');
-    // Scalloped wind-flapping valance tabs
-    R(c, x + 2, 146 + lift, 16, 4, cream ? '#e8d4a6' : '#b24731');
-    R(c, x + 5, 149 + lift, 10, 3, cream ? '#cfb888' : '#913825');
+    // Taut sloped awning roof panels
+    R(c, x, 134, wS, 4, cream ? '#f7ebd0' : '#cc5c42');
+    R(c, x, 138, wS, 7, cream ? '#e8d4a6' : '#b24731');
+    // Continuous front wooden roller bar
+    R(c, x, 145, wS, 2, '#5c3c24');
+    // Stitched scalloped cloth valance: top seam is 100% pinned at y=147; gentle travelling ripple along bottom hem!
+    const ripple = Math.sin(t * 2.3 - i * 0.6) * (0.45 + wind.gust * 0.65);
+    const hemDrop = ripple > 0.25 ? 1 : 0;
+    const shear = Math.round((wind.dir * (0.4 + wind.gust * 0.7) + ripple * 0.4));
+    const litCloth = ripple < -0.15;
+    R(c, x + 1, 147, wS - 2, 3 + hemDrop, cream ? (litCloth ? '#f3e3bc' : '#e4cfa0') : (litCloth ? '#c4543c' : '#ab422d'));
+    R(c, x + 4 + shear, 150 + hemDrop, wS - 8, 2, cream ? '#cfb888' : '#8c3523');
   }
-  // Warm festoon string lights swaying below Warung Budi's canopy
+  // Steady warm tungsten festoon bulbs under Warung Budi's eaves (gentle filament warmth, no disco blinking!)
   for (let i = 0; i < 5; i++) {
     const bx = 528 + i * 31;
-    const sway = Math.sin(t * 1.9 + i * 0.9) * (1.4 + wind.gust * 2.8) + wind.dir * 2.2;
-    const len = 8 + (i % 2) * 4;
-    for (let k = 0; k < len; k += 2) R(c, snap(bx + sway * (k / len)), 150 + k, 1, 2, '#3d352e');
-    const by = 150 + len, bxp = snap(bx + sway);
-    const lit = (Math.floor(t * 1.3) + i) % 5 !== 0;
-    R(c, bxp - 1, by - 2, 3, 2, '#5e584e');
-    R(c, bxp - 2, by, 5, 5, lit ? '#fae29c' : '#8d7c52');
-    R(c, bxp - 1, by + 1, 3, 3, lit ? '#fff9df' : '#a08e60');
-    if (lit) { c.globalAlpha = 0.15; R(c, bxp - 6, by - 3, 13, 12, '#ffd98a'); c.globalAlpha = 1; }
+    const len = 7 + (i % 2) * 3;
+    const sway = Math.round((Math.sin(t * 1.5 + i * 0.8) * (0.4 + wind.gust * 0.8) + wind.dir * 0.8));
+    R(c, bx, 151, 1, Math.ceil(len * 0.5), '#3d352e');
+    R(c, bx + sway, 151 + Math.floor(len * 0.5), 1, Math.ceil(len * 0.5), '#3d352e');
+    const by = 151 + len, bxp = bx + sway;
+    R(c, bxp - 1, by - 1, 3, 2, '#5e584e');
+    R(c, bxp - 2, by + 1, 5, 4, '#fae29c');
+    R(c, bxp - 1, by + 2, 3, 2, '#fff9df');
+    c.globalAlpha = 0.13 + 0.02 * Math.sin(t * 2.1 + i);
+    R(c, bxp - 6, by - 2, 13, 11, '#ffd98a');
+    c.globalAlpha = 1;
   }
-  // Balai RT & Posko Pak RT live details: blinking VHF tower beacon, active radio transceiver LED, and Merah-Putih flagpole!
+  // Balai RT & Posko Pak RT live details: blinking VHF tower beacon, active radio transceiver LED, and pinned Merah-Putih flag!
   {
     const beaconOn = Math.sin(t * 4.2) > 0.15;
     if (beaconOn) {
       R(c, 767, 49, 4, 4, '#ff5947'); R(c, 768, 50, 2, 2, '#ffd6c9');
       c.globalAlpha = 0.22; R(c, 763, 45, 12, 12, '#ff4d3b'); c.globalAlpha = 1;
     }
-    // Live VHF base-station radio signal LED on Pak RT's command desk
     const rxOn = Math.sin(t * 6.5) > -0.2;
     R(c, 811, 202, 2, 2, rxOn ? '#6ef788' : '#2d5c38');
     R(c, 811, 205, 2, 2, Math.sin(t * 3.1) > 0.4 ? '#ffbe47' : '#634b24');
@@ -642,13 +669,17 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     const px = 892, top = 70;
     R(c, px - 1, top, 3, 84, '#929892'); R(c, px - 1, top, 1, 84, '#cfd6cf');
     R(c, px - 2, top - 4, 5, 4, '#e6c05c');
-    for (let i = 0; i < 10; i++) {
-      const wave = Math.sin(t * 4.4 - i * 0.68) * (1.6 + wind.gust * 2.6) + wind.dir * i * 0.85;
-      const fx = px + 2 + i * 3;
-      R(c, fx, snap(top + 3 + wave), 3, 7, '#cf3527');
-      R(c, fx, snap(top + 3 + wave), 3, 2, '#e85343');
-      R(c, fx, snap(top + 10 + wave), 3, 7, '#f2ede0');
-      R(c, fx, snap(top + 15 + wave), 3, 2, '#cfc8b6');
+    // Flag is pinned at i=0 on the flagpole halyard (env = i / 9) so the hoist edge NEVER slides off the pole!
+    const breeze = 0.45 + wind.power * 0.35 + wind.gust * 0.3;
+    const cols = Math.round(7 + breeze * 3);
+    for (let i = 0; i < cols; i++) {
+      const env = i / Math.max(1, cols - 1);
+      const wave = Math.round((Math.sin(t * 3.6 - i * 0.62) * (1.8 + wind.gust * 1.6) + (1 - breeze) * 2.2) * env);
+      const shade = Math.cos(t * 3.6 - i * 0.62) * env > 0.25;
+      const fx = px + 2 + i * 3, fy = top + 3 + wave;
+      R(c, fx, fy, 3, 7, shade ? '#b82d20' : '#d4382a');
+      R(c, fx, fy, 3, 1, '#e85848');
+      R(c, fx, fy + 7, 3, 7, shade ? '#d8d1bf' : '#f4efe2');
     }
   }
   // kitchen smoke from Wira's roof vent
@@ -734,6 +765,49 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
         R(c, snap(fx + ux * 2), snap(fy + uy * 2), 2, 2, fi % 3 === 1 ? '#d9b566' : '#7ec2c2');
       }
     }
+    // Continuous underwater fish shadow for jumping fish: approaches -> tracks airborne arc -> swims away underwater after landing!
+    for (const jf of m.jumpShadows) {
+      let sx = jf.ox, sy = jf.oy, ux = jf.dir, uy = 0, alpha = 0, wagHz = 11;
+      if (w.time < jf.tJump) {
+        const u = clamp01((w.time - jf.t0) / Math.max(0.01, jf.tJump - jf.t0));
+        sx = jf.ox - jf.dir * (1 - u) * 24;
+        sy = jf.oy - jf.dySwim * 0.35 * (1 - u);
+        alpha = u * 0.64;
+        wagHz = 13;
+      } else if (w.time <= jf.tLand) {
+        const u = clamp01((w.time - jf.tJump) / Math.max(0.01, jf.tLand - jf.tJump));
+        const lift = Math.sin(u * Math.PI);
+        sx = jf.ox + (jf.tx - jf.ox) * u;
+        sy = jf.oy + 2 + lift * 3;
+        alpha = 0.62 - lift * 0.16;
+        wagHz = 16;
+      } else {
+        const u = clamp01((w.time - jf.tLand) / Math.max(0.01, jf.tEnd - jf.tLand));
+        const ease = 1 - Math.pow(1 - u, 2.2);
+        sx = jf.tx + jf.dir * ease * 34;
+        sy = jf.oy + jf.dySwim * ease;
+        const len = Math.hypot(jf.dir * 34, jf.dySwim) || 1;
+        ux = (jf.dir * 34) / len; uy = jf.dySwim / len;
+        alpha = 0.68 * (1 - u * u);
+        wagHz = 16 - u * 7;
+      }
+      if (alpha > 0.03 && isWater(sx, sy) && isWater(sx - ux * 10, sy - uy * 10)) {
+        const nx = -uy, ny = ux;
+        const w1 = Math.sin(t * wagHz + jf.seed) * 1.4;
+        const w2 = Math.sin(t * wagHz + jf.seed - 1.1) * 3.0;
+        c.globalAlpha = alpha;
+        R(c, snap(sx + ux * 6), snap(sy + uy * 6), 2, 2, '#0e2b31');
+        R(c, snap(sx + ux * 3), snap(sy + uy * 3), 4, 4, '#11333a');
+        R(c, snap(sx - ux * 1 + nx * w1 * 0.4), snap(sy - uy * 1 + ny * w1 * 0.4), 4, 4, '#0e2b31');
+        R(c, snap(sx + nx * 3), snap(sy + ny * 3), 2, 2, '#143c44');
+        R(c, snap(sx - nx * 3), snap(sy - ny * 3), 2, 2, '#143c44');
+        R(c, snap(sx - ux * 5 + nx * w1), snap(sy - uy * 5 + ny * w1), 3, 3, '#11333a');
+        const txS = sx - ux * 9 + nx * w2, tyS = sy - uy * 9 + ny * w2;
+        R(c, snap(txS + nx * 1.8), snap(tyS + ny * 1.8), 2, 2, '#0e2b31');
+        R(c, snap(txS - nx * 1.8), snap(tyS - ny * 1.8), 2, 2, '#0e2b31');
+      }
+    }
+    c.globalAlpha = 1;
     // Gentle waterline lap along the moored Jukung canoe hull (556, 666)
     const jLap = Math.round(Math.sin(t * 2.3) * 1) * 2;
     c.globalAlpha = 0.48;

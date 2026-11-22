@@ -1,5 +1,5 @@
 import type { Direction, PortraitId } from '../types/gameTypes';
-import { VerletChain, type Wind } from './physics';
+import { type Wind } from './physics';
 
 /*
  * Pixel sprite factory with physical secondary motion.
@@ -349,14 +349,25 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   P(rimX, ty + 1, 1, 6, '#ffffff2e');
   P(rimX, ty - 1, 2, 1, '#ffffff24');
 
-  // ---------- headwear ----------
-  const fl = s.flutter % 3;
+  // ---------- headwear & tucked ponytail (crisp outlined pixel art, zero glitchy detached chains) ----------
+  const fl = (s.pose === 'walk' ? (s.frame & 1) : (s.flutter & 1));
+  if (L.ponytail) {
+    if (side) {
+      P(7, hy + 5, 2, 4, L.hair); P(6, hy + 7 + fl, 2, 3, L.hair); P(7, hy + 5, 1, 2, L.hairLight);
+    } else if (back) {
+      P(15, hy + 6, 2, 5, L.hair); P(15 + (fl ? 1 : 0), hy + 10, 2, 2, '#3d2f28'); P(15, hy + 6, 1, 2, L.hairLight);
+    }
+  }
   if (L.head === 'kerchief') {
     row(2, 9, 22, L.accent!); row(3, 9, 22, L.accent!); row(2, 10, 21, L.accentLight!);
     for (const x of [11, 14, 17, 20]) P(x, hy + 3, 1, 1, L.trim);
-    if (!side && !back) { P(21, hy + 2, 3, 3, L.accent!); P(23, hy + 4, 2, 1, L.accent!); P(24, hy + 5 + (fl === 1 ? 1 : 0), 2, 1, L.accent!); }
-    else if (side) { P(7, hy + 3, 3, 2, L.accent!); P(6, hy + 4, 2, 1, L.accent!); }
-    else { P(15, hy + 3, 2, 2, L.accent!); P(14, hy + 5, 1, 2 + (fl === 1 ? 1 : 0), L.accent!); P(17, hy + 5, 1, 2 + (fl === 2 ? 1 : 0), L.accentLight!); }
+    if (!side && !back) {
+      P(22, hy + 2, 2, 3, L.accent!); P(23, hy + 4 + fl, 2, 2, L.accentLight!);
+    } else if (side) {
+      P(7, hy + 2, 3, 2, L.accent!); P(6, hy + 3 + fl, 2, 2, L.accentLight!);
+    } else {
+      P(15, hy + 3, 2, 2, L.accent!); P(14, hy + 5, 1, 2 + fl, L.accent!); P(17, hy + 5, 1, 2 + (1 - fl), L.accentLight!);
+    }
   } else if (L.head === 'peci') {
     P(10, hy - 1, 12, 5, '#1e1b19'); P(11, hy - 1, 10, 1, '#3b3633'); P(10, hy + 3, 12, 1, '#2b2724');
     P(10, hy - 1, 2, 4, '#4a4441');
@@ -375,80 +386,12 @@ export function getFrame(s: FrameSpec): HTMLCanvasElement {
   return canvas;
 }
 
-// ---------------- simulated secondary motion ----------------
-interface HairRig { tail: VerletChain; ribbons: [VerletChain, VerletChain]; hem: [VerletChain, VerletChain] | null; t: VerletChain | null }
-const rigs = new Map<string, HairRig>();
-function rig(who: Who): HairRig {
-  let r = rigs.get(who);
-  if (!r) {
-    r = { tail: new VerletChain(4, 3.6), ribbons: [new VerletChain(3, 3.2), new VerletChain(3, 2.8)], hem: who === 'wira' ? [new VerletChain(3, 2.8), new VerletChain(3, 2.5)] : null, t: who === 'budi' ? new VerletChain(2, 3.0) : null };
-    rigs.set(who, r);
-  }
-  return r;
-}
-export function resetRigs() { rigs.clear(); }
-
-function drawChain(c: CanvasRenderingContext2D, chain: VerletChain, widths: number[], colors: string[], tip?: string) {
-  for (let i = 1; i < chain.nodes.length; i++) {
-    const a = chain.nodes[i - 1], b = chain.nodes[i];
-    const w = Math.max(2, Math.round(widths[Math.min(i - 1, widths.length - 1)] * SCALE));
-    c.fillStyle = colors[Math.min(i - 1, colors.length - 1)];
-    const mx = Math.round((a.x + b.x) * 0.5 - w / 2), my = Math.round((a.y + b.y) * 0.5 - w / 2);
-    c.fillRect(mx, my, w, w);
-    c.fillRect(Math.round(b.x - w / 2), Math.round(b.y - w / 2), w, w);
-    if (i === chain.nodes.length - 1 && tip) {
-      c.fillStyle = tip;
-      c.fillRect(Math.round(b.x) - 2, Math.round(b.y) - 2, 4, 4);
-    }
-  }
-}
+// ---------------- character drawing ----------------
+export function resetRigs() {}
 
 /** Feet sit at (x, y). */
 export function drawCharacter(c: CanvasRenderingContext2D, x: number, y: number, s: FrameSpec, m?: MotionInfo) {
-  const dt = Math.min(0.05, m?.dt ?? 0);
   const reduced = !m || !!m.reduced;
-  const r = rig(s.who);
-  const L = LOOKS[s.who];
-  const ub = upperOffset(s);
-  // head anchor in world coordinates (SCALE = 2)
-  const headY = y - (42 - (8 + ub)) * SCALE;
-  const windX = m ? m.wind.dir * (10 + m.wind.gust * 34 + m.speed * 0.16) : 0;
-  const inertia = m ? -m.vx * 0.055 : 0;
-
-  if (L.ponytail) {
-    const anchor = { x: x + (s.dir === 'left' ? 10 : s.dir === 'right' ? -10 : -6), y: headY + 2 };
-    if (!reduced && dt > 0) r.tail.update(dt, anchor, 430, windX + inertia, 0.982);
-    else r.tail.snap(anchor);
-    drawChain(c, r.tail, [2.2, 1.9, 1.5, 1.1], [L.hair, L.hair, '#3d2f28', L.hairLight], L.accent);
-  }
-  if (L.head === 'kerchief') {
-    const knot = { x: x + (s.dir === 'left' ? 10 : s.dir === 'right' ? -10 : 8), y: headY - 2 };
-    for (let i = 0; i < 2; i++) {
-      const ch = r.ribbons[i];
-      const a = { x: knot.x + (i ? 2 : -2), y: knot.y + (i ? 1 : 0) };
-      if (!reduced && dt > 0) ch.update(dt, a, 300, windX * 1.5 + inertia * 1.6 + (i ? 6 : -6), 0.975);
-      else ch.snap(a);
-      drawChain(c, ch, [1.8, 1.4, 1.0], [L.accent!, i ? L.accentLight! : L.accent!], L.trim);
-    }
-  }
-  if (r.t) {
-    const a = { x: x + 8, y: y - 30 };
-    if (!reduced && dt > 0) r.t.update(dt, a, 260, windX, 0.97);
-    else r.t.snap(a);
-    drawChain(c, r.t, [1.4, 1.0], ['#ded0ab', '#c8b995']);
-  }
-  if (r.hem && L.sarong) {
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? -1 : 1;
-      const facing = s.dir === 'left' ? -1 : 1;
-      const anchor = { x: x + side * 7, y: y - 24 };
-      const windForce = windX * 0.72 - (m?.vx ?? 0) * 0.11 * facing;
-      if (!reduced && dt > 0) r.hem[i].update(dt, anchor, 340, windForce + side * 3, 0.976);
-      else r.hem[i].snap(anchor);
-      drawChain(c, r.hem[i], [2.4, 2.0, 1.5], ['#5a2b3b', '#7d3f52', '#a35c6c'], '#e9ba5c');
-    }
-  }
-
   const frame = getFrame(s);
   const phase = (s.gait ?? ((s.frame & 3) / 4)) * Math.PI * 2;
   const bobPx = m && !reduced && s.pose === 'walk' ? Math.round((1 - Math.cos(phase)) * 0.95) : 0;

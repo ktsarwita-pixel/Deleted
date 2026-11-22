@@ -110,10 +110,14 @@ export class FxSystem {
           const finCol = sp === 0 ? '#df4d36' : sp === 1 ? '#cf4228' : '#2d535e';
           const glint  = sp === 0 ? '#ffffff' : sp === 1 ? '#fff7cf' : '#c8f6f8';
 
-          // Soft dark oval shadow directly on the water surface beneath the leaping fish
-          const shW = Math.max(6, snap(14 - lift * 0.2));
-          c.globalAlpha = prev * (0.28 * Math.sin(u * Math.PI));
-          R(x - shW / 2, oy + 1, shW, 2, '#102a2e');
+          // Fish-shaped dark underwater shadow directly beneath the leaping fish on the lake surface
+          const shY = oy + 2 + Math.round(lift * 0.08);
+          const wagSh = Math.round(Math.sin(p.age * 34 + p.seed)) * 2;
+          c.globalAlpha = prev * (0.34 + 0.14 * (1 - Math.sin(u * Math.PI)));
+          R(x - 4 * dir, shY, 10, 4, '#0f2d33');
+          R(x + (dir > 0 ? 5 : -7), shY + 1, 3, 2, '#0f2d33');
+          R(x - (dir > 0 ? 8 : -5), shY - 1 + (wagSh >> 1), 3, 2, '#0f2d33');
+          R(x - (dir > 0 ? 8 : -5), shY + 2 + (wagSh >> 1), 3, 2, '#0f2d33');
 
           // High-speed caudal tail wagging + 5-stage pitch angle along ballistic trajectory
           const wag = Math.round(Math.sin(p.age * 38 + p.seed) * 1) * 2;

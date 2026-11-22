@@ -47,116 +47,247 @@ function cabinet(c: CanvasRenderingContext2D, x: number, y: number, w: number, h
   R(c, x + 6, y + h, 8, 7, '#4b3529'); R(c, x + w - 14, y + h, 8, 7, '#4b3529');
 }
 function windowArt(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  R(c, x - 6, y - 6, w + 12, h + 15, '#402d25');
-  R(c, x - 3, y - 3, w + 6, h + 8, '#d0a467');
-  R(c, x, y, w, h, '#b8bf8c');
-  R(c, x, y + 20, w, h - 20, '#889c6d');
-  poly(c, [[x,y+h],[x,y+40],[x+14,y+34],[x+14,y+23],[x+23,y+18],[x+29,y+30],[x+40,y+29],[x+54,y+47],[x+w,y+34],[x+w,y+h]], '#536e4c');
-  R(c, x + w / 2 - 2, y, 4, h, '#735436'); R(c, x, y + h / 2, w, 4, '#735436');
-  R(c, x - 9, y - 7, 17, h + 7, '#d4c49a'); R(c, x - 9, y - 7, 4, h + 7, '#ebdcb6');
-  R(c, x + w - 8, y - 7, 17, h + 7, '#cfbb8c'); R(c, x + w + 2, y - 7, 4, h + 7, '#ebdcb6');
-  R(c, x - 9, y + h - 10, 17, 4, '#a17a4e'); R(c, x + w - 8, y + h - 10, 17, 4, '#a17a4e');
+  // Heavy carved ulin outer frame + sill shadow
+  R(c, x - 7, y - 7, w + 14, h + 17, '#3a271c');
+  R(c, x - 4, y - 4, w + 8, h + 10, '#c89b5e');
+  R(c, x - 4, y - 4, w + 8, 2, '#ebd09a');
+  // Distant Kalimantan sky, misty hills & rainforest treeline outside the glass
+  R(c, x, y, w, h, '#c9d4a6');
+  R(c, x, y + 12, w, 16, '#a5ba8a');
+  R(c, x, y + 26, w, h - 26, '#789464');
+  poly(c, [[x, y + h], [x, y + 38], [x + 14, y + 31], [x + 25, y + 19], [x + 36, y + 29], [x + 50, y + 22], [x + 64, y + 35], [x + w, y + 28], [x + w, y + h]], '#496944');
+  poly(c, [[x, y + h], [x, y + 46], [x + 22, y + 41], [x + 44, y + 48], [x + w, y + 40], [x + w, y + h]], '#355134');
+  // Subtle diagonal window glass sheen
+  R(c, x + 6, y + 5, 10, 2, '#ffffff55'); R(c, x + 4, y + 7, 6, 2, '#ffffff40');
+  // Mullion crossbars
+  R(c, x + Math.floor(w / 2) - 2, y, 4, h, '#694a2e'); R(c, x + Math.floor(w / 2) - 1, y, 1, h, '#ad8452');
+  R(c, x, y + Math.floor(h / 2) - 1, w, 4, '#694a2e'); R(c, x, y + Math.floor(h / 2) - 1, w, 1, '#ad8452');
+  // Wooden curtain rod + gathered batik-trimmed drapes tied with ochre sashes
+  R(c, x - 12, y - 9, w + 24, 3, '#4f3622'); R(c, x - 12, y - 9, w + 24, 1, '#b88c54');
+  for (const [cx0, shade] of [[x - 10, false], [x + w - 7, true]] as [number, boolean][]) {
+    R(c, cx0, y - 6, 17, h + 7, shade ? '#cbb688' : '#d8c69a');
+    R(c, cx0 + 2, y - 6, 4, h + 7, '#efe1bc');
+    R(c, cx0 + 10, y - 6, 3, h + 7, '#ab9468');
+    // Batik hem motif & tie-back sash
+    R(c, cx0, y + h - 8, 17, 4, '#9c4332');
+    for (let bx = cx0 + 1; bx < cx0 + 16; bx += 4) R(c, bx, y + h - 7, 2, 2, '#f0ce7a');
+    R(c, cx0 - 1, y + Math.floor(h * 0.58), 19, 4, '#b85338');
+    R(c, cx0 + 1, y + Math.floor(h * 0.58) + 1, 15, 2, '#e8be6b');
+  }
+  // Carved wooden window sill
+  R(c, x - 9, y + h + 4, w + 18, 6, '#5c3f28');
+  R(c, x - 9, y + h + 4, w + 18, 2, '#cfa468');
 }
+
 function houseBackground(c: CanvasRenderingContext2D) {
-  R(c, -200, 0, 1280, 620, '#213029');
+  //Lush village yard visible around the cutaway stilt house
+  R(c, -200, 0, 1280, 620, '#233428');
   for (let y = 0; y < 620; y += 12) for (let x = -200; x < 1080; x += 12) {
     const v = hash(x, y);
-    if (v > .6) R(c, x, y, 3 + Math.floor(v * 6), 2, v > .8 ? '#3f4f30' : '#2c3d2b');
+    if (v > .58) R(c, x, y, 3 + Math.floor(v * 6), 2, v > .8 ? '#425634' : '#2d412d');
   }
-  R(c, 412, 520, 60, 100, '#8c7950');
-  for (let i = 0; i < 32; i++) R(c, 414 + hash(i, 3) * 54, 554 + hash(i, 4) * 65, 4, 3, '#aa9767');
+  // Stone garden path outside front steps
+  R(c, 408, 522, 68, 98, '#7d6c49'); R(c, 413, 524, 58, 96, '#9c885d');
+  for (let sy = 562; sy < 616; sy += 14) {
+    R(c, 420, sy, 44, 9, '#b5a788'); R(c, 422, sy + 1, 40, 3, '#cfc3a6');
+  }
   [[-107,93,1.3],[-51,251,1.15],[-64,459,1.1],[48,119,1.1],[832,134,1.1],[40,342,1.15],[843,395,1.15],[67,575,.8],[822,610,1],[967,170,1.3],[947,479,1.2],[1008,684,1.4]].forEach(([x,y,s]) => drawTree(c,x,y,s));
-  shadow(c, 93, 87, 704, 476);
-  R(c, 91, 77, 698, 478, '#2c2520');
-  R(c, 101, 82, 678, 463, '#65482e');
-  R(c, 111, 167, 658, 367, '#a67b4d');
-  // Seeded wood grain is cached once, not generated on every animation frame.
+
+  // Cutaway house outer shell & warm ulin wood floor
+  shadow(c, 92, 86, 706, 478);
+  R(c, 90, 75, 700, 481, '#261c15');
+  R(c, 100, 80, 680, 466, '#5c3f28');
+  R(c, 111, 168, 658, 366, '#a97d4e');
+  // Tongue-and-groove Kalimantan ulin floorboards with wooden dowel pegs
   for (let row = 0; row < 18; row++) {
     const y = 170 + row * 20;
-    R(c, 111, y, 658, 2, '#6e5137'); R(c, 111, y + 2, 658, 2, '#c59860');
+    R(c, 111, y, 658, 2, '#694b31'); R(c, 111, y + 2, 658, 2, '#c99c63');
     for (let x = 111 - (row % 3) * 57; x < 770; x += 114) {
       const left = Math.max(111, x), w = Math.min(x + 112, 767) - left;
       if (w < 0) continue;
-      R(c, left, y + 4, w, 14, ['#a67b4d','#b28652','#9f7549','#ad8050'][Math.floor(hash(row,x)*4)]);
-      R(c, left, y + 4, 2, 14, '#805c3c');
-      for (let k=0;k<3;k++) R(c, left + 10 + hash(k+x,row)*Math.max(0,w-35), y + 6 + k*3, 10 + hash(k,row)*16, 1, '#8a633b70');
+      R(c, left, y + 4, w, 14, ['#a87c4d', '#b58854', '#9e7346', '#af8250'][Math.floor(hash(row, x) * 4)]);
+      R(c, left, y + 4, 2, 14, '#785536');
+      if (w > 18) { R(c, left + 5, y + 7, 2, 2, '#5e4128'); R(c, left + 5, y + 13, 2, 2, '#5e4128'); }
+      for (let k = 0; k < 3; k++) R(c, left + 10 + hash(k + x, row) * Math.max(0, w - 35), y + 6 + k * 3, 10 + hash(k, row) * 16, 1, '#845d3670');
     }
   }
-  // North wall and exposed ceiling beams.
-  R(c, 105, 78, 670, 101, '#67432e');
-  for (let y = 83; y < 174; y += 15) {
-    R(c, 109, y, 662, 12, '#805639'); R(c, 110, y + 1, 660, 2, '#987044');
-    for (let x = 115; x < 768; x += 82) R(c, x + (y % 2) * 8, y, 2, 13, '#5d3d2b');
+  // Soft perimeter wall-to-floor ambient shadow
+  R(c, 111, 178, 658, 8, '#2b1b102e');
+  R(c, 111, 178, 10, 354, '#2b1b1024'); R(c, 759, 178, 10, 354, '#2b1b1024');
+
+  // North Wall: woven anyaman bambu upper frieze + horizontal ulin wainscot + exposed tie-beams
+  R(c, 105, 78, 670, 101, '#5e3d28');
+  bambooWall(c, 109, 82, 662, 34);
+  for (let y = 116; y < 174; y += 14) {
+    R(c, 109, y, 662, 12, '#7d5336'); R(c, 110, y + 1, 660, 2, '#9e7347');
+    for (let x = 115; x < 768; x += 78) R(c, x + (y % 2) * 9, y, 2, 13, '#573926');
   }
-  R(c, 102, 75, 676, 10, '#ba8c55'); R(c, 103, 85, 674, 5, '#4e3527');
-  R(c, 105, 171, 670, 9, '#513a2b'); R(c, 107, 172, 666, 3, '#c1955b');
-  for (const x of [108, 279, 555, 762]) { R(c,x,80,9,100,'#563b29'); R(c,x,80,3,95,'#bc8a52'); }
+  // Top crown beam & carved Dayak geometric wall border
+  R(c, 102, 74, 676, 10, '#c29359'); R(c, 102, 74, 676, 2, '#e6c288'); R(c, 103, 84, 674, 4, '#472f20');
+  R(c, 109, 114, 662, 4, '#472f20');
+  for (let dx = 116; dx < 762; dx += 12) { R(c, dx, 115, 4, 2, '#e3ba72'); R(c, dx + 6, 115, 3, 2, '#b84b36'); }
+  // Baseboard & structural vertical posts
+  R(c, 105, 171, 670, 9, '#4c3424'); R(c, 107, 172, 666, 3, '#c79a5f');
+  for (const x of [108, 279, 555, 762]) { R(c, x, 80, 9, 100, '#4f3523'); R(c, x, 80, 3, 96, '#c29056'); }
+
+  // Twin casement windows looking out toward the forest
   windowArt(c, 316, 102, 75, 59); windowArt(c, 423, 102, 88, 59);
-  // Woven wall hanging and landscape print.
-  R(c, 622, 102, 60, 46, '#432e25'); R(c, 626, 106, 52, 38, '#b69863');
-  R(c, 629, 109, 46, 32, '#89977a');
-  poly(c, [[629,141],[629,130],[640,116],[649,133],[659,122],[675,141]], '#395744');
-  R(c, 663, 113, 6, 6, '#eac88c');
-  // Tall storage cabinet and books.
-  cabinet(c, 139, 127, 110, 65);
-  R(c, 144, 119, 100, 13, '#a97d49');
-  const bookColors = ['#7b8d6a','#b56544','#dbbb7f','#7b8d6a','#655c47','#b5784c'];
-  for (let i=0;i<8;i++) { R(c,150+i*9,101,7,18+(i%3)*2,bookColors[i%6]); R(c,152+i*9,104,3,2,'#dfcd9b'); }
-  // Bed with linen, folded quilt, seams and timber legs.
-  shadow(c, 139, 206, 108, 163);
-  R(c, 139, 200, 108, 161, '#563c2a'); R(c, 143, 198, 100, 12, '#bc8d57');
-  R(c, 146, 214, 94, 142, '#d9c89e'); R(c, 151, 219, 84, 34, '#f2dfb5');
-  R(c, 155, 222, 76, 24, '#e4d5ac'); R(c, 159, 224, 66, 3, '#f7eac9');
-  R(c, 146, 258, 94, 89, '#546f53'); R(c, 148, 258, 91, 11, '#80916a');
-  for (let y=274;y<340;y+=18) for(let x=153;x<234;x+=18) {
-    R(c,x,y,8,3,'#9eab7c'); R(c,x+3,y-3,3,9,'#9eab7c');
+
+  // Carved Dayak Talawang ceremonial shield mounted on pillar bay (x=289..305)
+  poly(c, [[297, 104], [305, 114], [305, 142], [297, 152], [289, 142], [289, 114]], '#8c3728');
+  poly(c, [[297, 108], [302, 116], [302, 140], [297, 148], [292, 140], [292, 116]], '#522219');
+  R(c, 295, 118, 4, 18, '#ebd08a'); R(c, 293, 125, 8, 4, '#df9c48');
+
+  // Framed Kalimantan River & Bukit Raya Painting + Woven Rattan Wall Hats (caping)
+  R(c, 618, 98, 68, 50, '#3d281b'); R(c, 621, 101, 62, 44, '#c79c60');
+  R(c, 624, 104, 56, 38, '#d9cfa8');
+  R(c, 624, 104, 56, 14, '#e8cfa0'); R(c, 664, 108, 7, 7, '#f5ad4c'); // warm Kalimantan sun
+  poly(c, [[624, 134], [624, 124], [638, 112], [651, 126], [664, 115], [680, 134]], '#3f634b');
+  R(c, 624, 133, 56, 9, '#4c8791'); R(c, 634, 136, 24, 2, '#9edce0'); // river reflection
+  // Woven rattan sun-hat (seraung Dayak) hung beside painting
+  poly(c, [[700, 128], [715, 114], [730, 128]], '#d4ad6a');
+  poly(c, [[704, 128], [715, 118], [726, 128]], '#b84835');
+  R(c, 713, 123, 4, 4, '#f2d994');
+
+  // === NORTH-WEST LEMARI ULIN HUTCH (obstacle + wallet at 204,176) ===
+  cabinet(c, 138, 124, 112, 68);
+  R(c, 136, 117, 116, 9, '#b88950'); R(c, 136, 117, 116, 2, '#e4be84');
+  // Books, woven bakul basket & framed family portrait on top of lemari
+  const bookColors = ['#4f7a5a', '#bf4d38', '#deb868', '#3e6e7d', '#7c5838', '#c97842', '#5d7a4c', '#b84b39'];
+  for (let i = 0; i < 8; i++) {
+    const bh = 16 + (i % 3) * 3;
+    R(c, 144 + i * 8, 117 - bh, 7, bh, bookColors[i]);
+    R(c, 145 + i * 8, 120 - bh, 5, 2, '#f2e4be');
   }
-  R(c, 144, 345, 98, 12, '#b58a50'); R(c, 142, 357, 9, 14, '#513b2a'); R(c, 233, 357, 9, 14, '#513b2a');
-  // Bedside stool and lamp.
+  // Woven rattan bakul + small framed family photo
+  R(c, 214, 103, 16, 14, '#c79856'); R(c, 212, 101, 20, 4, '#e0b876'); R(c, 216, 107, 12, 2, '#8c3d2b');
+  R(c, 234, 105, 12, 12, '#4a3220'); R(c, 236, 107, 8, 8, '#dce3d5'); R(c, 238, 109, 4, 4, '#b8533c');
+
+  // === WIRA'S CARVED ULIN BED WITH BOLSTER (GULING) & DAYAK IKAT QUILT (obstacle 134..251, 212..371) ===
+  shadow(c, 138, 206, 110, 164);
+  R(c, 138, 199, 110, 163, '#4f3523');
+  // Carved headboard + corner finials
+  R(c, 140, 196, 106, 14, '#b5864e'); R(c, 140, 196, 106, 3, '#e2bc82');
+  R(c, 137, 193, 8, 18, '#6e4a2e'); R(c, 241, 193, 8, 18, '#6e4a2e');
+  R(c, 138, 191, 6, 4, '#dfb676'); R(c, 242, 191, 6, 4, '#dfb676');
+  // Crisp cream mattress sheet, plump pillow & side guling bolster
+  R(c, 145, 213, 96, 143, '#e4d5ae');
+  R(c, 150, 217, 62, 28, '#f7ebd0'); R(c, 153, 220, 56, 20, '#efe0bc'); R(c, 155, 221, 50, 3, '#ffffffaa');
+  R(c, 148, 217, 4, 28, '#b84c38'); R(c, 208, 217, 4, 28, '#b84c38'); // embroidered pillow ends
+  // Indonesian guling bolster along right side of mattress
+  R(c, 218, 220, 17, 72, '#f3e5c3'); R(c, 221, 220, 5, 72, '#fff6df'); R(c, 218, 254, 17, 3, '#c89c5c');
+  // Handwoven Kalimantan emerald & terracotta ikat blanket
+  R(c, 145, 254, 96, 94, '#3e664b');
+  R(c, 145, 254, 96, 10, '#dfbe78'); R(c, 145, 262, 96, 4, '#b34734'); // folded top cuff
+  for (let y = 274; y < 338; y += 18) for (let x = 152; x < 232; x += 18) {
+    poly(c, [[x + 6, y - 4], [x + 12, y + 2], [x + 6, y + 8], [x, y + 2]], '#8eb37e');
+    R(c, x + 5, y + 1, 3, 3, '#f2cf7e');
+  }
+  // Footboard & sturdy legs
+  R(c, 141, 346, 104, 13, '#b5864e'); R(c, 141, 346, 104, 3, '#dfc089');
+  R(c, 137, 343, 8, 28, '#543824'); R(c, 241, 343, 8, 28, '#543824');
+
+  // Bedside table & warm glowing woven-rattan shade lamp
+  R(c, 256, 246, 38, 22, '#f5d98e1c'); // warm floor glow around nightstand
   cabinet(c, 259, 230, 32, 25);
-  R(c, 270, 212, 7, 16, '#c39c55'); R(c, 262, 202, 23, 14, '#e1bf7a'); R(c, 266, 198, 15, 5, '#f4d796');
-  // Handwoven rug with repeating diamond motifs and tassels.
-  shadow(c, 305, 278, 253, 174);
-  R(c,305,275,253,173,'#683c30'); R(c,309,279,245,165,'#b17345'); R(c,315,285,233,153,'#d2b073');
-  R(c,321,291,221,141,'#8a4d37'); R(c,327,297,209,129,'#b76d49');
-  for (let y=305;y<421;y+=6) R(c,327,y,209,1,'#99583c');
-  for (let x=333;x<530;x+=39) for(let y=312;y<414;y+=39) {
-    poly(c, [[x+13,y],[x+26,y+13],[x+13,y+26],[x,y+13]], '#e0bc7c');
-    poly(c, [[x+13,y+6],[x+20,y+13],[x+13,y+20],[x+6,y+13]], '#6d4534');
-    R(c,x+11,y+11,4,4,'#d2a35c');
+  R(c, 271, 213, 6, 17, '#c79c54'); R(c, 268, 227, 12, 3, '#8f6934');
+  poly(c, [[260, 214], [266, 198], [282, 198], [288, 214]], '#eac67a');
+  poly(c, [[263, 213], [268, 200], [280, 200], [285, 213]], '#fae3a4');
+  R(c, 260, 213, 28, 2, '#b34a35');
+
+  // === CENTERPIECE KALIMANTAN DAYAK IKAT MEDALLION RUG ===
+  shadow(c, 304, 278, 255, 174);
+  R(c, 303, 274, 255, 175, '#592e22');
+  R(c, 307, 278, 247, 167, '#b54f38');
+  R(c, 313, 284, 235, 155, '#dfc082');
+  R(c, 318, 289, 225, 145, '#3b241c');
+  R(c, 323, 294, 215, 135, '#9e4733');
+  // Subtle horizontal handloom weft texture
+  for (let y = 298; y < 426; y += 4) R(c, 323, y, 215, 1, '#873a28');
+  // Geometric Dayak diamond medallions
+  for (let x = 333; x < 526; x += 39) for (let y = 310; y < 412; y += 39) {
+    poly(c, [[x + 14, y], [x + 28, y + 14], [x + 14, y + 28], [x, y + 14]], '#ecd094');
+    poly(c, [[x + 14, y + 4], [x + 24, y + 14], [x + 14, y + 24], [x + 4, y + 14]], '#385c47');
+    poly(c, [[x + 14, y + 8], [x + 20, y + 14], [x + 14, y + 20], [x + 8, y + 14]], '#d96b43');
+    R(c, x + 13, y + 13, 3, 3, '#fff2c2');
   }
-  for(let x=310;x<553;x+=8) { R(c,x,268,3,8,'#c8ab72'); R(c,x,447,3,8,'#c8ab72'); }
-  // Radio desk and a small green chair.
+  // Top & bottom knotted cotton rug fringes
+  for (let x = 308; x < 554; x += 7) {
+    R(c, x, 266, 3, 8, '#e6d2a2'); R(c, x + 1, 266, 1, 8, '#ffffff80');
+    R(c, x, 449, 3, 8, '#d8c290');
+  }
+
+  // === RADIO DESK & VINTAGE SHORTWAVE TRANSISTOR RADIO (obstacle 580..733, 203..269) ===
   cabinet(c, 583, 214, 148, 49);
-  R(c, 579, 206, 156, 13, '#cf9e5d'); R(c,582,208,150,3,'#e0b878');
-  R(c, 612, 190, 55, 24, '#493c2d'); R(c,615,192,49,19,'#92703f');
-  for(let x=619;x<641;x+=3) R(c,x,195,1,13,'#463f2c');
-  R(c,646,195,12,6,'#a8b88c'); R(c,648,204,4,4,'#dabc76'); R(c,659,170,2,21,'#c0b48c');
-  R(c, 693, 194, 20, 14, '#cdba8d'); R(c,695,196,15,2,'#968057');
-  // Table, tea and tabungan.
-  shadow(c, 606, 336, 116, 73);
-  R(c,611,389,9,27,'#5a3d2c'); R(c,706,389,9,27,'#5a3d2c');
-  R(c,602,332,124,66,'#6c482e'); R(c,605,333,118,58,'#b78c53'); R(c,608,335,112,4,'#d9b071');
-  for(let y=345;y<390;y+=14) R(c,607,y,115,2,'#956a42');
-  R(c,614,346,20,16,'#e6d2a1'); R(c,617,348,14,10,'#694632'); R(c,634,349,4,7,'#e6d2a1');
-  R(c,684,365,24,12,'#f3dbac'); R(c,687,368,18,6,'#ba7b47');
-  // Kitchen stove, basket, floor plants and a pair of slippers.
-  cabinet(c, 653, 463, 87, 43); R(c,658,451,77,17,'#657066');
-  R(c,674,443,31,15,'#323e38'); R(c,670,440,39,5,'#889487'); R(c,683,436,13,4,'#48554a');
-  plant(c, 162, 470, true); plant(c, 735, 205); plant(c, 561, 167);
-  R(c, 232, 446, 33, 27, '#ad8450');
-  for(let y=448;y<470;y+=5) R(c,232,y,33,2,'#dab678');
-  for(let x=234;x<263;x+=6) R(c,x,447,2,26,'#785b3a');
-  R(c, 497, 487, 10, 19, '#514934'); R(c,512,487,10,19,'#514934'); R(c,499,491,6,4,'#b89554'); R(c,514,491,6,4,'#b89554');
-  // Cutaway wall edges and an open front doorway.
-  R(c,101,174,12,360,'#4c3527'); R(c,103,174,4,357,'#bb8b52');
-  R(c,767,174,12,360,'#4c3527'); R(c,770,174,4,357,'#b78950');
-  R(c,102,533,302,12,'#513a29'); R(c,476,533,303,12,'#513a29');
-  R(c,103,533,300,4,'#ba8d52'); R(c,477,533,297,4,'#ba8d52');
-  for(let y=534;y<574;y+=9) { R(c,404,y,72,7,'#ac8953'); R(c,406,y,68,2,'#d0b078'); }
-  // Window light follows the pixel grid and stays subtle enough to read sprites.
-  poly(c, [[423,180],[511,180],[581,283],[471,283]], '#f6d68a15');
-  poly(c, [[316,180],[391,180],[444,256],[349,256]], '#f6d68a13');
+  R(c, 578, 205, 158, 12, '#cf9e5d'); R(c, 578, 205, 158, 3, '#ebd09a'); R(c, 578, 215, 158, 2, '#6e4b2c');
+  // Vintage wood-cased FM/SW Radio (indicator LED at 648,197 & sound waves at 670,194 in drawHouseLife!)
+  R(c, 610, 187, 58, 24, '#3d2a1d'); R(c, 612, 189, 54, 20, '#8f6339'); R(c, 612, 189, 54, 2, '#c89862');
+  // Speaker cloth grille (left) + illuminated analog tuning scale & brass knobs (right)
+  R(c, 615, 193, 26, 13, '#2b2118');
+  for (let x = 617; x < 640; x += 3) R(c, x, 194, 2, 11, '#b89b6a');
+  R(c, 644, 193, 19, 7, '#dfecc2'); R(c, 651, 194, 2, 5, '#d94532'); // red frequency needle!
+  R(c, 645, 202, 5, 5, '#e0bc72'); R(c, 655, 202, 5, 5, '#e0bc72'); // tuning & volume dials
+  R(c, 659, 166, 2, 22, '#cfd6d2'); R(c, 658, 164, 4, 3, '#e8edea'); // telescopic whip antenna
+  // Village Karhutla readiness leaflet & notebook beside radio
+  R(c, 682, 195, 24, 14, '#f2e6c9'); R(c, 684, 197, 20, 3, '#c94534'); R(c, 684, 202, 15, 2, '#5c6b58');
+  R(c, 588, 196, 14, 12, '#4a7a6c'); R(c, 590, 198, 10, 3, '#e8d8b0'); // pencil cup / mug
+
+  // === LIVING TABLE, STEAMING KOPI TUBRUK & PISANG GORENG (obstacle 604..724, 335..409; savings at 660,356) ===
+  shadow(c, 604, 336, 120, 74);
+  R(c, 609, 390, 10, 26, '#4f3524'); R(c, 707, 390, 10, 26, '#4f3524');
+  R(c, 601, 331, 126, 67, '#5e3e26'); R(c, 604, 333, 120, 60, '#ba8d54'); R(c, 606, 334, 116, 3, '#e4be82');
+  for (let y = 347; y < 389; y += 14) R(c, 605, y, 118, 2, '#8f653c');
+  // Handwoven batik table runner across center (under savings celengan at 660,356!)
+  R(c, 642, 333, 44, 60, '#9e4332'); R(c, 645, 333, 38, 60, '#f0dfc0');
+  for (let ty = 338; ty < 390; ty += 10) { R(c, 652, ty, 24, 4, '#3e6950'); R(c, 660, ty + 1, 8, 2, '#e3b456'); }
+  // Ceramic saucer & steaming Kopi Kalimantan mug (aligned with steam at x=621, y=339!)
+  R(c, 611, 353, 24, 8, '#d8ccb0'); R(c, 614, 344, 18, 14, '#f2e6c8');
+  R(c, 616, 346, 14, 8, '#4a2c1a'); R(c, 632, 347, 4, 7, '#e6d8b5');
+  // Enamel plate of golden pisang goreng on right
+  R(c, 690, 364, 26, 15, '#e6efe9'); R(c, 692, 366, 22, 11, '#588c66'); // banana leaf liner
+  R(c, 694, 367, 12, 5, '#e6a83e'); R(c, 699, 370, 12, 5, '#d4902a');
+
+  // === INDONESIAN DAPUR KITCHEN COUNTER, GAS KOMPOR & KETTLES (obstacle 654..741, 464..507) ===
+  cabinet(c, 653, 463, 88, 44);
+  R(c, 651, 458, 92, 7, '#c7baa0'); R(c, 651, 458, 92, 2, '#ebe2ce'); // ceramic tile countertop
+  // Two-burner blue enamel gas stove (kompor gas) + gleaming kettle & soup pot
+  R(c, 662, 448, 48, 12, '#3a687d'); R(c, 662, 448, 48, 2, '#7cb2c7');
+  R(c, 670, 453, 5, 4, '#1d292e'); R(c, 696, 453, 5, 4, '#1d292e'); // burner knobs
+  // Stockpot with lid (left burner) + spouted aluminum kettle (right burner)
+  R(c, 665, 437, 19, 11, '#b8c4c0'); R(c, 667, 439, 5, 8, '#e8f0ed'); R(c, 663, 435, 23, 3, '#889691'); R(c, 672, 433, 5, 2, '#3d2b1f');
+  R(c, 690, 439, 16, 9, '#c7d2ce'); R(c, 705, 440, 5, 4, '#9aa6a2'); R(c, 693, 435, 10, 4, '#543c28');
+  // Stack of clean plates & spice jar on right end of counter
+  R(c, 716, 451, 18, 7, '#f2ede0'); R(c, 718, 448, 14, 4, '#dce6e2');
+
+  // === LUSH CORNER PLANTS & WIRA'S RATTAN WEAVING CRAFT CORNER ===
+  plant(c, 162, 470, true); plant(c, 738, 202); plant(c, 558, 168);
+  // Woven pandan mat + coiled golden rotan rings & half-woven basket (224..272, 442..478)
+  R(c, 222, 444, 50, 32, '#9c7848'); R(c, 224, 446, 46, 28, '#c8a368');
+  for (let y = 448; y < 472; y += 4) R(c, 224, y, 46, 1, '#ab844c');
+  // Coiled rattan cane rings + finished woven basket
+  R(c, 229, 450, 18, 16, '#dfb870'); R(c, 233, 454, 10, 8, '#b38944');
+  R(c, 251, 448, 16, 18, '#a6743d'); R(c, 249, 446, 20, 4, '#d9ab66'); R(c, 253, 453, 12, 2, '#8c3929');
+
+  // === FRONT THRESHOLD: COIR WELCOME MAT, NEAT SANDALS & CUTAWAY TIMBER WALLS ===
+  // Woven coir welcome mat inside front doorway (x=412..468, y=500..526)
+  R(c, 412, 502, 56, 24, '#7d5936'); R(c, 415, 505, 50, 18, '#b88e58');
+  R(c, 419, 509, 42, 10, '#966d3e'); R(c, 423, 512, 34, 4, '#dfc088');
+  // Neatly parked pair of sandals (sandal jepit) beside the door
+  for (const sx of [494, 509]) {
+    R(c, sx, 492, 11, 20, '#3e5c4e'); R(c, sx + 1, 493, 9, 17, '#58826e');
+    R(c, sx + 2, 497, 7, 3, '#e8c468'); R(c, sx + 4, 495, 3, 3, '#cf4b38');
+  }
+  // Cutaway wall framing & front ulin steps
+  R(c, 100, 174, 12, 360, '#473020'); R(c, 103, 174, 4, 357, '#c49458');
+  R(c, 768, 174, 12, 360, '#473020'); R(c, 771, 174, 4, 357, '#bf8f54');
+  R(c, 101, 533, 303, 13, '#4c3423'); R(c, 476, 533, 303, 13, '#4c3423');
+  R(c, 102, 533, 301, 4, '#c49558'); R(c, 477, 533, 298, 4, '#c49558');
+  for (let y = 534; y < 576; y += 9) {
+    R(c, 404, y, 72, 7, '#b28b52'); R(c, 406, y, 68, 2, '#dbb87e'); R(c, 404, y + 6, 72, 2, '#5c4026');
+  }
+  // Subtle warm sunbeams angled across the ulin floor from both north windows
+  poly(c, [[423, 180], [511, 180], [584, 286], [472, 286]], '#f7d98e16');
+  poly(c, [[316, 180], [391, 180], [446, 258], [348, 258]], '#f7d98e14');
 }
 
 /* ---------- shared building parts ---------- */
@@ -305,82 +436,110 @@ function barrel(c: CanvasRenderingContext2D, x: number, y: number, col = '#43707
   R(c, x, y, 20, 3, '#8eb8c2'); R(c, x + 2, y + 1, 16, 1, '#263c44');
 }
 
-/* ---------- Rumah Wira: Kalimantan Rumah Panggung (stilt house) ---------- */
+/* ---------- Rumah Wira: Kalimantan Rumah Panggung (Hero Stilt House) ---------- */
 function rumahWira(c: CanvasRenderingContext2D) {
-  const x0 = 118, x1 = 302, yRoof = 70, yBody = 132, yFloor = 210, yGround = 258;
-  R(c, x0 - 12, yGround - 4, x1 - x0 + 26, 12, '#0f19114a');
-  // Shaded under-croft (kolong rumah) with cross-bracing, stacked firewood & woven mats
-  R(c, x0 - 4, yFloor + 4, x1 - x0 + 8, yGround - yFloor - 4, '#241a13');
-  R(c, x0 - 4, yFloor + 4, x1 - x0 + 8, 4, '#16100b');
+  const x0 = 116, x1 = 304, yRoof = 66, yBody = 130, yFloor = 210, yGround = 258;
+  // Soft ground contact shadow & river-stone drip border around stilts
+  R(c, x0 - 14, yGround - 5, x1 - x0 + 28, 13, '#0f191150');
+
+  // Deep shaded kolong rumah (under-croft) with diagonal ulin cross-bracing, stacked split firewood & coiled rattan!
+  R(c, x0 - 4, yFloor + 4, x1 - x0 + 8, yGround - yFloor - 4, '#211710');
+  R(c, x0 - 4, yFloor + 4, x1 - x0 + 8, 5, '#130d09');
+  // Diagonal timber cross-braces between stilts
+  poly(c, [[132, 216], [136, 216], [168, 250], [164, 250]], '#3c291a');
+  poly(c, [[168, 216], [172, 216], [136, 250], [132, 250]], '#3c291a');
+  poly(c, [[252, 216], [256, 216], [288, 250], [284, 250]], '#3c291a');
+  // Neatly stacked split firewood logs (left bay)
   for (let row = 0; row < 3; row++) for (let i = 0; i < 6 - row; i++) {
-    const lx = x0 + 10 + i * 9 + row * 4, ly = yGround - 8 - row * 5;
-    R(c, lx, ly, 8, 5, (i + row) % 2 ? '#735232' : '#5c4026');
-    R(c, lx + 2, ly + 1, 4, 3, '#b89464');
+    const lx = x0 + 12 + i * 9 + row * 4, ly = yGround - 8 - row * 5;
+    R(c, lx, ly, 8, 5, (i + row) % 2 ? '#785533' : '#5e4126');
+    R(c, lx + 2, ly + 1, 4, 3, '#cfa872');
   }
-  crate(c, x1 - 48, yGround - 21, 30, 19, '#8d6a42');
-  sack(c, x1 - 68, yGround - 20);
-  for (const sx of [128, 168, 210, 252, 292]) stilt(c, sx, yFloor, yGround);
-  R(c, 128, 232, 164, 4, '#4a3524'); R(c, 128, 232, 164, 1, '#7a5938');
+  // Wira's coiled golden rattan bundles & storage crate (right bay)
+  crate(c, x1 - 46, yGround - 21, 28, 19, '#916c42');
+  R(c, x1 - 69, yGround - 18, 18, 15, '#d8b26a'); R(c, x1 - 65, yGround - 14, 10, 7, '#302014'); // coiled rotan!
+  for (const sx of [126, 168, 210, 252, 294]) stilt(c, sx, yFloor, yGround);
+  R(c, 126, 232, 168, 4, '#4d3623'); R(c, 126, 232, 168, 1, '#8c6640');
 
-  // Raised ulin timber deck & carved Kalimantan band
-  R(c, x0 - 10, yFloor - 8, x1 - x0 + 20, 13, '#5c3f26');
-  R(c, x0 - 10, yFloor - 8, x1 - x0 + 20, 3, '#ad8453');
-  R(c, x0 - 10, yFloor + 3, x1 - x0 + 20, 2, '#302015');
-  for (let x = x0 - 6; x < x1 + 6; x += 10) R(c, x, yFloor - 4, 4, 6, '#3f2b1b');
+  // Raised ironwood serambi veranda deck + carved Kalimantan joist ends
+  R(c, x0 - 10, yFloor - 8, x1 - x0 + 20, 13, '#5c3e24');
+  R(c, x0 - 10, yFloor - 8, x1 - x0 + 20, 3, '#cfa56a');
+  R(c, x0 - 10, yFloor + 3, x1 - x0 + 20, 2, '#2d1d12');
+  for (let x = x0 - 6; x < x1 + 6; x += 10) { R(c, x, yFloor - 4, 4, 6, '#3b2717'); R(c, x + 1, yFloor - 3, 2, 2, '#9e7648'); }
 
-  // Woven bamboo & ironwood timber body
+  // Woven herringbone anyaman bambu walls + ulin timber framing
   bambooWall(c, x0, yBody, x1 - x0, yFloor - yBody - 8);
-  // Decorative Dayak geometric frieze under the eaves
-  R(c, x0 + 4, yBody + 4, x1 - x0 - 8, 5, '#593b24');
-  for (let x = x0 + 8; x < x1 - 10; x += 12) {
-    R(c, x, yBody + 5, 4, 3, '#e0b86e');
-    R(c, x + 5, yBody + 6, 3, 2, '#b85038');
+  // Ornate Dayak red-gold-ebony geometric frieze along upper wall
+  R(c, x0 + 3, yBody + 3, x1 - x0 - 6, 6, '#472e1c');
+  for (let x = x0 + 7; x < x1 - 10; x += 12) {
+    R(c, x, yBody + 4, 4, 4, '#ecc478');
+    R(c, x + 5, yBody + 5, 4, 2, '#c74835');
   }
-  // Structural ulin posts
-  for (const px of [x0 - 4, 178, 236, x1 - 4]) {
-    R(c, px, yBody - 4, 7, yFloor - yBody + 2, '#543923');
-    R(c, px, yBody - 4, 2, yFloor - yBody, '#9c744a');
+  // Heavy ulin structural posts
+  for (const px of [x0 - 4, 178, 236, x1 - 3]) {
+    R(c, px, yBody - 4, 7, yFloor - yBody + 2, '#523620');
+    R(c, px, yBody - 4, 2, yFloor - yBody, '#ad8354');
   }
-  shutter(c, 132, 160, 30, 26, true);
-  shutter(c, 256, 160, 30, 26, true);
 
-  // Carved front doorway with warm indoor lamp glow & rolled rotan blind
-  R(c, 190, 152, 42, 52, '#4a321f');
-  R(c, 192, 150, 38, 3, '#b88d58');
-  R(c, 194, 155, 34, 48, '#231811');
-  R(c, 197, 158, 28, 44, '#3b2819');
-  R(c, 202, 166, 18, 26, '#593b20'); // warm interior doorway light
-  for (let yy = 156; yy < 174; yy += 4) { R(c, 194, yy, 34, 2, '#a88250'); R(c, 194, yy + 2, 34, 1, '#6b4e2e'); }
-  // Warm porch lantern beside door
-  R(c, 182, 158, 6, 8, '#f5d88e'); R(c, 181, 156, 8, 2, '#4a3321'); R(c, 181, 166, 8, 2, '#4a3321');
+  // Twin open casement windows with louvered teak shutters & blooming bougainvillea planter boxes
+  shutter(c, 132, 159, 30, 26, true);
+  shutter(c, 257, 159, 30, 26, true);
 
-  // Front veranda wooden balustrade (left and right of stairs)
-  for (const [bx0, bx1] of [[x0 - 6, 188], [234, x1 + 6]] as [number, number][]) {
-    R(c, bx0, yFloor - 22, bx1 - bx0, 3, '#7a5634');
-    R(c, bx0, yFloor - 22, bx1 - bx0, 1, '#c49b63');
+  // Carved Kalimantan front entrance doorway with warm golden indoor glow & rolled bamboo chick blind
+  R(c, 188, 151, 44, 53, '#4a311e');
+  R(c, 190, 149, 40, 3, '#d4aa6e');
+  R(c, 193, 154, 34, 49, '#21160f');
+  R(c, 196, 157, 28, 45, '#3b2718');
+  R(c, 201, 165, 18, 30, '#6b4624'); // warm indoor lamp light
+  R(c, 205, 170, 10, 18, '#8f5f31');
+  // Rolled rotan sun-blind at top of doorway
+  for (let yy = 155; yy < 171; yy += 4) { R(c, 193, yy, 34, 2, '#be955c'); R(c, 193, yy + 2, 34, 1, '#6e4f2d'); }
+  // Warm brass porch lantern (left of door) + hanging woven rattan basket/charm (right of door)
+  R(c, 181, 157, 6, 9, '#fae094'); R(c, 183, 159, 2, 5, '#fff9de');
+  R(c, 180, 155, 8, 2, '#422c1b'); R(c, 180, 166, 8, 2, '#422c1b');
+  R(c, 234, 154, 2, 6, '#9c7848'); R(c, 231, 160, 8, 7, '#cfa464'); R(c, 232, 162, 6, 2, '#a84230');
+
+  // Front serambi veranda wooden balustrade + potted porch plant
+  for (const [bx0, bx1] of [[x0 - 6, 186], [235, x1 + 6]] as [number, number][]) {
+    R(c, bx0, yFloor - 23, bx1 - bx0, 3, '#7d5834');
+    R(c, bx0, yFloor - 23, bx1 - bx0, 1, '#d6ad72');
+    R(c, bx0, yFloor - 10, bx1 - bx0, 2, '#5c3f24');
     for (let bx = bx0 + 3; bx < bx1 - 3; bx += 7) {
-      R(c, bx, yFloor - 19, 3, 12, '#8f6840');
-      R(c, bx, yFloor - 19, 1, 12, '#c49b63');
+      R(c, bx, yFloor - 20, 3, 11, '#966d43');
+      R(c, bx, yFloor - 20, 1, 11, '#d6ad72');
     }
   }
+  // Terracotta flower pot sitting on left porch corner
+  R(c, 115, 196, 10, 8, '#b5633e'); R(c, 114, 194, 12, 3, '#d48258');
+  R(c, 113, 187, 14, 7, '#4d7f3e'); R(c, 116, 184, 8, 5, '#76ab56'); R(c, 118, 186, 3, 2, '#f27d68');
 
-  // Tiered sirap ulin gabled roof with central dormer vent
-  shingles(c, 104, yRoof + 8, 316, yBody - 1, '#8c4930', '#592c1d', '#bf744e');
-  ridge(c, 126, 294, yRoof, '#6b3624');
-  // Roof smoke vent (dapur)
-  R(c, 258, yRoof + 12, 26, 11, '#5c3422');
-  R(c, 255, yRoof + 9, 32, 5, '#a86240'); R(c, 255, yRoof + 9, 32, 2, '#d48d64');
+  // Steep multi-pitched Kalimantan sirap ulin roof + central entrance gable pediment!
+  shingles(c, 100, yRoof + 6, 320, yBody, '#8c472d', '#542819', '#c4764e');
+  ridge(c, 122, 298, yRoof - 1, '#693320');
+  // Central entrance dormer/fronton gable framing the 'RUMAH WIRA' sign (210, 144)
+  poly(c, [[168, yBody + 1], [210, yRoof + 16], [252, yBody + 1]], '#542819');
+  poly(c, [[173, yBody + 1], [210, yRoof + 20], [247, yBody + 1]], '#7a3f28');
+  poly(c, [[178, yBody + 1], [210, yRoof + 24], [242, yBody + 1]], '#ad7d4c');
+  // Ornate carved Dayak crest inside the gable peak
+  R(c, 208, yRoof + 11, 4, 8, '#e8c584'); R(c, 206, yRoof + 14, 8, 3, '#cfa05e');
+  R(c, 205, yBody - 14, 10, 6, '#b84632'); R(c, 207, yBody - 13, 6, 4, '#f2d084');
+  // Kitchen roof smoke vent (dapur, aligned with live chimney smoke at sx=271, sy=76!)
+  R(c, 258, yRoof + 12, 26, 12, '#542e1e');
+  R(c, 255, yRoof + 9, 32, 5, '#ab613e'); R(c, 255, yRoof + 9, 32, 2, '#db9368');
 
-  // Wide ironwood front stairs with twin handrails & stone landing pad
-  R(c, 186, 260, 50, 8, '#9e9278'); R(c, 188, 261, 46, 5, '#bdb094');
-  R(c, 189, yFloor + 2, 44, 56, '#47311f');
+  // Wide carved ulin front stairs with twin handrails, newel posts & river-stone landing pad
+  R(c, 183, 259, 54, 9, '#8d826b'); R(c, 186, 260, 48, 6, '#b8ac92'); R(c, 188, 261, 44, 2, '#d4cab0');
+  R(c, 189, yFloor + 2, 42, 56, '#422c1b');
   for (let yy = yFloor + 6; yy < 262; yy += 8) {
-    R(c, 191, yy, 40, 6, '#ab8350');
-    R(c, 191, yy, 40, 2, '#d6b17a');
-    R(c, 191, yy + 5, 40, 2, '#5e4127');
+    R(c, 191, yy, 38, 6, '#b08652');
+    R(c, 191, yy, 38, 2, '#deb982');
+    R(c, 191, yy + 5, 38, 2, '#593c23');
   }
-  R(c, 186, yFloor - 10, 5, 72, '#7d5936'); R(c, 186, yFloor - 10, 2, 72, '#c49b63');
-  R(c, 231, yFloor - 10, 5, 72, '#6b4b2d'); R(c, 231, yFloor - 10, 2, 72, '#b08954');
+  // Twin sloped stair stringers/handrails + carved bottom newel posts
+  R(c, 185, yFloor - 12, 5, 73, '#7d5834'); R(c, 185, yFloor - 12, 2, 73, '#cfa66c');
+  R(c, 230, yFloor - 12, 5, 73, '#6b4a2b'); R(c, 230, yFloor - 12, 2, 73, '#ba9158');
+  R(c, 184, 254, 7, 9, '#5c3f24'); R(c, 185, 252, 5, 3, '#dfc088');
+  R(c, 229, 254, 7, 9, '#5c3f24'); R(c, 230, 252, 5, 3, '#dfc088');
 }
 
 /* ---------- Warung Budi: Kalimantan Village Provision & Perlengkapan Shop ---------- */
@@ -1075,6 +1234,7 @@ function villageBackground(c: CanvasRenderingContext2D) {
   chickenCoop(c, 104, 372);
   bicycle(c, 908, 246);
   // Wooden customer bench & flower pots beside Warung Budi (clear of Pak Budi at 627,272)
+  sack(c, 672, 242);
   R(c, 444, 249, 28, 6, '#9c7446'); R(c, 444, 249, 28, 2, '#cfa76e');
   R(c, 447, 255, 4, 6, '#593e24'); R(c, 465, 255, 4, 6, '#593e24');
   pottedRow(c, 480, 262, 2);
