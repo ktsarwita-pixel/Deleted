@@ -685,11 +685,19 @@ export function warmupSprites() {
     }
   }
   const dummy = document.createElement('canvas').getContext('2d')!;
+  for (const who of Object.keys(LOOKS) as Who[]) {
+    if (who === 'wira') continue;
+    for (const dir of ['down', 'left', 'right'] as Direction[]) {
+      for (const blink of [false, true]) {
+        getFrame({ who, dir, pose: 'stand', frame: 0, blink, holding: false, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
+      }
+    }
+  }
   for (const big of [false, true]) {
     for (const fill of [0, 1/3, 2/3, 1]) {
       for (const shimmer of [0, 1]) {
         for (let a = -4; a <= 4; a++) {
-          drawBucketLive(dummy, 0, 0, big, fill, 0, shimmer * 0.25, SCALE, a * 0.26, 0);
+          drawBucketLive(dummy, 0, 0, big, fill, 0, shimmer * 0.25, 2, a * 0.26, 0);
         }
       }
     }

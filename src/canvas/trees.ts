@@ -272,3 +272,15 @@ export function drawProp(c: CanvasRenderingContext2D, kind: PropKind, x: number,
   c.fillRect(Math.round(x - w * 0.3), Math.round(y - 2), Math.round(w * 0.6), 5);
   c.drawImage(spr, Math.round(x - w / 2 + sway), Math.round(y - h), Math.round(w), Math.round(h));
 }
+
+let treesWarmed = false;
+export function warmupTrees() {
+  if (treesWarmed || typeof document === 'undefined') return;
+  treesWarmed = true;
+  for (const burnt of [false, true]) {
+    for (let v = 0; v < 3; v++) {
+      for (const s of [0.8, 0.9, 1.0, 1.1, 1.2, 1.3]) treeSprite(s, burnt, v);
+      for (const k of ['fern', 'sapling', 'log', 'rock', 'banana', 'bush'] as PropKind[]) bakeProp(k, v, burnt);
+    }
+  }
+}

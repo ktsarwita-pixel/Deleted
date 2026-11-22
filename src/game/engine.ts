@@ -2,6 +2,7 @@ import { soundEngine } from '../audio/soundEngine';
 import { canStand, CUTSCENE, HOUSE_INTERACTIONS, HOUSE_SIZE, INITIAL_COLLECTIBLES, INITIAL_FIRE_HOTSPOTS, VILLAGE_INTERACTIONS, VILLAGE_SIZE } from '../canvas/worldData';
 import { renderGameWorld } from '../canvas/pixelRenderer';
 import { warmupSprites } from '../canvas/sprites';
+import { warmupTrees } from '../canvas/trees';
 import type { Direction, PlayerState, ShopItem } from '../types/gameTypes';
 import { formatRupiah } from '../utils/formatRupiah';
 import { findPath } from './pathfinding';
@@ -121,7 +122,7 @@ export class GameEngine {
       }
       this.raf = requestAnimationFrame(tick);
     };
-    setTimeout(warmupSprites, 16);
+    setTimeout(() => { warmupSprites(); warmupTrees(); }, 16);
     this.lastFrame = 0; this.raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(this.raf); observer.disconnect(); this.clearKeys(); this.canvas = null;
