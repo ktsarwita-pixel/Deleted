@@ -106,7 +106,7 @@ export class RippleField {
       x, y, r: 1.5, speed, age: 0, life: 1.5 + strength * 0.6, strength,
       squash: 0.4, seed: Math.random() * 6.28,
     });
-    if (this.list.length > 40) this.list.shift();
+    if (this.list.length > 26) this.list.shift();
   }
   update(dt: number) {
     for (const r of this.list) {
@@ -131,7 +131,7 @@ export class RippleField {
       const fade = (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88) * r.strength;
       const rx = Math.max(2, Math.round(r.r));
       const ry = Math.max(1, Math.round(r.r * r.squash));
-      const n = Math.max(14, Math.min(72, Math.round(r.r * 1.9)));
+      const n = Math.max(12, Math.min(44, Math.round(r.r * 1.3)));
       // trough just inside the crest gives the ring thickness
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2;
@@ -180,7 +180,7 @@ export class DropletField {
   list: Droplet[] = [];
   add(x: number, y: number, vx: number, vy: number, size = 3, life = 1.2) {
     this.list.push({ x, y, vx, vy, age: 0, life, size });
-    if (this.list.length > 220) this.list.shift();
+    if (this.list.length > 140) this.list.shift();
   }
   update(dt: number, gravity = 780, wind = 0) {
     for (const d of this.list) {

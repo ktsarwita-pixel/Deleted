@@ -225,6 +225,11 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
     const holdLeft = s.holding && back, holdRight = s.holding && !back;
     if (s.pose === 'pour') {
       for (const x of [10, 20]) { P(x, ty, 2, 2, sleeve); P(x, ty - 4, 2, 4, L.skin); P(x, ty - 5, 2, 1, L.skinShade); }
+    } else if (s.pose === 'fill') {
+      // Both hands reaching forward together to lower/haul the bucket rope over the pier
+      P(11, ty + 1, 2, 3, sleeve); P(19, ty + 1, 2, 3, sleeve);
+      P(12, ty + 4, 2, 4, L.skin); P(18, ty + 4, 2, 4, L.skin);
+      P(14, ty + 7, 4, 2, L.skinShade); P(14, ty + 7, 3, 1, L.skinLight);
     } else {
       if (s.pose === 'cough') { P(10, ty, 2, 2, sleeve); P(12, ty - 3, 3, 3, L.skin); P(14, ty - 2, 1, 1, L.skinShade); }
       else arm(9, ty + 1 + (holdLeft ? 0 : swing));
@@ -237,6 +242,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
     }
   } else {
     if (s.pose === 'pour') { P(16, ty, 2, 2, sleeve); P(18, ty - 1, 3, 2, L.skin); P(21, ty - 2, 2, 2, L.skin); }
+    else if (s.pose === 'fill') { P(16, ty + 1, 3, 2, sleeve); P(18, ty + 3, 4, 2, L.skin); P(21, ty + 4, 2, 2, L.skinShade); }
     else if (s.pose === 'point') { P(16, ty + 1, 3, 2, sleeve); P(19, ty + 1, 5, 2, L.skin); P(19, ty + 2, 5, 1, L.skinShade); }
     else if (s.holding) { P(16, ty, 2, 3, sleeve); P(16, ty + 3, 2, 4, L.skin); P(17, ty + 3, 1, 4, L.skinShade); P(16, ty + 7, 2, 1, L.skinShade); }
     else {
@@ -386,7 +392,7 @@ function drawChain(c: CanvasRenderingContext2D, chain: VerletChain, widths: numb
   for (let i = 1; i < chain.nodes.length; i++) {
     const a = chain.nodes[i - 1], b = chain.nodes[i];
     const w = widths[Math.min(i - 1, widths.length - 1)] * SCALE;
-    const steps = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 1.5));
+    const steps = 1;
     for (let k = 0; k <= steps; k++) {
       const u = k / steps;
       const x = Math.round((a.x + (b.x - a.x) * u) * SCALE), y = Math.round((a.y + (b.y - a.y) * u) * SCALE);
@@ -479,6 +485,11 @@ export function handPoint(s: Pick<FrameSpec, 'dir' | 'pose' | 'frame' | 'breath'
     if (s.dir === 'right') return { x: 12, y: (ub - 22) * SCALE };
     if (s.dir === 'left') return { x: -12, y: (ub - 22) * SCALE };
     return { x: 0, y: (ub - 25) * SCALE };
+  }
+  if (s.pose === 'fill') {
+    if (s.dir === 'right') return { x: 13, y: (ub - 13) * SCALE };
+    if (s.dir === 'left') return { x: -13, y: (ub - 13) * SCALE };
+    return { x: 0, y: (ub - 11) * SCALE };
   }
   const y = (ub - 12) * SCALE;
   if (s.dir === 'right') return { x: 2, y };

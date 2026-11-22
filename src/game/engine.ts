@@ -7,7 +7,7 @@ import { findPath } from './pathfinding';
 import { SHOP_ITEMS, type Destination, type GameSnapshot, type GameWorld, type Interaction, type Panel, type Point, type Viewport } from './model';
 
 const SAVE_KEY = 'karhutla-wira-v3';
-export const WALK_SPEED = 195;
+export const WALK_SPEED = 225;
 const initialPlayer = (): PlayerState => ({ x: 435, y: 365, dir: 'down', isMoving: false, animFrame: 0, rupiah: 12000, bucketType: 'none', ownsNormalBucket: false, ownsBigBucket: false, hasNewShoes: false, waterUnits: 0, maxWaterUnits: 0, totalWaterPoured: 0 });
 const freshWorld = (): GameWorld => ({
   scene: 'house', player: initialPlayer(), fires: INITIAL_FIRE_HOTSPOTS.map(f => ({ ...f })),
@@ -151,8 +151,15 @@ export class GameEngine {
     w.time += dt;
     w.transition = Math.max(0, w.transition - dt);
     if (w.action) {
+      const prevAge = w.action.age;
       w.action.age += dt;
-      if (w.action.age >= .7) {
+      const dur = w.action.type === 'fill' ? .78 : .65;
+      if (w.action.type === 'fill' && prevAge < .36 && w.action.age >= .36) {
+        p.waterUnits = p.maxWaterUnits;
+        this.publish();
+      }
+      if (w.action.age >= dur) {
+        if (w.action.type === 'fill') p.waterUnits = p.maxWaterUnits;
         w.action = null;
         if (this.progress === 100) { w.panel = 'victory'; soundEngine.playVictoryFanfare(); }
         this.publish(true);
@@ -319,9 +326,19 @@ export class GameEngine {
     } else if (target.kind === 'lake') {
       if (p.bucketType==='none') { this.notify('Beli ember di Warung Budi terlebih dahulu.', 'error'); return; }
       if (p.waterUnits===p.maxWaterUnits) { this.notify('Ember sudah penuh. Saatnya menuju titik api.', 'info'); return; }
-      p.waterUnits=p.maxWaterUnits; p.dir='down'; w.action={type:'fill',age:0,target:{x:442,y:610}};
-      this.burst(p.x+22,p.y-8,18,'#9edcdb'); soundEngine.playWaterFill();
-      this.notify(`Ember terisi penuh: ${p.waterUnits} takar air.`, 'success');
+      // Face open water naturally: off pier end if at tip, otherwise nearest left/right side of pier or south shore
+      let tx = p.x, ty = p.y + 38;
+      if (p.y >= 546 && p.x >= 405 && p.x <= 479) {
+        if (p.y >= 604) { p.dir = 'down'; tx = p.x; ty = 652; }
+        else if (p.x <= 442) { p.dir = 'left'; tx = 386; ty = p.y + 10; }
+        else { p.dir = 'right'; tx = 498; ty = p.y + 10; }
+      } else {
+        p.dir = 'down'; tx = Math.max(230, Math.min(620, p.x)); ty = Math.max(564, p.y + 34);
+      }
+      if (w.reducedMotion) p.waterUnits = p.maxWaterUnits;
+      w.action={type:'fill',age:0,target:{x:tx,y:ty}};
+      soundEngine.playWaterFill();
+      this.notify(`Menimba air danau: ${p.maxWaterUnits} takar penuh!`, 'success');
     } else if (target.kind === 'fire') {
       if (p.bucketType==='none') { this.notify('Kamu memerlukan ember dari Warung Budi.', 'error'); return; }
       if (p.waterUnits===0) { this.notify('Air habis. Isi kembali ember di danau.', 'error'); return; }

@@ -24,7 +24,7 @@ export const HOUSE_INTERACTIONS: Interaction[] = [
 export const VILLAGE_INTERACTIONS: Interaction[] = [
   { id: 'home', kind: 'home', x: 210, y: 260, stand: { x: 210, y: 293 }, radius: 54, label: 'Masuk rumah' },
   { id: 'shop', kind: 'shop', x: 565, y: 230, stand: { x: 565, y: 281 }, radius: 93, label: 'Buka Warung Budi' },
-  { id: 'lake', kind: 'lake', x: 442, y: 574, stand: { x: 442, y: 570 }, radius: 85, label: 'Isi air dari danau' },
+  { id: 'lake', kind: 'lake', x: 442, y: 598, stand: { x: 442, y: 610 }, radius: 96, label: 'Timba air danau' },
   { id: 'chief', kind: 'chief', x: 825, y: 269, stand: { x: 825, y: 312 }, radius: 68, label: 'Bicara dengan Pak RT' },
 ];
 

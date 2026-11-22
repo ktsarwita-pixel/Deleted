@@ -173,22 +173,39 @@ class SoundEngine {
     const ctx = this.getContext();
     if (!ctx) return;
 
-    const notes = [280, 350, 440, 560, 680];
-    notes.forEach((freq, idx) => {
+    const now = ctx.currentTime;
+    // 1. Filtered noise splash as bucket plunges into lake (at +0.16s)
+    const bufLen = Math.floor(ctx.sampleRate * 0.28);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.09));
+    const splash = ctx.createBufferSource();
+    splash.buffer = buf;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'bandpass';
+    lp.frequency.setValueAtTime(750, now + 0.15);
+    lp.frequency.exponentialRampToValueAtTime(320, now + 0.38);
+    lp.Q.value = 1.6;
+    const sGain = ctx.createGain();
+    sGain.gain.setValueAtTime(0.001, now);
+    sGain.gain.setValueAtTime(0.24, now + 0.15);
+    sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    splash.connect(lp); lp.connect(sGain); sGain.connect(ctx.destination);
+    splash.start(now + 0.14); splash.stop(now + 0.43);
+
+    // 2. Underwater "glug-glug-glug" air bubbles rising in pitch as bucket fills
+    const glugs = [210, 275, 360, 470, 590];
+    glugs.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      const t = ctx.currentTime + idx * 0.055;
-      osc.frequency.setValueAtTime(freq, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.25, t + 0.05);
-
-      gain.gain.setValueAtTime(0.14, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.1);
+      const t = now + 0.20 + idx * 0.075;
+      osc.frequency.setValueAtTime(freq * 0.82, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.38, t + 0.065);
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.075);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.08);
     });
   }
 

@@ -56,12 +56,27 @@ interface Mem {
   ripples: RippleField; droplets: DropletField; pourNext: number; splashNext: number; steamNext: number;
   bumped: Map<string, number>; catTail: Spring; wind: Wind; lastX: number; lastY: number;
   propBurn: Map<number, number>; wasPierInWater: boolean;
+  fillSplashAt: number; fillBubbleNext: number; fillDripNext: number;
 }
 let mem: Mem | null = null;
 let pending: { at: number; run: () => void }[] = [];
 let hens: Hen[] = [];
 let tufts: { x: number; y: number; color: string; bloomAt: number }[] | null = null;
 let vignette: { w: number; h: number; c: HTMLCanvasElement } | null = null;
+let fireGlowSprite: HTMLCanvasElement | null = null;
+
+function getFireGlowSprite(): HTMLCanvasElement {
+  if (fireGlowSprite) return fireGlowSprite;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,155,62,0.38)');
+  g.addColorStop(0.55, 'rgba(255,130,45,0.14)');
+  g.addColorStop(1, 'rgba(255,115,35,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  fireGlowSprite = c;
+  return c;
+}
 const fx = new FxSystem();
 
 const progressOf = (w: GameWorld) => w.fires.filter(f => f.intensity === 0).length * 10;
@@ -79,6 +94,7 @@ function freshMem(w: GameWorld): Mem {
     pourNext: 0, splashNext: 0, steamNext: 0, bumped: new Map(), catTail: new Spring(190, 7),
     wind: windAt(w.player.x, w.player.y, w.time), lastX: w.player.x, lastY: w.player.y, propBurn: new Map(),
     wasPierInWater: false,
+    fillSplashAt: -1, fillBubbleNext: 0, fillDripNext: 0,
   };
 }
 
@@ -115,8 +131,13 @@ function getForestProps() {
   return forestProps;
 }
 
-function fillTarget(p: PlayerState) {
-  return p.y > 540 ? { x: p.x + (p.x < 442 ? -42 : 42), y: p.y + 4 } : { x: p.x + 14, y: 558 };
+function fillTarget(p: PlayerState, a?: GameWorld['action']) {
+  if (a?.type === 'fill' && a.target) return a.target;
+  if (p.y >= 546 && p.x >= 405 && p.x <= 479) {
+    if (p.y >= 604) return { x: p.x, y: 652 };
+    return { x: p.x <= 442 ? 386 : 498, y: Math.max(562, p.y + 10) };
+  }
+  return { x: Math.max(230, Math.min(620, p.x)), y: Math.max(564, p.y + 34) };
 }
 function signsFor(scene: SceneType) { return scene === 'house' ? HOUSE_SIGNS : VILLAGE_SIGNS; }
 
@@ -164,11 +185,9 @@ function detectEvents(w: GameWorld, m: Mem, motion: boolean, dt: number) {
     const cur = m.fireVisual.get(f.id) ?? target;
     m.fireVisual.set(f.id, cur + (target - cur) * Math.min(1, dt * 5.5));
   }
-  if (p.waterUnits > m.water && motion) {
-    const tgt = fillTarget(p);
-    m.ripples.add(tgt.x, tgt.y + 8, 1.3, 46);
-    for (let i = 0; i < 16; i++) m.droplets.add(tgt.x + (Math.random() - 0.5) * 10, tgt.y, (Math.random() - 0.5) * 120, -90 - Math.random() * 110, 3, 0.7);
-    bumpNearby(w, m, p.x, p.y, 1.2);
+  if (p.waterUnits > m.water && motion && w.action?.type !== 'fill') {
+    const tgt = fillTarget(p, w.action);
+    m.ripples.add(tgt.x, tgt.y, 1.1, 42);
   }
   m.water = p.waterUnits;
   const step = Math.floor(p.animFrame / STEP_DISTANCE);
@@ -240,14 +259,15 @@ function updateHens(w: GameWorld, dt: number) {
 function spawnAmbient(w: GameWorld, m: Mem, dt: number, view: Viewport) {
   const rnd = Math.random, wind = m.wind;
   if (w.scene === 'village') {
+    const left = view.x - view.width / view.scale / 2, top = view.y - view.height / view.scale / 2;
+    const vw = view.width / view.scale;
     const active = w.fires.filter(f => f.intensity > 0);
     for (const f of active) {
+      if (f.x < left - 180 || f.x > left + vw + 180) continue;
       if (rnd() < dt * 7) fx.add({ kind: 'px', x: f.x + (rnd() - 0.5) * 30, y: f.y - 20, vx: 10 + rnd() * 26 + wind.dir * 40, vy: -52 - rnd() * 40, ay: -18, drag: 0.35, life: 1.3 + rnd(), size: 2, color: ['#f7c16a', '#ee8a45', '#ffe2a0'][Math.floor(rnd() * 3)] });
       if (rnd() < dt * 15) fx.add({ kind: 'flame', x: f.x + (rnd() - 0.5) * 26, y: f.y - 22 - rnd() * 18, vx: wind.dir * 22, vy: -60, life: 0.36, size: 6, color: '#f39a43' });
       if (rnd() < dt * 2.6) fx.add({ kind: 'puff', x: f.x + (rnd() - 0.5) * 16, y: f.y - 46, vx: 16 + rnd() * 14 + wind.dir * 46, vy: -30 - rnd() * 14, size: 10, grow: 18, life: 3, color: '#7f7a6d', alpha: 0.45 });
     }
-    const left = view.x - view.width / view.scale / 2, top = view.y - view.height / view.scale / 2;
-    const vw = view.width / view.scale;
     if (active.length && rnd() < dt * active.length * 1.5) fx.add({ kind: 'leaf', x: left + rnd() * vw, y: top - 6, vx: wind.dir * 26, vy: 20 + rnd() * 16, life: 6, color: rnd() < 0.5 ? '#b5afa0' : '#8d887c', alpha: 0.75 });
     if (rnd() < dt * 0.7) {
       const t = VILLAGE_TREES[Math.floor(rnd() * VILLAGE_TREES.length)];
@@ -374,19 +394,58 @@ function playerSpec(w: GameWorld, m: Mem | null, t: number): FrameSpec {
 function bucketPose(w: GameWorld, spec: FrameSpec, m: Mem | null) {
   const p = w.player, a = w.action;
   const hp = handPoint(spec);
-  let x = p.x + hp.x, y = p.y + hp.y;
-  // pendulum angle plus a lagging slosh value for the water inside
+  const handX = p.x + hp.x, handY = p.y + hp.y;
+  let x = handX, y = handY;
   const angle = a?.type === 'pour' ? 0 : (m ? m.pend.angle * 0.62 : 0);
   const side = spec.dir === 'left' ? -1 : 1;
   let pourAngle = angle;
+  let submerge = 0; // 0 = in air, 1 = deep underwater
+  let fillRatio = p.waterUnits / Math.max(1, p.maxWaterUnits);
+  let rope: { x: number; y: number; taut: number } | null = null;
+  let waterY = y + 999;
+
   if (a?.type === 'pour') {
-    const k = a.age / 0.7;
-    const tilt = k < 0.2 ? (k / 0.2) * 0.4 : k < 0.55 ? 0.4 + ((k - 0.2) / 0.35) * 1.0 : 1.4 * (1 - (k - 0.55) / 0.45);
+    const k = clamp01(a.age / 0.65);
+    const tilt = k < 0.18 ? (k / 0.18) * 0.45 : k < 0.55 ? 0.45 + ((k - 0.18) / 0.37) * 1.05 : 1.5 * (1 - (k - 0.55) / 0.45);
     pourAngle = side * tilt;
+  } else if (a?.type === 'fill') {
+    const tgt = fillTarget(p, a);
+    waterY = tgt.y;
+    const k = clamp01(a.age / 0.78);
+    // Stage 1 (0..0.24): cast bucket smoothly from hands out over pier edge into water
+    // Stage 2 (0.24..0.58): tilt on side to scoop water, sink under surface, glug-glug fill to 100%
+    // Stage 3 (0.58..1.00): haul heavy full bucket straight up to Wira's hands with taut rope
+    if (k < 0.24) {
+      const u = k / 0.24;
+      const ease = u * u * (3 - 2 * u);
+      x = handX + (tgt.x - handX) * ease;
+      y = handY + (waterY - 12 - handY) * ease - Math.sin(u * Math.PI) * 14;
+      pourAngle = (tgt.x >= handX ? 1 : -1) * u * 0.75;
+      submerge = Math.max(0, (u - 0.72) / 0.28) * 0.45;
+      fillRatio = 0;
+      rope = { x: handX, y: handY, taut: 0.25 + u * 0.35 };
+    } else if (k < 0.58) {
+      const u = (k - 0.24) / 0.34;
+      x = tgt.x + Math.sin(u * Math.PI * 2) * 2;
+      const dip = Math.sin(u * Math.PI);
+      y = waterY - 8 + dip * 11;
+      // Bucket tips onto its side first so water rushes into the mouth, then rights itself as it fills!
+      pourAngle = (tgt.x >= handX ? 1 : -1) * (0.85 * (1 - u) - 0.08 * Math.sin(u * Math.PI * 3));
+      submerge = 0.45 + dip * 0.52;
+      fillRatio = clamp01(u * 1.15);
+      rope = { x: handX, y: handY, taut: 0.7 + dip * 0.25 };
+    } else {
+      const u = (k - 0.58) / 0.42;
+      const ease = 1 - Math.pow(1 - u, 2.2);
+      x = tgt.x + (handX - tgt.x) * ease;
+      y = (waterY - 6) + (handY - (waterY - 6)) * ease;
+      pourAngle = Math.sin(u * Math.PI * 2) * 0.12 * (1 - u);
+      submerge = Math.max(0, (1 - u * 3.2)) * 0.4;
+      fillRatio = 1;
+      rope = u < 0.92 ? { x: handX, y: handY, taut: 1 } : null;
+    }
   }
-  let rope: { x: number; y: number } | null = null;
-  if (a?.type === 'fill') { rope = { x, y }; const tgt = fillTarget(p); x = tgt.x; y = tgt.y - 4 + Math.sin(a.age * 18) * 2; pourAngle = 0; }
-  return { x, y, angle: pourAngle, rope, side };
+  return { x, y, angle: pourAngle, rope, side, submerge, fillRatio, waterY };
 }
 
 function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, m: Mem | null, t: number, wind: Wind) {
@@ -406,24 +465,58 @@ function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, 
   const paintBucket = () => {
     if (!bp) return;
     if (bp.rope) {
-      const n = 12;
+      const n = 11;
+      // Slack while casting, taut straight line while hauling heavy water up!
+      const slack = (1 - bp.rope.taut) * 9;
       for (let i = 0; i <= n; i++) {
         const u = i / n;
-        // rope sags under its own weight and swings with the bucket
-        const sag = Math.sin(u * Math.PI) * (7 + Math.abs(m?.pend.angle ?? 0) * 10);
-        R(c, snap(bp.rope.x + (bp.x - bp.rope.x) * u), snap(bp.rope.y + (bp.y - bp.rope.y) * u + sag), 2, 2, i % 3 ? '#d8c08a' : '#a98f5c');
+        const sag = Math.sin(u * Math.PI) * slack;
+        const rx = snap(bp.rope.x + (bp.x - bp.rope.x) * u);
+        const ry = snap(bp.rope.y + (bp.y + 2 - bp.rope.y) * u + sag);
+        R(c, rx, ry, 2, 2, i % 2 ? '#dfc58c' : '#9c7f4c');
       }
     }
-    if (w.action?.type === 'fill') {
-      // submerged: show the waterline over the bucket mouth
-      drawBucketLive(c, bp.x, bp.y, big, p.waterUnits / Math.max(1, p.maxWaterUnits), m?.slosh ?? 0, t);
-      R(c, bp.x - (big ? 15 : 12), bp.y + (big ? 16 : 13), big ? 30 : 24, 8, '#4c8b8e');
-      R(c, bp.x - (big ? 15 : 12), bp.y + (big ? 16 : 13), big ? 30 : 24, 2, '#a9dcd6');
+    const bucketH = big ? 28 : 24;
+    if (w.action?.type === 'fill' && bp.submerge > 0.02) {
+      const surfY = snap(bp.waterY);
+      // 1. Underwater half of the bucket (tinted deep lake teal)
+      c.save();
+      c.beginPath();
+      c.rect(bp.x - 36, surfY, 72, 60);
+      c.clip();
+      c.globalAlpha = 0.42;
+      c.translate(snap(bp.x), snap(bp.y));
+      c.rotate(bp.angle);
+      drawBucketLive(c, 0, 0, big, bp.fillRatio, 0, t);
+      c.restore();
+
+      // 2. Above-water half of the bucket (clipped cleanly above lake surface!)
+      c.save();
+      c.beginPath();
+      c.rect(bp.x - 36, bp.y - 40, 72, Math.max(0, surfY - (bp.y - 40)));
+      c.clip();
+      c.translate(snap(bp.x), snap(bp.y));
+      c.rotate(bp.angle);
+      drawBucketLive(c, 0, 0, big, bp.fillRatio, m?.slosh ?? 0, t);
+      c.restore();
+
+      // 3. Crisp foam meniscus & water collar right where the bucket pierces the lake surface
+      const collarW = (big ? 28 : 22) + Math.round(Math.sin(t * 14) * 2) * 2;
+      R(c, snap(bp.x - collarW / 2), surfY - 2, collarW, 2, '#e8fbf6');
+      R(c, snap(bp.x - collarW / 2 - 4), surfY, collarW + 8, 2, '#9ad8d2');
+      // Rising underwater air bubbles ("blub blub")
+      for (let b = 0; b < 3; b++) {
+        const bph = ((t * 4.5 + b * 0.33) % 1);
+        const bx = snap(bp.x + (b - 1) * 6 + Math.sin(t * 9 + b) * 2);
+        const by = snap(surfY - 2 - bph * 8);
+        R(c, bx, by, b === 1 ? 4 : 2, 2, '#f2fffb');
+      }
+      void bucketH;
     } else {
       c.save();
       c.translate(snap(bp.x), snap(bp.y));
       c.rotate(bp.angle);
-      drawBucketLive(c, 0, 0, big, p.waterUnits / Math.max(1, p.maxWaterUnits), m?.slosh ?? 0, t);
+      drawBucketLive(c, 0, 0, big, bp.fillRatio, m?.slosh ?? 0, t);
       c.restore();
     }
   };
@@ -512,7 +605,11 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, t: number, mot
   for (let i = 0; i < 3; i++) { c.globalAlpha = 0.5; R(c, snap(621 + Math.sin(t * 2 + i) * 3), snap(339 - ((t * 8 + i * 6) % 19)), 2, 4, '#eee1bc'); c.globalAlpha = 1; }
 }
 
-function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, t: number) {
+function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, view: Viewport, t: number) {
+  const vLeft = view.x - view.width / view.scale / 2 - 90;
+  const vRight = view.x + view.width / view.scale / 2 + 90;
+  const vTop = view.y - view.height / view.scale / 2 - 90;
+  const vBot = view.y + view.height / view.scale / 2 + 90;
   const wind = m.wind;
   // beaded shop curtain: each strand lags the one before it
   for (let i = 0; i < 8; i++) {
@@ -595,6 +692,7 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, t:
   const prog = progressOf(w);
   const p = w.player;
   for (const tf of getTufts()) {
+    if (tf.x < vLeft || tf.x > vRight || tf.y < vTop || tf.y > vBot) continue;
     const gust = wind.dir * (2 + wind.gust * 3.5) + Math.sin(t * 1.7 + tf.x * 0.05) * 1.2;
     const d = Math.hypot(tf.x - p.x, tf.y - p.y);
     const parted = d < 34 ? (tf.x - p.x) / 34 * 4 : 0;
@@ -606,7 +704,7 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, t:
   }
   const now = w.time;
   w.fires.forEach(f => { if (f.intensity === 0) drawRegrowth(c, f, now, t, wind); });
-  drawWorldGroundFog(c, w.fires, t, wind, w.reducedMotion);
+  drawWorldGroundFog(c, w.fires, view, t, wind, w.reducedMotion);
 }
 
 function getVignette(w: number, h: number) {
@@ -656,8 +754,41 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
         const sloshTarget = Math.max(-1, Math.min(1, -m.pend.vel * 0.3));
         m.slosh += (sloshTarget - m.slosh) * Math.min(1, dt * 7);
       }
-      // poured water follows a ballistic arc and splashes on impact
+      // Realistic lake dipping splash, underwater bubbles & dripping haul during 'fill'
       const a = world.action;
+      if (a?.type === 'fill' && motion) {
+        const tgt = fillTarget(p, a);
+        // Entry plunge splash at k ~ 0.22 (age ~ 0.17s)
+        if (a.age >= 0.16 && a.age < 0.30 && m.fillSplashAt < 0) {
+          m.fillSplashAt = world.time;
+          m.ripples.add(tgt.x, tgt.y, 1.35, 44);
+          m.ripples.add(tgt.x, tgt.y, 0.85, 26);
+          for (let i = 0; i < 14; i++) {
+            const ang = -Math.PI * (0.15 + Math.random() * 0.7);
+            const sp = 65 + Math.random() * 95;
+            m.droplets.add(tgt.x + (Math.random() - 0.5) * 12, tgt.y - 2, Math.cos(ang) * sp, Math.sin(ang) * sp, 2.5, 0.52);
+          }
+          bumpNearby(world, m, p.x, p.y, 1.1);
+        }
+        // Continuous concentric rings while bucket scoops & agitates the lake
+        if (a.age >= 0.24 && a.age < 0.50 && world.time > m.fillBubbleNext) {
+          m.fillBubbleNext = world.time + 0.11;
+          m.ripples.add(tgt.x + (Math.random() - 0.5) * 10, tgt.y, 0.65, 28);
+        }
+        // Heavy water droplets streaming back into the lake as the full bucket is hauled up!
+        if (a.age >= 0.46 && a.age < 0.76 && world.time > m.fillDripNext) {
+          m.fillDripNext = world.time + 0.045;
+          const spec = playerSpec(world, m, t);
+          const bp = bucketPose(world, spec, m);
+          for (let i = 0; i < 2; i++) {
+            m.droplets.add(bp.x + (Math.random() - 0.5) * 14, bp.y + 18, (Math.random() - 0.5) * 24, 25 + Math.random() * 40, 2, 0.34);
+          }
+          if (Math.random() < 0.5) m.ripples.add(tgt.x + (Math.random() - 0.5) * 12, tgt.y, 0.42, 22);
+        }
+      } else if (a?.type !== 'fill') {
+        m.fillSplashAt = -1;
+      }
+      // poured water follows a ballistic arc and splashes on impact
       if (a?.type === 'pour' && motion) {
         const spec = playerSpec(world, m, t);
         const hp = handPoint(spec);
@@ -704,7 +835,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   c.setTransform(scale, 0, 0, scale, Math.round(width / 2 - x * scale + sx), Math.round(height / 2 - y * scale + sy));
   c.drawImage(getBackground(world.scene), village ? 0 : -200, 0);
 
-  if (village && m) drawVillageGround(c, world, m, t); else if (!village) drawHouseLife(c, world, t, motion);
+  if (village && m) drawVillageGround(c, world, m, view, t); else if (!village) drawHouseLife(c, world, t, motion);
   if (!preview) fx.draw(c, true);
   if (world.destination) {
     const d = world.destination;
@@ -728,8 +859,11 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
 
   if (!village) items.push({ y: 312, draw: () => drawCat(c, world, m, t, m?.dt ?? 0) });
   else {
+    const cLeft = x - width / scale / 2 - 150, cRight = x + width / scale / 2 + 150;
+    const cTop = y - height / scale / 2 - 150, cBot = y + height / scale / 2 + 170;
     const active = world.fires.filter(f => f.intensity > 0);
     VILLAGE_TREES.forEach(([tx, ty, s], i) => {
+      if (!preview && (tx < cLeft || tx > cRight || ty < cTop || ty > cBot)) return;
       const burnt = active.some(f => Math.hypot(f.x - tx, f.y - ty) < 190);
       let st = m?.treeState.get(i);
       if (m && (!st || st.burnt !== burnt)) { st = { burnt, since: st ? world.time : -99 }; m.treeState.set(i, st); }
@@ -747,9 +881,11 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
               for (let col = -4; col <= 4; col++) {
                 const env = Math.cos((col / 5) * Math.PI / 2);
                 const hh = Math.max(0, Math.round((env * 16 + Math.sin(t * 11 + col * 1.9 + k * 3 + tx) * 4) / 2) * 2);
-                for (let yy = 0; yy < hh; yy += 2) {
-                  const rel = yy / Math.max(1, hh);
-                  R(c, fx0 + col * 2 + wind.dir * rel * 3, base - yy, 2, 2, rel > 0.75 ? '#c4452b' : Math.abs(col) < 2 && rel < 0.45 ? '#ffe08a' : '#f08a3c');
+                if (hh >= 2) {
+                  const shift = Math.round(wind.dir * 2);
+                  R(c, fx0 + col * 2, base - hh, 2, hh, '#f08a3c');
+                  if (hh >= 6) R(c, fx0 + col * 2 + shift, base - hh, 2, Math.max(2, Math.round(hh * 0.3)), '#c4452b');
+                  if (Math.abs(col) < 2 && hh >= 4) R(c, fx0 + col * 2, base - Math.round(hh * 0.45), 2, Math.round(hh * 0.45), '#ffe08a');
                 }
               }
             }
@@ -761,6 +897,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
     // forest floor: wind sway, parting around Wira, and gradual scorch/recovery
     const pp = world.player;
     getForestProps().forEach((pr, i) => {
+      if (!preview && (pr.x < cLeft || pr.x > cRight || pr.y < cTop || pr.y > cBot)) return;
       const scorch = active.some(f => Math.hypot(f.x - pr.x, f.y - pr.y) < 165) ? 1 : 0;
       const prev = m?.propBurn.get(i) ?? scorch;
       const eased = motion && m ? prev + (scorch - prev) * Math.min(1, (m.dt || 0) * 1.6) : scorch;
@@ -787,27 +924,34 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       drawShadow(c, h.x, h.y, 14, 0.2);
       c.save(); c.translate(snap(h.x), snap(h.y)); if (h.face < 0) c.scale(-1, 1); c.drawImage(spr, -14, -26, spr.width * 2, spr.height * 2); c.restore();
     } }));
-    world.fires.forEach((f, i) => items.push({ y: f.y, draw: () => drawFire(c, f, t, i, world.time, m?.fireVisual.get(f.id) ?? f.intensity / f.maxIntensity, wind, !motion) }));
+    world.fires.forEach((f, i) => {
+      if (!preview && (f.x < cLeft || f.x > cRight || f.y < cTop || f.y > cBot)) return;
+      items.push({ y: f.y, draw: () => drawFire(c, f, t, i, world.time, m?.fireVisual.get(f.id) ?? f.intensity / f.maxIntensity, wind, !motion) });
+    });
   }
   items.sort((a, b) => a.y - b.y).forEach(i => i.draw());
 
   if (!preview && m) m.droplets.draw(c, snap);
 
-  // warm, flickering firelight on the ground
+  // warm, flickering firelight on the ground (single pre-baked sprite blit per visible fire, zero gradient allocations)
   if (village) {
+    const glow = getFireGlowSprite();
+    const gLeft = x - width / scale / 2 - 120, gRight = x + width / scale / 2 + 120;
     c.save(); c.globalCompositeOperation = 'lighter';
+    const prevSmooth = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
     world.fires.forEach((f, i) => {
+      if (!preview && (f.x < gLeft || f.x > gRight)) return;
       const level = m?.fireVisual.get(f.id) ?? f.intensity / f.maxIntensity;
       let k = level;
       if (f.intensity === 0 && f.extinguishedAt !== undefined && world.time - f.extinguishedAt < 0.75) k = Math.max(k, 1 - (world.time - f.extinguishedAt) / 0.75);
       if (k <= 0.02) return;
       const r = fireLightRadius(k, t, i);
-      const g = c.createRadialGradient(f.x, f.y - 16, 4, f.x, f.y - 16, r);
-      g.addColorStop(0, `rgba(255,150,60,${0.34 * k})`); g.addColorStop(1, 'rgba(255,120,40,0)');
-      c.fillStyle = g; c.fillRect(f.x - r, f.y - 16 - r, r * 2, r * 2);
+      c.globalAlpha = k * 0.92;
+      c.drawImage(glow, f.x - r, f.y - 16 - r, r * 2, r * 2);
     });
+    c.imageSmoothingEnabled = prevSmooth;
     c.restore();
-    if (!preview) drawWorldCanopySmoke(c, world.fires, world.time, t, wind, !motion);
+    if (!preview) drawWorldCanopySmoke(c, world.fires, view, world.time, t, wind, !motion);
   }
 
   if (!preview) fx.draw(c, false);

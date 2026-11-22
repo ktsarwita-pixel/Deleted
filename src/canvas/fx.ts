@@ -10,7 +10,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 export class FxSystem {
   list: Fx[] = [];
-  private max = 480;
+  private max = 240;
 
   add(p: Partial<Fx> & { kind: FxKind; x: number; y: number }) {
     this.list.push({

@@ -3,10 +3,9 @@ import type { Viewport } from '../game/model';
 import type { Wind } from './physics';
 
 /*
- * Layered Kalimantan Karhutla peat-haze & smoke system.
- * Pre-baked soft pixel-dithered smoke bank sprites + world-space peat mist +
- * rising thermal smoke plumes over hotspots + screen-space volumetric haze,
- * airborne ash motes, sun scattering, and clearing sunbeams when forest heals.
+ * Ultra-fast Kalimantan Karhutla peat-haze & smoke system.
+ * ZERO per-frame allocations: all gradients, veil strips, and dithered pixel
+ * smoke banks are pre-baked onto offscreen canvases and drawn with single blits.
  */
 
 const snap = (v: number) => Math.round(v / 2) * 2;
@@ -30,6 +29,54 @@ interface CloudBank {
 }
 
 const bankCache = new Map<string, CloudBank>();
+let hazeVeilCanvas: HTMLCanvasElement | null = null;
+let sunVeilCanvas: HTMLCanvasElement | null = null;
+
+/** Pre-baked 64x64 directional peat-smoke atmosphere veil (zero per-frame gradients). */
+function getHazeVeil(): HTMLCanvasElement {
+  if (hazeVeilCanvas) return hazeVeilCanvas;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  const grad = ctx.createLinearGradient(0, 56, 64, 0);
+  grad.addColorStop(0, 'rgba(156, 134, 98, 0.08)');
+  grad.addColorStop(0.55, 'rgba(178, 146, 102, 0.16)');
+  grad.addColorStop(1, 'rgba(206, 138, 82, 0.28)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+
+  const top = ctx.createLinearGradient(0, 0, 0, 28);
+  top.addColorStop(0, 'rgba(168, 148, 118, 0.20)');
+  top.addColorStop(1, 'rgba(168, 148, 118, 0)');
+  ctx.fillStyle = top;
+  ctx.fillRect(0, 0, 64, 28);
+
+  const rim = ctx.createLinearGradient(44, 0, 64, 0);
+  rim.addColorStop(0, 'rgba(235, 118, 52, 0)');
+  rim.addColorStop(1, 'rgba(235, 118, 52, 0.18)');
+  ctx.fillStyle = rim;
+  ctx.fillRect(44, 0, 20, 64);
+
+  hazeVeilCanvas = c;
+  return c;
+}
+
+/** Pre-baked 64x64 golden morning sunbeam veil when forest is healed. */
+function getSunVeil(): HTMLCanvasElement {
+  if (sunVeilCanvas) return sunVeilCanvas;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  const sky = ctx.createLinearGradient(0, 0, 0, 38);
+  sky.addColorStop(0, 'rgba(255, 236, 172, 0.16)');
+  sky.addColorStop(1, 'rgba(255, 236, 172, 0)');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 64, 38);
+  sunVeilCanvas = c;
+  return c;
+}
 
 /** Bakes a soft, multi-lobed pixel-art fog/smoke bank once and caches it. */
 function getSmokeBank(variant: number, tone: 'peat' | 'ash' | 'warm' | 'mist'): CloudBank {
@@ -37,8 +84,8 @@ function getSmokeBank(variant: number, tone: 'peat' | 'ash' | 'warm' | 'mist'): 
   const hit = bankCache.get(key);
   if (hit) return hit;
 
-  const w = 96 + (variant % 3) * 24;
-  const h = 28 + (variant % 2) * 10;
+  const w = 96 + (variant % 3) * 20;
+  const h = 28 + (variant % 2) * 8;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -54,12 +101,12 @@ function getSmokeBank(variant: number, tone: 'peat' | 'ash' | 'warm' | 'mist'): 
   const cols = palette[tone];
 
   const lobes: { cx: number; cy: number; rx: number; ry: number }[] = [];
-  const count = 5 + (variant % 3);
+  const count = 5 + (variant % 2);
   for (let i = 0; i < count; i++) {
     const u = count === 1 ? 0.5 : i / (count - 1);
     lobes.push({
-      cx: w * (0.16 + u * 0.68) + (hash(i, variant) - 0.5) * 12,
-      cy: h * (0.52 + (hash(variant, i + 3) - 0.5) * 0.24),
+      cx: w * (0.16 + u * 0.68) + (hash(i, variant) - 0.5) * 10,
+      cy: h * (0.52 + (hash(variant, i + 3) - 0.5) * 0.22),
       rx: w * (0.16 + hash(i + 7, variant) * 0.14),
       ry: h * (0.30 + hash(i + 11, variant) * 0.18),
     });
@@ -84,9 +131,8 @@ function getSmokeBank(variant: number, tone: 'peat' | 'ash' | 'warm' | 'mist'): 
         }
       }
       if (density <= 0.03) continue;
-      // Subtle Bayer ordered dither at edges so pixel aesthetic stays crisp
       const threshold = (BAYER4[y & 3][x & 3] + 0.5) / 16;
-      if (density < 0.28 && density * 3.2 < threshold) continue;
+      if (density < 0.26 && density * 3.3 < threshold) continue;
 
       const cIdx = lift > 0.68 ? 2 : lift > 0.36 ? 1 : 0;
       const [r, g, b] = cols[cIdx];
@@ -104,91 +150,93 @@ function getSmokeBank(variant: number, tone: 'peat' | 'ash' | 'warm' | 'mist'): 
   return built;
 }
 
-/**
- * Low-lying ground mist over the lake morning water & creeping peat smoke along
- * the eastern forest floor. Drawn in world coordinates before/among ground details.
- */
+/** Low-lying mist over Lake Rantau & peat smoke creeping out of the eastern forest. */
 export function drawWorldGroundFog(
   c: CanvasRenderingContext2D,
   fires: FireHotspot[],
+  view: Viewport,
   t: number,
   wind: Wind,
   reduced: boolean
 ) {
   const prev = c.globalAlpha;
   const time = reduced ? 0 : t;
+  const left = view.x - view.width / view.scale / 2 - 220;
+  const right = view.x + view.width / view.scale / 2 + 220;
 
-  // 1. Cool morning mist hovering gently over Lake Rantau
-  for (let i = 0; i < 5; i++) {
-    const bank = getSmokeBank(i, 'mist');
-    const span = 440;
-    const drift = reduced ? i * 78 : ((time * (5 + (i % 2) * 3 + wind.dir * 4) + i * 97) % span);
-    const mx = 190 + drift - 40;
-    const my = 554 + (i % 3) * 52 + Math.sin(time * 0.55 + i * 1.7) * 4;
-    const edgeFade = Math.sin(clamp01((mx - 150) / span) * Math.PI);
-    c.globalAlpha = prev * (0.13 + 0.05 * Math.sin(time * 0.7 + i)) * Math.max(0.25, edgeFade);
-    c.drawImage(bank.canvas, snap(mx), snap(my), bank.w * 2, bank.h * 2);
+  // 1. Lake mist (skip completely if lake is off-screen)
+  if (left < 680 && right > 150) {
+    for (let i = 0; i < 3; i++) {
+      const bank = getSmokeBank(i, 'mist');
+      const span = 420;
+      const drift = reduced ? i * 110 : ((time * (5 + i * 2 + wind.dir * 4) + i * 137) % span);
+      const mx = 195 + drift - 30;
+      const my = 562 + i * 54 + Math.sin(time * 0.55 + i * 1.7) * 4;
+      c.globalAlpha = prev * 0.14;
+      c.drawImage(bank.canvas, snap(mx), snap(my), bank.w * 2, bank.h * 2);
+    }
   }
 
-  // 2. Peatland ground haze creeping out from active fire hotspots
-  const active = fires.filter(f => f.intensity > 0);
-  if (active.length > 0) {
-    const ratio = active.length / Math.max(1, fires.length);
-    const count = 8;
-    for (let i = 0; i < count; i++) {
-      const tone = i % 3 === 0 ? 'warm' : 'peat';
-      const bank = getSmokeBank(i + 2, tone);
-      const speed = 12 + (i % 3) * 5 - wind.dir * 14;
-      const cycle = 560;
-      const travel = reduced ? (i * 67) % cycle : ((time * speed + i * 83) % cycle);
-      const wx = 1320 - travel;
-      const wy = 145 + ((i * 79) % 560) + Math.sin(time * 0.45 + i) * 8;
-      const env = Math.sin(clamp01(travel / cycle) * Math.PI);
-      c.globalAlpha = prev * env * (0.14 + ratio * 0.20);
-      c.drawImage(bank.canvas, snap(wx - bank.w), snap(wy - bank.h), bank.w * 2, bank.h * 2);
+  // 2. Peatland ground haze (skip if forest is off-screen)
+  if (right > 760) {
+    let activeCount = 0;
+    for (let i = 0; i < fires.length; i++) if (fires[i].intensity > 0) activeCount++;
+    if (activeCount > 0) {
+      const ratio = activeCount / fires.length;
+      for (let i = 0; i < 5; i++) {
+        const bank = getSmokeBank(i + 1, i % 3 === 0 ? 'warm' : 'peat');
+        const speed = 13 + (i % 3) * 4 - wind.dir * 12;
+        const cycle = 520;
+        const travel = reduced ? (i * 93) % cycle : ((time * speed + i * 103) % cycle);
+        const wx = 1310 - travel;
+        const wy = 165 + ((i * 109) % 510);
+        const env = Math.sin((travel / cycle) * Math.PI);
+        c.globalAlpha = prev * env * (0.12 + ratio * 0.18);
+        c.drawImage(bank.canvas, snap(wx - bank.w), snap(wy - bank.h), bank.w * 2, bank.h * 2);
+      }
     }
   }
 
   c.globalAlpha = prev;
 }
 
-/**
- * Billowing smoke columns rising from burning/smoldering hotspots in world space,
- * rendered above trees so the forest canopy looks engulfed in rising karhutla plumes.
- */
+/** Billowing smoke columns rising above visible burning/smoldering hotspots. */
 export function drawWorldCanopySmoke(
   c: CanvasRenderingContext2D,
   fires: FireHotspot[],
+  view: Viewport,
   now: number,
   t: number,
   wind: Wind,
   reduced: boolean
 ) {
+  const left = view.x - view.width / view.scale / 2 - 180;
+  const right = view.x + view.width / view.scale / 2 + 180;
+  if (right < 900) return; // fast cull when player is in west village/lake
+
   const prev = c.globalAlpha;
   const time = reduced ? 0 : t;
+  const puffs = reduced ? 1 : 2;
 
   for (let i = 0; i < fires.length; i++) {
     const f = fires[i];
+    if (f.x < left || f.x > right) continue;
     const active = f.intensity > 0;
-    const smolder = !active && f.extinguishedAt !== undefined ? clamp01(1 - (now - f.extinguishedAt) / 5.5) : 0;
-    const strength = active ? f.intensity / f.maxIntensity : smolder * 0.55;
-    if (strength <= 0.02) continue;
+    const smolder = !active && f.extinguishedAt !== undefined ? clamp01(1 - (now - f.extinguishedAt) / 4.5) : 0;
+    const strength = active ? f.intensity / f.maxIntensity : smolder * 0.5;
+    if (strength <= 0.03) continue;
 
-    const puffs = reduced ? 2 : 4;
     for (let k = 0; k < puffs; k++) {
-      const ph = reduced ? (k + 0.35) / puffs : ((time * (0.28 + (i % 3) * 0.04) + k / puffs + i * 0.13) % 1);
-      const rise = ph * 135;
-      const drift = (wind.dir * (28 + wind.gust * 34) - 12) * ph + Math.sin(time * 1.4 + i + k * 2.1) * (6 * ph);
-      const px = f.x + drift;
-      const py = f.y - 34 - rise;
-      const scale = 0.85 + ph * 1.35;
-      const tone = active ? (ph < 0.28 ? 'warm' : 'ash') : 'mist';
-      const bank = getSmokeBank((i + k) % 6, tone);
-      const alpha = (ph < 0.18 ? ph / 0.18 : 1 - (ph - 0.18) / 0.82) * strength * (active ? 0.34 : 0.26);
-      if (alpha <= 0.01) continue;
+      const ph = reduced ? 0.45 : ((time * (0.28 + (i % 3) * 0.04) + k / puffs + i * 0.17) % 1);
+      const px = f.x + (wind.dir * (26 + wind.gust * 28) - 10) * ph;
+      const py = f.y - 34 - ph * 125;
+      const scale = 0.9 + ph * 1.25;
+      const bank = getSmokeBank((i + k) % 4, active ? (ph < 0.3 ? 'warm' : 'ash') : 'mist');
+      const alpha = (ph < 0.2 ? ph / 0.2 : 1 - (ph - 0.2) / 0.8) * strength * 0.32;
+      if (alpha <= 0.015) continue;
       c.globalAlpha = prev * alpha;
-      const dw = snap(bank.w * scale * 1.15);
-      const dh = snap(bank.h * scale * 1.15);
+      const dw = snap(bank.w * scale * 1.1);
+      const dh = snap(bank.h * scale * 1.1);
       c.drawImage(bank.canvas, snap(px - dw / 2), snap(py - dh / 2), dw, dh);
     }
   }
@@ -196,14 +244,7 @@ export function drawWorldCanopySmoke(
   c.globalAlpha = prev;
 }
 
-/**
- * Screen-space atmospheric fog & karhutla haze overlay:
- * - Warm dry-season directional haze thicker toward the burning east forest
- * - Subtle clear visibility halo around Wira so gameplay stays super readable
- * - Multi-depth parallax smoke banks drifting with the shared wind field
- * - Floating glowing embers & fine ash motes near the forest edge
- * - Golden clearing sunbeams when all 10 fires are extinguished
- */
+/** Fast screen-space atmosphere using pre-baked veil canvas + 6 parallax banks. */
 export function drawScreenAtmosphere(
   c: CanvasRenderingContext2D,
   opts: {
@@ -219,119 +260,73 @@ export function drawScreenAtmosphere(
 ) {
   const { view, playerX, playerY, fires, discovered, t, wind, reduced } = opts;
   const { width, height, scale, x: camX, y: camY } = view;
-  if (width <= 0 || height <= 0) return;
+  if (!discovered || width <= 0 || height <= 0) return;
 
   const prev = c.globalAlpha;
+  const prevSmooth = c.imageSmoothingEnabled;
   const time = reduced ? 0 : t;
-  const activeCount = fires.reduce((acc, f) => acc + (f.intensity > 0 ? 1 : 0), 0);
-  const remaining = activeCount / Math.max(1, fires.length);
 
-  // Proximity factor: fog thickens naturally as camera/player approaches the eastern peat forest (x > 760)
+  let activeCount = 0;
+  for (let i = 0; i < fires.length; i++) if (fires[i].intensity > 0) activeCount++;
+  const remaining = activeCount / Math.max(1, fires.length);
   const eastness = clamp01((camX - 420) / 680);
 
-  if (discovered && remaining > 0) {
-    const hazeIntensity = remaining * (0.68 + eastness * 0.32);
+  if (remaining > 0) {
+    const hazeIntensity = remaining * (0.65 + eastness * 0.35);
 
-    // 1. Directional peat-smoke atmospheric gradient (thicker at top-right toward forest fires)
-    const grad = c.createLinearGradient(0, height * 0.85, width, 0);
-    grad.addColorStop(0, `rgba(156, 134, 98, ${(0.06 * hazeIntensity).toFixed(3)})`);
-    grad.addColorStop(0.55, `rgba(178, 146, 102, ${(0.13 * hazeIntensity).toFixed(3)})`);
-    grad.addColorStop(1, `rgba(202, 142, 88, ${(0.23 * hazeIntensity).toFixed(3)})`);
-    c.fillStyle = grad;
-    c.fillRect(0, 0, width, height);
+    // 1. Single-blit pre-baked atmospheric veil (stretched smoothly)
+    c.imageSmoothingEnabled = true;
+    c.globalAlpha = prev * hazeIntensity;
+    c.drawImage(getHazeVeil(), 0, 0, width, height);
+    c.imageSmoothingEnabled = false;
 
-    // Upper canopy smoke veil
-    const topVeil = c.createLinearGradient(0, 0, 0, height * 0.42);
-    topVeil.addColorStop(0, `rgba(168, 148, 118, ${(0.18 * hazeIntensity).toFixed(3)})`);
-    topVeil.addColorStop(1, 'rgba(168, 148, 118, 0)');
-    c.fillStyle = topVeil;
-    c.fillRect(0, 0, width, height * 0.42);
+    // 2. Two crisp parallax smoke-bank layers (6 drawImage calls total)
+    const psx = width * 0.5 + (playerX - camX) * scale;
+    const psy = height * 0.5 + (playerY - camY - 24) * scale;
+    const spanW = width + 520;
 
-    // 2. Three parallax layers of pixel-dithered smoke banks drifting with wind & camera
-    const layers = [
-      { count: 4, parallax: 0.35, speed: 11, scaleMul: 2.1, alpha: 0.13, yBase: 0.10, ySpan: 0.32, tone: 'peat' as const },
-      { count: 4, parallax: 0.65, speed: 19, scaleMul: 2.6, alpha: 0.11, yBase: 0.24, ySpan: 0.48, tone: 'ash' as const },
-      { count: 3, parallax: 0.95, speed: 28, scaleMul: 3.1, alpha: 0.09, yBase: 0.52, ySpan: 0.38, tone: 'warm' as const },
-    ];
+    for (let i = 0; i < 6; i++) {
+      const far = i < 3;
+      const parallax = far ? 0.38 : 0.78;
+      const speed = far ? 13 : 23;
+      const scaleMul = far ? 2.2 : 2.8;
+      const tone = i === 5 && eastness > 0.4 ? 'warm' : far ? 'peat' : 'ash';
+      const bank = getSmokeBank(i, tone);
+      const bw = Math.round(bank.w * scaleMul);
+      const bh = Math.round(bank.h * scaleMul);
+      const rawX = -camX * scale * parallax + (reduced ? 0 : time * (speed + wind.dir * 14)) + (i % 3) * (spanW / 3) + (far ? 0 : 190);
+      const bx = (((rawX % spanW) + spanW) % spanW) - 260;
+      const by = height * (far ? 0.12 + (i % 3) * 0.13 : 0.34 + (i % 3) * 0.19)
+        + (reduced ? 0 : Math.sin(time * 0.42 + i * 1.9) * 8);
 
-    const psx = width / 2 + (playerX - camX) * scale;
-    const psy = height / 2 + (playerY - camY - 24) * scale;
+      const distPlayer = Math.hypot(bx + bw * 0.5 - psx, by + bh * 0.5 - psy);
+      const clearHalo = clamp01((distPlayer - 55) / 140);
+      const a = (far ? 0.12 : 0.095) * hazeIntensity * (0.45 + 0.55 * clearHalo);
+      if (a <= 0.01) continue;
 
-    for (let li = 0; li < layers.length; li++) {
-      const L = layers[li];
-      const spanW = width + 560;
-      for (let i = 0; i < L.count; i++) {
-        const bank = getSmokeBank(li * 3 + i, i % 3 === 0 && eastness > 0.45 ? 'warm' : L.tone);
-        const bw = Math.round(bank.w * L.scaleMul);
-        const bh = Math.round(bank.h * L.scaleMul);
-        const windVel = L.speed + wind.dir * (10 + L.speed * 0.55);
-        const rawX = -camX * scale * L.parallax + (reduced ? 0 : time * windVel) + i * (spanW / L.count) + li * 137;
-        const bx = (((rawX % spanW) + spanW) % spanW) - 280;
-        const rawY = height * (L.yBase + ((i * 0.37 + li * 0.19) % 1) * L.ySpan)
-          - (camY - 410) * scale * (L.parallax * 0.25)
-          + (reduced ? 0 : Math.sin(time * 0.42 + i * 1.9 + li) * 10);
-
-        // Keep Wira's immediate face/torso clear enough to read cleanly
-        const distPlayer = Math.hypot(bx + bw * 0.5 - psx, rawY + bh * 0.5 - psy);
-        const clearHalo = clamp01((distPlayer - 55) / 145);
-        const a = L.alpha * hazeIntensity * (0.42 + 0.58 * clearHalo);
-        if (a <= 0.008) continue;
-
-        c.globalAlpha = prev * a;
-        c.drawImage(bank.canvas, snap(bx), snap(rawY), bw, bh);
-      }
+      c.globalAlpha = prev * a;
+      c.drawImage(bank.canvas, snap(bx), snap(by), bw, bh);
     }
 
-    // 3. Airborne peat ash & glowing micro-embers drifting across the viewport
+    // 3. Lightweight airborne ash & micro-embers (max 10 tiny rects)
     if (!reduced) {
-      const moteCount = Math.round(10 + remaining * 16);
+      const moteCount = 4 + Math.round(remaining * 6);
       for (let i = 0; i < moteCount; i++) {
-        const speedX = -18 + wind.dir * 32 - (i % 5) * 4;
-        const speedY = 9 + (i % 4) * 5;
-        const mx = (((hash(i, 4.1) * width + time * speedX) % width) + width) % width;
-        const my = (((hash(i, 8.7) * height + time * speedY + Math.sin(time * 1.6 + i) * 9) % height) + height) % height;
-        const isEmber = eastness > 0.35 && i % 5 === 0;
-        c.globalAlpha = prev * remaining * (isEmber ? 0.55 + 0.35 * Math.sin(time * 6 + i) : 0.28);
-        c.fillStyle = isEmber ? (i % 2 ? '#ffb35c' : '#ffe094') : (i % 2 ? '#cfc6b4' : '#9e9688');
-        c.fillRect(snap(mx), snap(my), isEmber ? 3 : 2, 2);
+        const mx = (((hash(i, 4.1) * width + time * (-18 + wind.dir * 28 - (i % 4) * 4)) % width) + width) % width;
+        const my = (((hash(i, 8.7) * height + time * (10 + (i % 3) * 5)) % height) + height) % height;
+        const isEmber = eastness > 0.35 && i % 4 === 0;
+        c.globalAlpha = prev * remaining * (isEmber ? 0.65 : 0.26);
+        c.fillStyle = isEmber ? '#ffd27d' : '#c9c0ae';
+        c.fillRect(snap(mx), snap(my), 2, 2);
       }
     }
-
-    // 4. Warm orange fire-horizon rim along the right edge when near the forest
-    if (eastness > 0.2) {
-      const rim = c.createLinearGradient(width * 0.72, 0, width, 0);
-      rim.addColorStop(0, 'rgba(235, 118, 52, 0)');
-      rim.addColorStop(1, `rgba(235, 118, 52, ${(0.16 * remaining * eastness).toFixed(3)})`);
-      c.globalAlpha = prev;
-      c.fillStyle = rim;
-      c.fillRect(width * 0.72, 0, width * 0.28, height);
-    }
-  } else if (discovered && remaining === 0) {
-    // Forest healed: crisp golden Kalimantan morning sunbeams & gentle fresh mist
-    const skyGlow = c.createLinearGradient(0, 0, 0, height * 0.55);
-    skyGlow.addColorStop(0, 'rgba(255, 236, 172, 0.14)');
-    skyGlow.addColorStop(1, 'rgba(255, 236, 172, 0)');
+  } else {
+    c.imageSmoothingEnabled = true;
     c.globalAlpha = prev;
-    c.fillStyle = skyGlow;
-    c.fillRect(0, 0, width, height * 0.55);
-
-    c.save();
-    for (let i = 0; i < 4; i++) {
-      const rx = width * (0.18 + i * 0.22) + (reduced ? 0 : Math.sin(time * 0.3 + i) * 18);
-      const beam = c.createLinearGradient(rx, 0, rx + 90, height * 0.75);
-      beam.addColorStop(0, 'rgba(255, 244, 196, 0.08)');
-      beam.addColorStop(1, 'rgba(255, 244, 196, 0)');
-      c.fillStyle = beam;
-      c.beginPath();
-      c.moveTo(rx - 28, 0);
-      c.lineTo(rx + 36, 0);
-      c.lineTo(rx + 150, height * 0.75);
-      c.lineTo(rx + 42, height * 0.75);
-      c.closePath();
-      c.fill();
-    }
-    c.restore();
+    c.drawImage(getSunVeil(), 0, 0, width, height);
+    c.imageSmoothingEnabled = prevSmooth;
   }
 
+  c.imageSmoothingEnabled = prevSmooth;
   c.globalAlpha = prev;
 }
