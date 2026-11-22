@@ -365,7 +365,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
 
 const frameCache = new Map<string, HTMLCanvasElement>();
 export function getFrame(s: FrameSpec): HTMLCanvasElement {
-  const key = `${s.who}|${s.dir}|${s.pose}|${s.frame & 3}|${+s.blink}|${+s.holding}|${+s.newShoes}|${s.flutter % 3}|${s.breath}|${+s.mouth}|${s.glance}|${s.sway}`;
+  const walking = s.pose === 'walk'; const key = `${s.who}|${s.dir}|${s.pose}|${s.frame & 3}|${walking ? 0 : +s.blink}|${+s.holding}|${+s.newShoes}|${walking ? 0 : s.flutter % 3}|${walking ? 0 : s.breath}|${+s.mouth}|${walking ? 0 : s.glance}|0`;
   const hit = frameCache.get(key);
   if (hit) return hit;
   let canvas: HTMLCanvasElement;
@@ -453,22 +453,10 @@ export function drawCharacter(c: CanvasRenderingContext2D, x: number, y: number,
   }
 
   const frame = getFrame(s);
-  const lean = m && !reduced ? Math.max(-0.13, Math.min(0.13, m.lean + m.vx / 5200)) : 0;
-  // Distance-based gait phase keeps the body bob smooth and independent of FPS.
   const phase = (s.gait ?? ((s.frame & 3) / 4)) * Math.PI * 2;
-  const bobPx = m && !reduced && s.pose === 'walk' ? (1 - Math.cos(phase)) * 0.95 : 0;
-  const compression = m && !reduced && s.pose === 'walk' ? Math.max(0, Math.cos(phase)) : 0;
-  c.save();
-  c.translate(Math.round(x), Math.round(y - bobPx));
-  if (lean) { c.translate(0, -6); c.rotate(lean); c.translate(0, 6); }
-  // A little compression on each planted foot gives the walk cycle weight.
-  if (m && !reduced && s.pose === 'walk') {
-    c.translate(0, -2);
-    c.scale(1 - compression * 0.018, 1 + compression * 0.022);
-    c.translate(0, 2);
-  }
-  c.drawImage(frame, -(W / 2) * SCALE, -42 * SCALE, W * SCALE, H * SCALE);
-  c.restore();
+  const bobPx = m && !reduced && s.pose === 'walk' ? Math.round((1 - Math.cos(phase)) * 0.95) : 0;
+  const leanPx = m && !reduced ? Math.round(Math.max(-2, Math.min(2, m.vx / 140))) : 0;
+  c.drawImage(frame, Math.round(x) - (W / 2) * SCALE + leanPx, Math.round(y - bobPx) - 42 * SCALE, W * SCALE, H * SCALE);
 }
 
 export function drawShadow(c: CanvasRenderingContext2D, x: number, y: number, w = 30, alpha = 0.26) {
@@ -556,26 +544,43 @@ export function bucketSprite(big: boolean, full: boolean, shimmer: number) {
 /** Bucket drawn live so the water inside sloshes with the swing. */
 export function drawBucketLive(
   c: CanvasRenderingContext2D, x: number, y: number, big: boolean,
-  fill: number, slosh: number, t: number, scale = SCALE
+  fill: number, slosh: number, t: number, scale = SCALE, angle = 0, cropRows = 0
 ) {
-  // only three fill states are baked; the sloshing surface is drawn on top live
-  const q = fill <= 0.02 ? 0 : fill >= 0.98 ? 1 : 0.5;
-  const key = `live|${big}|${q}|${Math.floor(t * 5) % 2}`;
+  const q = fill <= 0.02 ? 0 : fill >= 0.85 ? 1 : 0.5;
+  const shimmer = Math.floor(t * 4) & 1;
+  // Quantize angle into discrete pre-baked pixel-art steps (-4..+4) so runtime NEVER uses c.rotate()!
+  const aStep = Math.max(-4, Math.min(4, Math.round(angle / 0.26)));
+  const key = `live2|${big}|${q}|${shimmer}|${aStep}`;
   let spr = bucketCache.get(key);
   if (!spr) {
     const w = big ? 14 : 11, h = big ? 14 : 12;
-    const { c: bc, ctx } = blank(w, h);
-    paintBucket(ctx, big, q, 0, Math.floor(t * 5));
-    spr = outline(bc);
+    const { c: base, ctx: bctx } = blank(w, h);
+    paintBucket(bctx, big, q, 0, shimmer);
+    const outlined = outline(base);
+    if (aStep === 0) {
+      spr = outlined;
+    } else {
+      const pad = 6;
+      const { c: rotC, ctx: rctx } = blank(outlined.width + pad * 2, outlined.height + pad * 2);
+      rctx.translate(rotC.width / 2, pad + 2);
+      rctx.rotate(aStep * 0.26);
+      rctx.drawImage(outlined, -outlined.width / 2, -2);
+      spr = rotC;
+    }
     bucketCache.set(key, spr);
   }
-  const dx = Math.round(x - spr.width * scale / 2), dy = Math.round(y);
-  c.drawImage(spr, dx, dy, spr.width * scale, spr.height * scale);
-  if (q > 0) {
-    // water surface tilts against the swing and jitters as it settles
-    const shift = Math.round(Math.max(-1.4, Math.min(1.4, slosh)) * 2) * scale;
-    const surfY = dy + (big ? 5 : 4) * scale + Math.round(Math.sin(t * 9) * (Math.abs(slosh) > 0.25 ? 1 : 0)) * scale;
-    const w = (big ? 11 : 8) * scale;
+  const padY = aStep === 0 ? 0 : 6 * scale;
+  const dx = Math.round(x - spr.width * scale / 2), dy = Math.round(y - padY);
+  if (cropRows > 0) {
+    const srcH = Math.max(1, spr.height - cropRows);
+    c.drawImage(spr, 0, 0, spr.width, srcH, dx, dy, spr.width * scale, srcH * scale);
+  } else {
+    c.drawImage(spr, dx, dy, spr.width * scale, spr.height * scale);
+  }
+  if (q > 0 && aStep === 0 && cropRows === 0) {
+    const shift = Math.round(Math.max(-1, Math.min(1, slosh))) * scale;
+    const surfY = dy + (big ? 5 : 4) * scale;
+    const w = (big ? 10 : 7) * scale;
     c.fillStyle = '#8fd9de';
     c.fillRect(dx + 2 * scale + shift, surfY, w, scale);
     c.fillStyle = '#eafaf3';
@@ -662,4 +667,31 @@ export function portraitCanvas(who: PortraitId, mouth: boolean, blink: boolean, 
     P(20, 9 + (tick % 2), 3, 5, '#2e2320'); P(21, 13 + (tick % 2), 2, 3, '#2e2320'); P(20, 9, 3, 1, '#c7432d');
   }
   return c;
+}
+
+let warmed = false;
+export function warmupSprites() {
+  if (warmed || typeof document === 'undefined') return;
+  warmed = true;
+  for (const dir of ['down', 'up', 'left', 'right'] as Direction[]) {
+    for (const pose of ['stand', 'walk', 'fill', 'pour'] as Pose[]) {
+      for (const holding of [false, true]) {
+        for (const newShoes of [false, true]) {
+          for (const frame of [0, 1, 2, 3]) {
+            getFrame({ who: 'wira', dir, pose, frame, blink: false, holding, newShoes, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
+          }
+        }
+      }
+    }
+  }
+  const dummy = document.createElement('canvas').getContext('2d')!;
+  for (const big of [false, true]) {
+    for (const fill of [0, 0.5, 1]) {
+      for (const shimmer of [0, 1]) {
+        for (let a = -4; a <= 4; a++) {
+          drawBucketLive(dummy, 0, 0, big, fill, 0, shimmer * 0.25, SCALE, a * 0.26, 0);
+        }
+      }
+    }
+  }
 }

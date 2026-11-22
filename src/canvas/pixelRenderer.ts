@@ -9,7 +9,7 @@ import { canopyCenter, drawProp, drawTree } from './trees';
 import { FxSystem } from './fx';
 import { canStand, INITIAL_FIRE_HOTSPOTS } from './worldData';
 import { DropletField, Pendulum, RippleField, Spring, windAt, type Wind } from './physics';
-import { clipWater, drawPierFoam, drawPierReflections, fishJumpStaysInWater, isWater, onPier, pierRippleSpots, PIER } from './water';
+import { drawPierFoam, drawPierReflections, fishJumpStaysInWater, isWater, onPier, pierRippleSpots, PIER } from './water';
 import { drawFirePit, fireLightRadius } from './fire';
 import { drawScreenAtmosphere, drawWorldCanopySmoke, drawWorldGroundFog } from './fog';
 import { bumpSign, drawSign, type SignStyle } from './signs';
@@ -231,7 +231,7 @@ function detectEvents(w: GameWorld, m: Mem, motion: boolean, dt: number) {
     m.cough = cycle;
   }
   // swinging bucket flicks water out when the pendulum whips round
-  if (motion && p.waterUnits > 0 && w.scene === 'village' && !nowOnPier && p.isMoving && Math.abs(m.pendVel) > 3.8 && Math.random() < dt * 1.25) {
+  if (motion && p.waterUnits > 0 && w.scene === 'village' && !nowOnPier && p.isMoving && Math.abs(m.pendVel) > 4.6 && Math.random() < dt * 0.5) {
     const hp = handPoint(playerSpec(w, m, m.time));
     m.droplets.add(p.x + hp.x, p.y + hp.y + 8, m.vx * 0.16 + m.pendVel * 8, -24, 1.5, 0.32);
   }
@@ -411,7 +411,7 @@ function bucketPose(w: GameWorld, spec: FrameSpec, m: Mem | null) {
   } else if (a?.type === 'fill') {
     const tgt = fillTarget(p, a);
     waterY = tgt.y;
-    const k = clamp01(a.age / 0.78);
+    const k = clamp01(a.age / 0.64);
     // Stage 1 (0..0.24): cast bucket smoothly from hands out over pier edge into water
     // Stage 2 (0.24..0.58): tilt on side to scoop water, sink under surface, glug-glug fill to 100%
     // Stage 3 (0.58..1.00): haul heavy full bucket straight up to Wira's hands with taut rope
@@ -476,48 +476,22 @@ function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, 
         R(c, rx, ry, 2, 2, i % 2 ? '#dfc58c' : '#9c7f4c');
       }
     }
-    const bucketH = big ? 28 : 24;
     if (w.action?.type === 'fill' && bp.submerge > 0.02) {
       const surfY = snap(bp.waterY);
-      // 1. Underwater half of the bucket (tinted deep lake teal)
-      c.save();
-      c.beginPath();
-      c.rect(bp.x - 36, surfY, 72, 60);
-      c.clip();
-      c.globalAlpha = 0.42;
-      c.translate(snap(bp.x), snap(bp.y));
-      c.rotate(bp.angle);
-      drawBucketLive(c, 0, 0, big, bp.fillRatio, 0, t);
-      c.restore();
-
-      // 2. Above-water half of the bucket (clipped cleanly above lake surface!)
-      c.save();
-      c.beginPath();
-      c.rect(bp.x - 36, bp.y - 40, 72, Math.max(0, surfY - (bp.y - 40)));
-      c.clip();
-      c.translate(snap(bp.x), snap(bp.y));
-      c.rotate(bp.angle);
-      drawBucketLive(c, 0, 0, big, bp.fillRatio, m?.slosh ?? 0, t);
-      c.restore();
-
-      // 3. Crisp foam meniscus & water collar right where the bucket pierces the lake surface
-      const collarW = (big ? 28 : 22) + Math.round(Math.sin(t * 14) * 2) * 2;
+      const cropRows = Math.max(1, Math.min(10, Math.round(bp.submerge * 9)));
+      c.globalAlpha = 0.35;
+      drawBucketLive(c, snap(bp.x), snap(bp.y), big, bp.fillRatio, 0, t, 2, bp.angle, 0);
+      c.globalAlpha = 1;
+      drawBucketLive(c, snap(bp.x), snap(bp.y), big, bp.fillRatio, 0, t, 2, bp.angle, cropRows);
+      const collarW = (big ? 28 : 22) + (Math.round(Math.sin(t * 14)) * 2);
       R(c, snap(bp.x - collarW / 2), surfY - 2, collarW, 2, '#e8fbf6');
       R(c, snap(bp.x - collarW / 2 - 4), surfY, collarW + 8, 2, '#9ad8d2');
-      // Rising underwater air bubbles ("blub blub")
       for (let b = 0; b < 3; b++) {
         const bph = ((t * 4.5 + b * 0.33) % 1);
-        const bx = snap(bp.x + (b - 1) * 6 + Math.sin(t * 9 + b) * 2);
-        const by = snap(surfY - 2 - bph * 8);
-        R(c, bx, by, b === 1 ? 4 : 2, 2, '#f2fffb');
+        R(c, snap(bp.x + (b - 1) * 6), snap(surfY - 2 - bph * 8), b === 1 ? 4 : 2, 2, '#f2fffb');
       }
-      void bucketH;
     } else {
-      c.save();
-      c.translate(snap(bp.x), snap(bp.y));
-      c.rotate(bp.angle);
-      drawBucketLive(c, 0, 0, big, bp.fillRatio, m?.slosh ?? 0, t);
-      c.restore();
+      drawBucketLive(c, snap(bp.x), snap(bp.y), big, bp.fillRatio, m?.slosh ?? 0, t, 2, bp.angle, 0);
     }
   };
   if (spec.dir === 'up' && !bp?.rope) paintBucket();
@@ -555,7 +529,7 @@ function drawCat(c: CanvasRenderingContext2D, w: GameWorld, m: Mem | null, t: nu
   const spr = catSprite(awake, Math.floor(t / 1.4) % 2, tail);
   R(c, x - 18, y + 8, 36, 6, 'rgba(20,24,18,.2)');
   c.drawImage(spr, x - 22, y - 18, spr.width * 2, spr.height * 2);
-  if (!awake) for (let i = 0; i < 2; i++) {
+  if (!awake) for (let i = 0; i < 1; i++) {
     const ph = ((t * 0.5 + i * 0.5) % 1);
     c.globalAlpha = 1 - ph;
     text(c, 'z', x + 20 + ph * 12, y - 20 - ph * 24, '#efe2bd', 8 + Math.round(ph * 4));
@@ -597,7 +571,7 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, t: number, mot
     R(c, snap(670 + r), 194, 2, 2 + Math.round(r / 3) * 2, '#d8e0b0'); R(c, snap(670 + r) - 2, 192, 2, 2, '#d8e0b0'); R(c, snap(670 + r) - 2, 196 + Math.round(r / 3) * 2, 2, 2, '#d8e0b0');
     c.globalAlpha = 1;
   }
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 6; i++) {
     const px = 326 + hash(i, 1) * 206 + Math.sin(t * 0.3 + i) * 5;
     const py = 193 + ((hash(i, 2) * 190 + t * 3) % 190);
     c.globalAlpha = 0.25 + 0.3 * Math.sin(t * 2 + i) ** 2; R(c, snap(px), snap(py), 2, 2, '#f3d999'); c.globalAlpha = 1;
@@ -667,18 +641,24 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     R(c, snap(sx) + 2, snap(sy) - 2, Math.max(2, sz - 4), 3, '#e2dbcb');
     c.globalAlpha = 1;
   }
-  for (let i = 0; i < 12; i++) {
-    const px = LAKE.x0 + ((hash(i, 4) * 430 + t * (10 + wind.dir * 8)) % 430), py = LAKE.y0 + 8 + hash(i, 5) * 160;
-    c.globalAlpha = 0.45; R(c, snap(px), snap(py), 12, 2, '#8cc7bd'); c.globalAlpha = 1;
+  if (vLeft < 690 && vRight > 170 && vBot > 500) {
+    c.globalAlpha = 0.45;
+    for (let i = 0; i < 10; i++) {
+      const px = LAKE.x0 + ((hash(i, 4) * 430 + t * (10 + wind.dir * 8)) % 430), py = LAKE.y0 + 8 + hash(i, 5) * 160;
+      R(c, snap(px), snap(py), 12, 2, '#8cc7bd');
+    }
+    c.globalAlpha = 1;
+    for (let i = 0; i < 18; i++) {
+      if ((t * 1.5 + hash(i, 8) * 3) % 3 > 0.3) continue;
+      R(c, snap(LAKE.x0 + hash(i, 6) * 430), snap(LAKE.y0 + hash(i, 7) * 170), 2, 2, '#f2fbf3');
+    }
+    c.globalAlpha = 0.6;
+    for (let x = 206; x < 646; x += 24) { const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2; R(c, x + o, 550, 10, 2, '#dff2e6'); }
+    c.globalAlpha = 1;
+    drawPierReflections(c, t, snap);
+    m.ripples.draw(c, snap, '#e4f6ee', isWater);
+    drawPierFoam(c, t, wind.dir, snap);
   }
-  for (let i = 0; i < 26; i++) {
-    if ((t * 1.5 + hash(i, 8) * 3) % 3 > 0.3) continue;
-    R(c, snap(LAKE.x0 + hash(i, 6) * 430), snap(LAKE.y0 + hash(i, 7) * 170), 2, 2, '#f2fbf3');
-  }
-  for (let x = 206; x < 646; x += 18) { const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2; c.globalAlpha = 0.6; R(c, x + o, 550, 10, 2, '#dff2e6'); c.globalAlpha = 1; }
-  drawPierReflections(c, t, snap);
-  m.ripples.draw(c, snap, '#e4f6ee', clipWater);
-  drawPierFoam(c, t, wind.dir, snap);
   // damp boards at the water end of the jetty, with a slow travelling sheen
   for (let i = 0; i < 4; i++) {
     const yy = PIER.y1 - 6 - i * 9;
@@ -776,8 +756,8 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
           m.ripples.add(tgt.x + (Math.random() - 0.5) * 10, tgt.y, 0.65, 28);
         }
         // Heavy water droplets streaming back into the lake as the full bucket is hauled up!
-        if (a.age >= 0.46 && a.age < 0.76 && world.time > m.fillDripNext) {
-          m.fillDripNext = world.time + 0.045;
+        if (a.age >= 0.38 && a.age < 0.62 && world.time > m.fillDripNext) {
+          m.fillDripNext = world.time + 0.09;
           const spec = playerSpec(world, m, t);
           const bp = bucketPose(world, spec, m);
           for (let i = 0; i < 2; i++) {

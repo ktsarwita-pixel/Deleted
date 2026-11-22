@@ -120,55 +120,43 @@ export class RippleField {
    * `clip` restricts drawing to open water so rings never cross the jetty deck.
    * It is applied once for the whole batch, not per ring.
    */
-  draw(c: CanvasRenderingContext2D, snap: (v: number) => number, color = '#e4f6ee', clip?: (c: CanvasRenderingContext2D) => void) {
+  draw(c: CanvasRenderingContext2D, snap: (v: number) => number, color = '#e4f6ee', mask?: (x: number, y: number) => boolean) {
     if (!this.list.length) return;
     const prev = c.globalAlpha;
-    c.save();
-    if (clip) clip(c);
     for (const r of this.list) {
       const k = r.age / r.life;
-      // quick attack, long fade
       const fade = (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88) * r.strength;
+      if (fade <= 0.02) continue;
       const rx = Math.max(2, Math.round(r.r));
       const ry = Math.max(1, Math.round(r.r * r.squash));
-      const n = Math.max(12, Math.min(44, Math.round(r.r * 1.3)));
-      // trough just inside the crest gives the ring thickness
+      const n = Math.max(10, Math.min(28, Math.round(r.r * 0.95)));
+      c.fillStyle = color;
+      c.globalAlpha = prev * fade * 0.72;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2;
-        const ca = Math.cos(a), sa = Math.sin(a);
-        const jitter = Math.sin(a * 3 + r.seed) * 0.6;
-        const cxp = snap(r.x + ca * (rx + jitter));
-        const cyp = snap(r.y + sa * (ry + jitter * 0.4));
-        // the near half of the ring catches more light than the far half
-        const facing = sa > -0.25;
-        c.globalAlpha = prev * fade * (facing ? 0.82 : 0.4);
-        c.fillStyle = color;
+        const cxp = snap(r.x + Math.cos(a) * rx);
+        const cyp = snap(r.y + Math.sin(a) * ry);
+        if (mask && !mask(cxp, cyp)) continue;
         c.fillRect(cxp, cyp, 2, 2);
-        if (rx > 4) {
-          c.globalAlpha = prev * fade * (facing ? 0.3 : 0.15);
-          c.fillStyle = '#2f5f66';
-          c.fillRect(snap(r.x + ca * (rx - 2)), snap(r.y + sa * (ry - 1)), 2, 2);
-        }
       }
-      // trailing secondary wave
-      if (rx > 9) {
-        const r2 = rx * 0.62, ry2 = Math.max(1, ry * 0.62);
-        const n2 = Math.max(10, Math.round(r2 * 1.5));
-        c.globalAlpha = prev * fade * 0.34;
-        c.fillStyle = color;
+      if (rx > 10) {
+        const r2 = rx * 0.6, ry2 = Math.max(1, ry * 0.6);
+        const n2 = Math.max(8, Math.min(18, Math.round(r2 * 0.9)));
+        c.globalAlpha = prev * fade * 0.32;
         for (let i = 0; i < n2; i++) {
           const a = (i / n2) * Math.PI * 2;
-          c.fillRect(snap(r.x + Math.cos(a) * r2), snap(r.y + Math.sin(a) * ry2), 2, 2);
+          const cxp = snap(r.x + Math.cos(a) * r2);
+          const cyp = snap(r.y + Math.sin(a) * ry2);
+          if (mask && !mask(cxp, cyp)) continue;
+          c.fillRect(cxp, cyp, 2, 2);
         }
       }
-      // impact glint at the centre, only while the ring is young
-      if (k < 0.3) {
-        c.globalAlpha = prev * (1 - k / 0.3) * r.strength;
+      if (k < 0.28 && (!mask || mask(r.x, r.y))) {
+        c.globalAlpha = prev * (1 - k / 0.28) * r.strength;
         c.fillStyle = '#f4fffb';
         c.fillRect(snap(r.x) - 1, snap(r.y) - 1, 3, 2);
       }
     }
-    c.restore();
     c.globalAlpha = prev;
   }
 }

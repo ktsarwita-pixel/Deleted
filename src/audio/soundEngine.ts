@@ -5,6 +5,8 @@ class SoundEngine {
   public muted: boolean = false;
   private lastStepTime: number = 0;
   private lastHoverTime: number = 0;
+  private splashBuf: AudioBuffer | null = null;
+  private pourBuf: AudioBuffer | null = null;
 
   private getContext(): AudioContext | null {
     if (this.muted) return null;
@@ -174,13 +176,14 @@ class SoundEngine {
     if (!ctx) return;
 
     const now = ctx.currentTime;
-    // 1. Filtered noise splash as bucket plunges into lake (at +0.16s)
-    const bufLen = Math.floor(ctx.sampleRate * 0.28);
-    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-    const ch = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.09));
+    if (!this.splashBuf) {
+      const bufLen = Math.floor(ctx.sampleRate * 0.28);
+      this.splashBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const ch = this.splashBuf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.09));
+    }
     const splash = ctx.createBufferSource();
-    splash.buffer = buf;
+    splash.buffer = this.splashBuf;
     const lp = ctx.createBiquadFilter();
     lp.type = 'bandpass';
     lp.frequency.setValueAtTime(750, now + 0.15);
@@ -213,16 +216,15 @@ class SoundEngine {
     const ctx = this.getContext();
     if (!ctx) return;
 
-    // White noise burst for water splash + steam hiss
-    const bufferSize = ctx.sampleRate * 0.35;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
+    if (!this.pourBuf) {
+      const bufferSize = Math.floor(ctx.sampleRate * 0.35);
+      this.pourBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = this.pourBuf.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     }
 
     const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+    noise.buffer = this.pourBuf;
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'bandpass';

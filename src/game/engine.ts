@@ -1,6 +1,7 @@
 import { soundEngine } from '../audio/soundEngine';
 import { canStand, CUTSCENE, HOUSE_INTERACTIONS, HOUSE_SIZE, INITIAL_COLLECTIBLES, INITIAL_FIRE_HOTSPOTS, VILLAGE_INTERACTIONS, VILLAGE_SIZE } from '../canvas/worldData';
 import { renderGameWorld } from '../canvas/pixelRenderer';
+import { warmupSprites } from '../canvas/sprites';
 import type { Direction, PlayerState, ShopItem } from '../types/gameTypes';
 import { formatRupiah } from '../utils/formatRupiah';
 import { findPath } from './pathfinding';
@@ -120,6 +121,7 @@ export class GameEngine {
       }
       this.raf = requestAnimationFrame(tick);
     };
+    setTimeout(warmupSprites, 16);
     this.lastFrame = 0; this.raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(this.raf); observer.disconnect(); this.clearKeys(); this.canvas = null;
@@ -151,13 +153,8 @@ export class GameEngine {
     w.time += dt;
     w.transition = Math.max(0, w.transition - dt);
     if (w.action) {
-      const prevAge = w.action.age;
       w.action.age += dt;
-      const dur = w.action.type === 'fill' ? .78 : .65;
-      if (w.action.type === 'fill' && prevAge < .36 && w.action.age >= .36) {
-        p.waterUnits = p.maxWaterUnits;
-        this.publish();
-      }
+      const dur = w.action.type === 'fill' ? .64 : .60;
       if (w.action.age >= dur) {
         if (w.action.type === 'fill') p.waterUnits = p.maxWaterUnits;
         w.action = null;
