@@ -634,8 +634,8 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
   // kitchen smoke from Wira's roof vent
   for (let i = 0; i < 4; i++) {
     const ph = (t * 0.32 + i * 0.25) % 1;
-    const sx = 272 + wind.dir * 26 * ph + Math.sin(t * 1.3 + i) * 3;
-    const sy = 66 - ph * 46;
+    const sx = 271 + wind.dir * 26 * ph + Math.sin(t * 1.3 + i) * 3;
+    const sy = 76 - ph * 46;
     c.globalAlpha = (1 - ph) * 0.34;
     const sz = 4 + Math.round(ph * 9);
     R(c, snap(sx), snap(sy), sz, sz, '#cfc7b6');
@@ -643,18 +643,30 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     c.globalAlpha = 1;
   }
   if (vLeft < 690 && vRight > 170 && vBot > 500) {
-    c.globalAlpha = 0.45;
-    for (let i = 0; i < 10; i++) {
-      const px = LAKE.x0 + ((hash(i, 4) * 430 + t * (10 + wind.dir * 8)) % 430), py = LAKE.y0 + 8 + hash(i, 5) * 160;
-      R(c, snap(px), snap(py), 12, 2, '#8cc7bd');
+    c.globalAlpha = 0.42;
+    for (let i = 0; i < 11; i++) {
+      const px = LAKE.x0 + ((hash(i, 4) * 424 + t * (9 + wind.dir * 7)) % 424), py = LAKE.y0 + 10 + hash(i, 5) * 156;
+      if (px > 400 && px < 484 && py < 640) continue;
+      R(c, snap(px), snap(py), 12, 2, '#92d6cc');
     }
     c.globalAlpha = 1;
     for (let i = 0; i < 18; i++) {
-      if ((t * 1.5 + hash(i, 8) * 3) % 3 > 0.3) continue;
-      R(c, snap(LAKE.x0 + hash(i, 6) * 430), snap(LAKE.y0 + hash(i, 7) * 170), 2, 2, '#f2fbf3');
+      if ((t * 1.5 + hash(i, 8) * 3) % 3 > 0.32) continue;
+      const sx = LAKE.x0 + 8 + hash(i, 6) * 420, sy = LAKE.y0 + 8 + hash(i, 7) * 162;
+      if (sx > 400 && sx < 484 && sy < 640) continue;
+      R(c, snap(sx), snap(sy), 2, 2, '#f2fffb');
     }
-    c.globalAlpha = 0.6;
-    for (let x = 206; x < 646; x += 24) { const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2; R(c, x + o, 550, 10, 2, '#dff2e6'); }
+    c.globalAlpha = 0.58;
+    for (let x = 210; x < 642; x += 24) {
+      if (x > 396 && x < 482) continue;
+      const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2;
+      R(c, x + o, 550, 10, 2, '#dff8f0');
+    }
+    // Gentle waterline lap along the moored Jukung canoe hull (556, 666)
+    const jLap = Math.round(Math.sin(t * 2.3) * 1) * 2;
+    c.globalAlpha = 0.48;
+    R(c, 554 + jLap, 679, 20, 2, '#bdeee6');
+    R(c, 586 - jLap, 680, 22, 2, '#bdeee6');
     c.globalAlpha = 1;
     drawPierReflections(c, t, snap);
     m.ripples.draw(c, snap, '#ccf9f0', isWater);
