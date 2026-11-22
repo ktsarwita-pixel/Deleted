@@ -272,7 +272,7 @@ export function drawScreenAtmosphere(
   const eastness = clamp01((camX - 420) / 680);
 
   if (remaining > 0) {
-    const hazeIntensity = remaining * (0.65 + eastness * 0.35);
+    const hazeIntensity = remaining * (0.28 + eastness * 0.72);
 
     // 1. Single-blit pre-baked atmospheric veil (stretched smoothly)
     c.imageSmoothingEnabled = true;

@@ -102,10 +102,11 @@ function getTufts() {
   if (tufts) return tufts;
   tufts = [];
   const colors = ['#f1d36e', '#f3f0e4', '#eaa0b4', '#c9a6e6'];
-  for (let i = 0; tufts.length < 74 && i < 900; i++) {
+  for (let i = 0; tufts.length < 74 && i < 1200; i++) {
     const x = 40 + hash(i, 1.7) * 900, y = 80 + hash(i, 9.1) * 700;
-    const onRoad = (x > 170 && x < 1000 && y > 278 && y < 354) || (x > 406 && x < 480 && y > 310 && y < 640);
-    if (onRoad || !canStand('village', x, y) || (x > 455 && x < 680 && y < 260)) continue;
+    const onRoad = (x > 165 && x < 1005 && y > 244 && y < 356) || (x > 396 && x < 490 && y > 310 && y < 646);
+    const nearYard = (x > 308 && x < 434 && y > 218 && y < 258) || (x > 350 && x < 398 && y > 336 && y < 446) || (x > 168 && x < 692 && y > 510);
+    if (onRoad || nearYard || !canStand('village', x, y) || (x > 450 && x < 690 && y < 280)) continue;
     tufts.push({ x: snap(x), y: snap(y), color: colors[i % 4], bloomAt: (i % 10) * 10 });
   }
   return tufts;
@@ -656,7 +657,7 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     for (let x = 206; x < 646; x += 24) { const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2; R(c, x + o, 550, 10, 2, '#dff2e6'); }
     c.globalAlpha = 1;
     drawPierReflections(c, t, snap);
-    m.ripples.draw(c, snap, '#e4f6ee', isWater);
+    m.ripples.draw(c, snap, '#ccf9f0', isWater);
     drawPierFoam(c, t, wind.dir, snap);
   }
   // damp boards at the water end of the jetty, with a slow travelling sheen
@@ -673,14 +674,18 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
   const p = w.player;
   for (const tf of getTufts()) {
     if (tf.x < vLeft || tf.x > vRight || tf.y < vTop || tf.y > vBot) continue;
-    const gust = wind.dir * (2 + wind.gust * 3.5) + Math.sin(t * 1.7 + tf.x * 0.05) * 1.2;
+    const gust = wind.dir * (1.2 + wind.gust * 1.8) + Math.sin(t * 1.7 + tf.x * 0.05) * 0.8;
     const d = Math.hypot(tf.x - p.x, tf.y - p.y);
-    const parted = d < 34 ? (tf.x - p.x) / 34 * 4 : 0;
-    const lean = Math.round(gust + parted) * 2;
+    const parted = d < 32 ? ((tf.x - p.x) / 32) * 2.2 : 0;
+    const lean = Math.max(-4, Math.min(4, Math.round((gust + parted) * 0.55) * 2));
+    const midLean = lean >> 1;
     const flatten = d < 26 ? 2 : 0;
     R(c, tf.x - 4, tf.y - 6 + flatten, 2, 6 - flatten, '#4b6d3b'); R(c, tf.x, tf.y - 8 + flatten, 2, 8 - flatten, '#567a42'); R(c, tf.x + 4, tf.y - 5 + flatten, 2, 5 - flatten, '#4b6d3b');
-    R(c, tf.x - 4 + lean, tf.y - 8 + flatten, 2, 2, '#86a058'); R(c, tf.x + lean, tf.y - 10 + flatten, 4, 2, '#9db564');
-    if (prog >= tf.bloomAt && prog > 0) { R(c, tf.x - 2 + lean, tf.y - 14 + flatten, 6, 2, tf.color); R(c, tf.x + lean, tf.y - 16 + flatten, 2, 6, tf.color); R(c, tf.x + lean, tf.y - 14 + flatten, 2, 2, '#e3a13c'); }
+    R(c, tf.x - 4 + midLean, tf.y - 8 + flatten, 2, 2, '#86a058'); R(c, tf.x + midLean, tf.y - 10 + flatten, 4, 2, '#9db564');
+    if (prog >= tf.bloomAt && prog > 0) {
+      R(c, tf.x + midLean, tf.y - 12 + flatten, 2, 4, '#567a42');
+      R(c, tf.x - 2 + lean, tf.y - 14 + flatten, 6, 2, tf.color); R(c, tf.x + lean, tf.y - 16 + flatten, 2, 6, tf.color); R(c, tf.x + lean, tf.y - 14 + flatten, 2, 2, '#e3a13c');
+    }
   }
   const now = w.time;
   w.fires.forEach(f => { if (f.intensity === 0) drawRegrowth(c, f, now, t, wind); });
@@ -709,7 +714,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   let wind: Wind = windAt(x, y, t);
 
   if (!preview) {
-    if (!mem || mem.scene !== world.scene || world.time < mem.time - 0.01) { mem = freshMem(world); fx.clear(); pending = []; resetRigs(); }
+    if (!mem || mem.scene !== world.scene || world.time < mem.time || (world.time === 0 && mem.time > 0)) { mem = freshMem(world); fx.clear(); pending = []; resetRigs(); }
     m = mem;
     const dt = Math.min(0.05, Math.max(0, world.time - m.time));
     m.dt = dt; m.time = world.time;

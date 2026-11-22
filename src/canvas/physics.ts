@@ -41,13 +41,26 @@ export interface VerletNode { x: number; y: number; px: number; py: number }
 
 export class VerletChain {
   nodes: VerletNode[] = [];
+  private ready = false;
   constructor(public segs: number, public segLen: number) {
     for (let i = 0; i <= segs; i++) this.nodes.push({ x: 0, y: i * segLen, px: 0, py: i * segLen });
   }
+  snap(anchor: { x: number; y: number }) {
+    for (let i = 0; i < this.nodes.length; i++) {
+      const ny = anchor.y + i * this.segLen;
+      this.nodes[i].x = anchor.x; this.nodes[i].y = ny;
+      this.nodes[i].px = anchor.x; this.nodes[i].py = ny;
+    }
+    this.ready = true;
+  }
   /** anchor = fixed head point; gravity pulls down, wind pushes sideways. */
   update(dt: number, anchor: { x: number; y: number }, gravity = 520, wind = 0, drag = 0.985, steps = 4) {
-    const h = Math.min(dt, 1 / 30);
     const head = this.nodes[0];
+    if (!this.ready || Math.hypot(head.x - anchor.x, head.y - anchor.y) > 48) {
+      this.snap(anchor);
+      if (dt <= 0.0002) return;
+    }
+    const h = Math.min(dt, 1 / 30);
     head.px = head.x; head.py = head.y;
     head.x = anchor.x; head.y = anchor.y;
     for (let i = 1; i < this.nodes.length; i++) {
@@ -129,9 +142,9 @@ export class RippleField {
       if (fade <= 0.02) continue;
       const rx = Math.max(2, Math.round(r.r));
       const ry = Math.max(1, Math.round(r.r * r.squash));
-      const n = Math.max(10, Math.min(28, Math.round(r.r * 0.95)));
+      const n = Math.max(14, Math.min(44, Math.round(r.r * 1.45)));
       c.fillStyle = color;
-      c.globalAlpha = prev * fade * 0.72;
+      c.globalAlpha = prev * fade * 0.84;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2;
         const cxp = snap(r.x + Math.cos(a) * rx);

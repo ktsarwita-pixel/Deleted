@@ -157,9 +157,9 @@ export class GameEngine {
       w.action.age += dt;
       const dur = w.action.type === 'fill' ? .64 : .60;
       if (w.action.age >= dur) {
-        if (w.action.type === 'fill') p.waterUnits = p.maxWaterUnits;
+        const doneType = w.action.type;
         w.action = null;
-        if (this.progress === 100) { w.panel = 'victory'; soundEngine.playVictoryFanfare(); }
+        if (doneType === 'pour' && this.progress === 100) { w.panel = 'victory'; soundEngine.playVictoryFanfare(); }
         this.publish(true);
       }
     }
@@ -260,6 +260,10 @@ export class GameEngine {
         { id: 'lake', x: 522, y: 454 }, { id: 'fire', x: 884, y: 362 }];
     const signRadius = touch ? 58 : 42;
     const sign = !clicked ? signAnchors.find(s => Math.hypot(s.x - point.x, s.y - point.y) < signRadius) : null;
+    if (sign?.id === 'fire' && this.progress === 100) {
+      this.notify('Semua titik api sudah padam. Hutan kembali aman!', 'success');
+      return;
+    }
     const target = sign ? sign.id === 'fire'
       ? this.interactions().filter(i => i.kind === 'fire').sort((a, b) => Math.hypot(a.x - point.x, a.y - point.y) - Math.hypot(b.x - point.x, b.y - point.y))[0]
       : this.interactions().find(i => i.id === sign.id) : clicked;
@@ -333,7 +337,7 @@ export class GameEngine {
       } else {
         p.dir = 'down'; tx = Math.max(230, Math.min(620, p.x)); ty = Math.max(564, p.y + 34);
       }
-      if (w.reducedMotion) p.waterUnits = p.maxWaterUnits;
+      p.waterUnits = p.maxWaterUnits;
       w.action={type:'fill',age:0,target:{x:tx,y:ty}};
       soundEngine.playWaterFill();
       this.notify(`Menimba air danau: ${p.maxWaterUnits} takar penuh!`, 'success');
@@ -367,7 +371,7 @@ export class GameEngine {
   nearShop() { const p=this.world.player; return this.world.scene==='village' && Math.hypot(p.x-565,p.y-230)<98; }
   buy = (id: ShopItem['id']): { ok: boolean; message: string } => {
     const p=this.world.player, item=SHOP_ITEMS.find(i=>i.id===id)!;
-    const owned=id==='normal_bucket'?p.ownsNormalBucket:id==='big_bucket'?p.ownsBigBucket:p.hasNewShoes;
+    const owned=id==='normal_bucket'?(p.ownsNormalBucket||p.ownsBigBucket):id==='big_bucket'?p.ownsBigBucket:p.hasNewShoes;
     if(owned) return {ok:false,message:'Perlengkapan ini sudah kamu miliki.'};
     if(!this.nearShop()) return {ok:false,message:'Kunjungi Warung Budi di desa untuk membeli perlengkapan.'};
     if(p.rupiah<item.price) return {ok:false,message:'Uang Wira belum cukup. Kumpulkan tabungan atau bantuan pemadaman.'};

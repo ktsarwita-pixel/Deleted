@@ -17,7 +17,7 @@ export function WarungBudiModal({ player, nearby, inHouse, onBuyItem, onTravel }
     {!nearby && <div className="shop-location"><p>Datang ke Warung Budi untuk membeli.</p><button className="button button-secondary" onClick={onTravel}>{inHouse ? 'Keluar rumah dahulu' : 'Menuju warung'}<Icon name="arrow" size={15} /></button></div>}
     <div className="shop-list">
       {SHOP_ITEMS.map(item => {
-        const owned = item.id === 'normal_bucket' ? player.ownsNormalBucket : item.id === 'big_bucket' ? player.ownsBigBucket : player.hasNewShoes;
+        const owned = item.id === 'normal_bucket' ? (player.ownsNormalBucket || player.ownsBigBucket) : item.id === 'big_bucket' ? player.ownsBigBucket : player.hasNewShoes;
         const affordable = player.rupiah >= item.price;
         return <article className={`shop-item ${owned ? 'owned' : ''}`} key={item.id}>
           <div className="shop-item-art">{item.id === 'normal_bucket' ? <NormalBucketPixelIcon filled size={60} /> : item.id === 'big_bucket' ? <BigBucketPixelIcon filled size={64} /> : <NewShoesPixelIcon size={62} />}</div>

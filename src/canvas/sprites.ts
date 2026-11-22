@@ -381,7 +381,7 @@ const rigs = new Map<string, HairRig>();
 function rig(who: Who): HairRig {
   let r = rigs.get(who);
   if (!r) {
-    r = { tail: new VerletChain(4, 3.1), ribbons: [new VerletChain(3, 2.7), new VerletChain(3, 2.4)], hem: who === 'wira' ? [new VerletChain(3, 2.6), new VerletChain(3, 2.3)] : null, t: who === 'budi' ? new VerletChain(2, 2.2) : null };
+    r = { tail: new VerletChain(4, 3.6), ribbons: [new VerletChain(3, 3.2), new VerletChain(3, 2.8)], hem: who === 'wira' ? [new VerletChain(3, 2.8), new VerletChain(3, 2.5)] : null, t: who === 'budi' ? new VerletChain(2, 3.0) : null };
     rigs.set(who, r);
   }
   return r;
@@ -391,17 +391,14 @@ export function resetRigs() { rigs.clear(); }
 function drawChain(c: CanvasRenderingContext2D, chain: VerletChain, widths: number[], colors: string[], tip?: string) {
   for (let i = 1; i < chain.nodes.length; i++) {
     const a = chain.nodes[i - 1], b = chain.nodes[i];
-    const w = widths[Math.min(i - 1, widths.length - 1)] * SCALE;
-    const steps = 1;
-    for (let k = 0; k <= steps; k++) {
-      const u = k / steps;
-      const x = Math.round((a.x + (b.x - a.x) * u) * SCALE), y = Math.round((a.y + (b.y - a.y) * u) * SCALE);
-      c.fillStyle = colors[Math.min(i - 1, colors.length - 1)];
-      c.fillRect(Math.round(x - w / 2), Math.round(y - w / 2), Math.max(2, w), Math.max(2, w));
-    }
+    const w = Math.max(2, Math.round(widths[Math.min(i - 1, widths.length - 1)] * SCALE));
+    c.fillStyle = colors[Math.min(i - 1, colors.length - 1)];
+    const mx = Math.round((a.x + b.x) * 0.5 - w / 2), my = Math.round((a.y + b.y) * 0.5 - w / 2);
+    c.fillRect(mx, my, w, w);
+    c.fillRect(Math.round(b.x - w / 2), Math.round(b.y - w / 2), w, w);
     if (i === chain.nodes.length - 1 && tip) {
       c.fillStyle = tip;
-      c.fillRect(Math.round(b.x * SCALE) - 2, Math.round(b.y * SCALE) - 2, 4, 4);
+      c.fillRect(Math.round(b.x) - 2, Math.round(b.y) - 2, 4, 4);
     }
   }
 }
@@ -409,46 +406,46 @@ function drawChain(c: CanvasRenderingContext2D, chain: VerletChain, widths: numb
 /** Feet sit at (x, y). */
 export function drawCharacter(c: CanvasRenderingContext2D, x: number, y: number, s: FrameSpec, m?: MotionInfo) {
   const dt = Math.min(0.05, m?.dt ?? 0);
-  const reduced = m?.reduced;
+  const reduced = !m || !!m.reduced;
   const r = rig(s.who);
   const L = LOOKS[s.who];
   const ub = upperOffset(s);
-  // head anchor in sprite-local pixels, converted to world offset
+  // head anchor in world coordinates (SCALE = 2)
   const headY = y - (42 - (8 + ub)) * SCALE;
   const windX = m ? m.wind.dir * (10 + m.wind.gust * 34 + m.speed * 0.16) : 0;
   const inertia = m ? -m.vx * 0.055 : 0;
 
   if (L.ponytail) {
-    const anchor = { x: x + (s.dir === 'left' ? 9 : s.dir === 'right' ? 5 : -7), y: headY - 4 };
+    const anchor = { x: x + (s.dir === 'left' ? 10 : s.dir === 'right' ? -10 : -6), y: headY + 2 };
     if (!reduced && dt > 0) r.tail.update(dt, anchor, 430, windX + inertia, 0.982);
-    else if (reduced) r.tail.update(0.0001, anchor, 430, 0, 0.9);
-    drawChain(c, r.tail, [2.6, 2.2, 1.8, 1.3], [L.hair, L.hair, '#3d2f28', L.hairLight], L.accent);
+    else r.tail.snap(anchor);
+    drawChain(c, r.tail, [2.2, 1.9, 1.5, 1.1], [L.hair, L.hair, '#3d2f28', L.hairLight], L.accent);
   }
   if (L.head === 'kerchief') {
-    const knot = { x: x + (s.dir === 'left' ? -10 : 10), y: headY - 8 };
+    const knot = { x: x + (s.dir === 'left' ? 10 : s.dir === 'right' ? -10 : 8), y: headY - 2 };
     for (let i = 0; i < 2; i++) {
       const ch = r.ribbons[i];
       const a = { x: knot.x + (i ? 2 : -2), y: knot.y + (i ? 1 : 0) };
       if (!reduced && dt > 0) ch.update(dt, a, 300, windX * 1.5 + inertia * 1.6 + (i ? 6 : -6), 0.975);
-      else if (reduced) ch.update(0.0001, a, 300, 0, 0.9);
-      drawChain(c, ch, [2.2, 1.8, 1.2], [L.accent!, i ? L.accentLight! : L.accent!], L.trim);
+      else ch.snap(a);
+      drawChain(c, ch, [1.8, 1.4, 1.0], [L.accent!, i ? L.accentLight! : L.accent!], L.trim);
     }
   }
   if (r.t) {
-    // Pak Budi's apron string / Pak RT's sash flapping
     const a = { x: x + 8, y: y - 30 };
     if (!reduced && dt > 0) r.t.update(dt, a, 260, windX, 0.97);
-    drawChain(c, r.t, [1.6, 1.2], ['#ded0ab', '#c8b995']);
+    else r.t.snap(a);
+    drawChain(c, r.t, [1.4, 1.0], ['#ded0ab', '#c8b995']);
   }
   if (r.hem && L.sarong) {
-    // Wira's woven sarong hem trails her hip, then settles after each step.
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       const facing = s.dir === 'left' ? -1 : 1;
-      const anchor = { x: x + side * 8, y: y - 21 };
+      const anchor = { x: x + side * 7, y: y - 24 };
       const windForce = windX * 0.72 - (m?.vx ?? 0) * 0.11 * facing;
       if (!reduced && dt > 0) r.hem[i].update(dt, anchor, 340, windForce + side * 3, 0.976);
-      drawChain(c, r.hem[i], [3.2, 2.8, 2.1], ['#5a2b3b', '#7d3f52', '#a35c6c'], '#e9ba5c');
+      else r.hem[i].snap(anchor);
+      drawChain(c, r.hem[i], [2.4, 2.0, 1.5], ['#5a2b3b', '#7d3f52', '#a35c6c'], '#e9ba5c');
     }
   }
 
