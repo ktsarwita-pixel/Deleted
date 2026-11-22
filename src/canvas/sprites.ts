@@ -365,7 +365,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
 
 const frameCache = new Map<string, HTMLCanvasElement>();
 export function getFrame(s: FrameSpec): HTMLCanvasElement {
-  const walking = s.pose === 'walk'; const key = `${s.who}|${s.dir}|${s.pose}|${s.frame & 3}|${walking ? 0 : +s.blink}|${+s.holding}|${+s.newShoes}|${walking ? 0 : s.flutter % 3}|${walking ? 0 : s.breath}|${+s.mouth}|${walking ? 0 : s.glance}|0`;
+  const wira = s.who === 'wira'; const walking = s.pose === 'walk'; const key = `${s.who}|${s.dir}|${s.pose}|${s.frame & 3}|${walking ? 0 : +s.blink}|${+s.holding}|${+s.newShoes}|${!wira || walking ? 0 : s.flutter % 2}|${!wira || walking ? 0 : s.breath}|${+s.mouth}|0|0`;
   const hit = frameCache.get(key);
   if (hit) return hit;
   let canvas: HTMLCanvasElement;
@@ -686,7 +686,7 @@ export function warmupSprites() {
   }
   const dummy = document.createElement('canvas').getContext('2d')!;
   for (const big of [false, true]) {
-    for (const fill of [0, 0.5, 1]) {
+    for (const fill of [0, 1/3, 2/3, 1]) {
       for (const shimmer of [0, 1]) {
         for (let a = -4; a <= 4; a++) {
           drawBucketLive(dummy, 0, 0, big, fill, 0, shimmer * 0.25, SCALE, a * 0.26, 0);
