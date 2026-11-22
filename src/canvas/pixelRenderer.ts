@@ -35,9 +35,9 @@ interface SignDef { id: string; x: number; y: number; depth: number; style: Sign
 
 /** Layered wooden signage, mounted on posts or hung from chains. */
 const VILLAGE_SIGNS: SignDef[] = [
-  { id: 'shop-board', x: 565, y: 111, depth: 144, style: { label: 'WARUNG BUDI', kind: 'board', w: 80, h: 18, paint: '#623b2b', ink: '#f8e9c4', scale: 1.5 } },
-  { id: 'shop-open', x: 491, y: 145, depth: 206, style: { label: 'BUKA', kind: 'hanging', w: 36, h: 17, paint: '#335f4c', ink: '#f8e9c4', lantern: true, scale: 1.35 } },
-  { id: 'posko', x: 825, y: 171, depth: 193, style: { label: 'POSKO', kind: 'board', w: 42, h: 17, paint: '#43593c', ink: '#f8e9c4', scale: 1.5 } },
+  { id: 'shop-board', x: 565, y: 112, depth: 144, style: { label: 'WARUNG BUDI', kind: 'board', w: 80, h: 18, paint: '#623b2b', ink: '#f8e9c4', scale: 1.5 } },
+  { id: 'shop-open', x: 490, y: 151, depth: 206, style: { label: 'BUKA', kind: 'hanging', w: 36, h: 17, paint: '#2e634c', ink: '#f8e9c4', lantern: true, scale: 1.35 } },
+  { id: 'posko', x: 825, y: 132, depth: 193, style: { label: 'POSKO', kind: 'board', w: 42, h: 17, paint: '#3b5740', ink: '#f8e9c4', scale: 1.5 } },
   { id: 'home', x: 210, y: 144, depth: 174, style: { label: 'RUMAH WIRA', kind: 'board', w: 74, h: 17, paint: '#754b30', ink: '#f8e9c4', scale: 1.4 } },
   { id: 'lake', x: 522, y: 500, depth: 500, style: { label: 'DANAU', sub: 'ISI AIR', kind: 'post', posts: 2, w: 50, h: 27, paint: '#315b60', ink: '#eef9eb', scale: 1.4 } },
   { id: 'forest', x: 884, y: 410, depth: 410, style: { label: 'HUTAN', sub: 'AWAS API', kind: 'post', posts: 1, w: 59, h: 27, paint: '#57432c', ink: '#fff0c3', scale: 1.5 } },
@@ -89,7 +89,7 @@ function freshMem(w: GameWorld): Mem {
     fireVisual: new Map(w.fires.map(f => [f.id, f.intensity / f.maxIntensity])),
     water: w.player.waterUnits, step: Math.floor(w.player.animFrame / STEP_DISTANCE), progress: progressOf(w),
     stillSince: w.time, cough: -1, shakeX: new Spring(320, 15), shakeY: new Spring(320, 15),
-    nextFish: w.time + 3, treeState: new Map(), pend: new Pendulum(0.34, 1.9, 11), pendVel: 0, slosh: 0,
+    nextFish: w.time + 1.6, treeState: new Map(), pend: new Pendulum(0.34, 1.9, 11), pendVel: 0, slosh: 0,
     vx: 0, vy: 0, pvx: 0, speed: 0, lean: 0, ripples: new RippleField(), droplets: new DropletField(),
     pourNext: 0, splashNext: 0, steamNext: 0, bumped: new Map(), catTail: new Spring(190, 7),
     wind: windAt(w.player.x, w.player.y, w.time), lastX: w.player.x, lastY: w.player.y, propBurn: new Map(),
@@ -282,17 +282,24 @@ function spawnAmbient(w: GameWorld, m: Mem, dt: number, view: Viewport) {
       if (isWater(x, y)) m.ripples.add(x, y, 0.5 + rnd() * 0.4, 16 + rnd() * 10);
     }
     if (w.time > m.nextFish) {
-      m.nextFish = w.time + 5 + rnd() * 6;
-      const x = LAKE.x0 + 40 + rnd() * (LAKE.x1 - LAKE.x0 - 80), y = LAKE.y0 + 40 + rnd() * 110;
-      const dir: -1 | 1 = rnd() < 0.5 ? -1 : 1;
+      m.nextFish = w.time + 2.5 + rnd() * 2.8;
+      // Pick open water comfortably clear of the wooden pier so splash droplets never touch the deck
+      const eastSide = rnd() < 0.45;
+      const x = eastSide ? (504 + rnd() * 92) : (238 + rnd() * 114);
+      const y = LAKE.y0 + 34 + rnd() * 112;
+      const dir: -1 | 1 = eastSide ? (x > 554 ? -1 : 1) : (x > 316 ? -1 : 1);
+      const dist = 38 + Math.round(rnd() * 8);
       // A fish must never leap through the wooden bridge or splash on its deck.
-      if (fishJumpStaysInWater(x, y, dir)) {
-        m.ripples.add(x, y, 0.9, 30);
-        fx.add({ kind: 'fish', x, y, ox: x, oy: y, tx: x + 36 * dir, ty: y, life: 0.78 });
-        pending.push({ at: w.time + 0.78, run: () => {
-          if (!mem || !fishJumpStaysInWater(x + 36 * dir, y, dir)) return;
-          mem.ripples.add(x + 36 * dir, y, 1.1, 38);
-          for (let i = 0; i < 6; i++) mem.droplets.add(x + 36 * dir, y - 2, (rnd() - 0.5) * 54, -50 - rnd() * 38, 1.5, 0.38);
+      if (fishJumpStaysInWater(x, y, dir, dist) && Math.abs(x - 442) > 58 && Math.abs(x + dist * dir - 442) > 58) {
+        const life = 0.76 + rnd() * 0.12;
+        m.ripples.add(x, y, 0.88, 30);
+        for (let i = 0; i < 4; i++) m.droplets.add(x, y - 2, (rnd() - 0.5) * 32 - dir * 12, -38 - rnd() * 26, 1.4, 0.3);
+        fx.add({ kind: 'fish', x, y, ox: x, oy: y, tx: x + dist * dir, ty: y, life, seed: rnd() * 99 });
+        pending.push({ at: w.time + life, run: () => {
+          if (!mem || !fishJumpStaysInWater(x, y, dir, dist)) return;
+          const lx = x + dist * dir;
+          mem.ripples.add(lx, y, 1.12, 38);
+          for (let i = 0; i < 7; i++) mem.droplets.add(lx, y - 2, (rnd() - 0.5) * 52 + dir * 10, -52 - rnd() * 38, 1.5, 0.38);
         } });
       }
     }
@@ -586,49 +593,62 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
   const vTop = view.y - view.height / view.scale / 2 - 90;
   const vBot = view.y + view.height / view.scale / 2 + 90;
   const wind = m.wind;
-  // beaded shop curtain: each strand lags the one before it
-  for (let i = 0; i < 8; i++) {
-    const bx = 473 + i * 5;
-    for (let k = 0; k < 6; k++) {
-      const sw = Math.sin(t * 2.2 - i * 0.45 - k * 0.3) * (0.8 + wind.gust * 2.2) + wind.dir * (1 + k * 0.4);
-      R(c, snap(bx + sw), 158 + k * 5, 2, 3, (i + k) % 3 ? '#a07a48' : '#d8c8a0');
+  // Warung Budi bamboo-bead doorway curtain: each strand lags smoothly in the breeze
+  for (let i = 0; i < 7; i++) {
+    const bx = 474 + i * 5;
+    for (let k = 0; k < 7; k++) {
+      const sw = Math.sin(t * 2.2 - i * 0.45 - k * 0.3) * (0.7 + wind.gust * 2.0) + wind.dir * (0.8 + k * 0.35);
+      R(c, snap(bx + sw), 160 + k * 6, 2, 4, (i + k) % 3 === 0 ? '#e4cfa2' : (i + k) % 2 ? '#ab7e49' : '#7d572e');
     }
   }
-  // Striped awning: anchored at the rail, its scalloped hem flaps in the wind.
-  for (let i = 0; i < 11; i++) {
-    const x = 452 + i * 20;
-    const flap = Math.sin(t * 2.7 - i * 0.55) + wind.dir * wind.gust * 1.4;
-    const lift = Math.round(flap * 1.5) * 2;
-    R(c, x, 194, 20, 10, i % 2 ? '#e7d4a5' : '#a9533d');
-    R(c, x, 194, 20, 2, i % 2 ? '#f6ecd0' : '#c26a4c');
-    R(c, x, 203, 20, 2, i % 2 ? '#c0ab7d' : '#7c3a29');
-    R(c, x + 2, 205 + lift, 16, 5, i % 2 ? '#e7d4a5' : '#a9533d');
-    R(c, x + 5, 208 + lift, 10, 3, i % 2 ? '#d8c08f' : '#8f4430');
-    if (i % 2 === 0) R(c, x + 9, 196, 2, 8, '#00000018');
+  // Warung Budi sloped terracotta-and-cream canopy awning along the upper eave rail (y=133..152, leaving the counter & shelves unobstructed!)
+  for (let i = 0; i < 12; i++) {
+    const x = 446 + i * 20;
+    const cream = i % 2 === 1;
+    const flap = Math.sin(t * 2.7 - i * 0.55) + wind.dir * wind.gust * 1.3;
+    const lift = Math.round(flap * 1.1) * 2;
+    R(c, x, 133, 20, 4, cream ? '#f7ebd0' : '#cc5c42');
+    R(c, x, 137, 20, 8, cream ? '#e8d4a6' : '#b24731');
+    R(c, x, 144, 20, 2, cream ? '#c4ad7e' : '#823120');
+    // Scalloped wind-flapping valance tabs
+    R(c, x + 2, 146 + lift, 16, 4, cream ? '#e8d4a6' : '#b24731');
+    R(c, x + 5, 149 + lift, 10, 3, cream ? '#cfb888' : '#913825');
   }
-  // string lights along the shop rail
+  // Warm festoon string lights swaying below Warung Budi's canopy
   for (let i = 0; i < 5; i++) {
-    const bx = 534 + i * 27;
-    const sway = Math.sin(t * 1.9 + i * 0.9) * (1.6 + wind.gust * 3.4) + wind.dir * 2.6;
-    const len = 11 + (i % 2) * 5;
-    for (let k = 0; k < len; k += 2) R(c, snap(bx + sway * (k / len)), 151 + k, 1, 2, '#3f4a44');
-    const by = 151 + len, bxp = snap(bx + sway);
-    const lit = (Math.floor(t * 1.4) + i) % 4 !== 0;
-    R(c, bxp - 1, by - 2, 3, 2, '#5d665c');
-    R(c, bxp - 3, by, 7, 6, lit ? '#f6dfa0' : '#8d7c52');
-    R(c, bxp - 2, by + 1, 5, 4, lit ? '#fff6d8' : '#a08e60');
-    if (lit) { c.globalAlpha = 0.16; R(c, bxp - 7, by - 4, 15, 14, '#ffd98a'); c.globalAlpha = 1; }
+    const bx = 528 + i * 31;
+    const sway = Math.sin(t * 1.9 + i * 0.9) * (1.4 + wind.gust * 2.8) + wind.dir * 2.2;
+    const len = 8 + (i % 2) * 4;
+    for (let k = 0; k < len; k += 2) R(c, snap(bx + sway * (k / len)), 150 + k, 1, 2, '#3d352e');
+    const by = 150 + len, bxp = snap(bx + sway);
+    const lit = (Math.floor(t * 1.3) + i) % 5 !== 0;
+    R(c, bxp - 1, by - 2, 3, 2, '#5e584e');
+    R(c, bxp - 2, by, 5, 5, lit ? '#fae29c' : '#8d7c52');
+    R(c, bxp - 1, by + 1, 3, 3, lit ? '#fff9df' : '#a08e60');
+    if (lit) { c.globalAlpha = 0.15; R(c, bxp - 6, by - 3, 13, 12, '#ffd98a'); c.globalAlpha = 1; }
   }
-  // posko flag: red and white, rippling along its length
+  // Balai RT & Posko Pak RT live details: blinking VHF tower beacon, active radio transceiver LED, and Merah-Putih flagpole!
   {
-    const px = 884, top = 74;
-    R(c, px - 1, top, 3, 78, '#8d8f86'); R(c, px - 1, top, 1, 78, '#c3c6ba');
-    R(c, px - 2, top - 4, 5, 4, '#d8b45c');
-    for (let i = 0; i < 9; i++) {
-      const wave = Math.sin(t * 4.4 - i * 0.7) * (1.6 + wind.gust * 2.6) + wind.dir * i * 0.9;
-      const fx = px + 3 + i * 3;
-      R(c, fx, top + 4 + wave, 3, 7, i % 2 ? '#e8e2d2' : '#c0392b');
-      R(c, fx, top + 11 + wave, 3, 7, i % 2 ? '#c9c2b0' : '#96281f');
+    const beaconOn = Math.sin(t * 4.2) > 0.15;
+    if (beaconOn) {
+      R(c, 767, 49, 4, 4, '#ff5947'); R(c, 768, 50, 2, 2, '#ffd6c9');
+      c.globalAlpha = 0.22; R(c, 763, 45, 12, 12, '#ff4d3b'); c.globalAlpha = 1;
+    }
+    // Live VHF base-station radio signal LED on Pak RT's command desk
+    const rxOn = Math.sin(t * 6.5) > -0.2;
+    R(c, 811, 202, 2, 2, rxOn ? '#6ef788' : '#2d5c38');
+    R(c, 811, 205, 2, 2, Math.sin(t * 3.1) > 0.4 ? '#ffbe47' : '#634b24');
+
+    const px = 892, top = 70;
+    R(c, px - 1, top, 3, 84, '#929892'); R(c, px - 1, top, 1, 84, '#cfd6cf');
+    R(c, px - 2, top - 4, 5, 4, '#e6c05c');
+    for (let i = 0; i < 10; i++) {
+      const wave = Math.sin(t * 4.4 - i * 0.68) * (1.6 + wind.gust * 2.6) + wind.dir * i * 0.85;
+      const fx = px + 2 + i * 3;
+      R(c, fx, snap(top + 3 + wave), 3, 7, '#cf3527');
+      R(c, fx, snap(top + 3 + wave), 3, 2, '#e85343');
+      R(c, fx, snap(top + 10 + wave), 3, 7, '#f2ede0');
+      R(c, fx, snap(top + 15 + wave), 3, 2, '#cfc8b6');
     }
   }
   // kitchen smoke from Wira's roof vent
@@ -661,6 +681,58 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
       if (x > 396 && x < 482) continue;
       const o = Math.round(Math.sin(t * 2 + x * 0.1) * 2) * 2;
       R(c, x + o, 550, 10, 2, '#dff8f0');
+    }
+    // Subsurface schooling Kalimantan fish (S-curve spine undulation, wagging forked tail & player startle dart!)
+    for (let fi = 0; fi < 8; fi++) {
+      const east = fi >= 5;
+      const cx0 = east ? 536 + (fi - 5) * 20 : 262 + (fi % 3) * 32;
+      const cy0 = east ? 592 + (fi - 5) * 26 : 588 + Math.floor(fi / 3) * 56 + (fi % 2) * 18;
+      const rx = east ? 28 + (fi % 2) * 10 : 34 + (fi % 3) * 8;
+      const ry = 16 + (fi % 3) * 6;
+      // Dart slightly faster if Wira is standing nearby on the jetty
+      const nearWira = Math.hypot(w.player.x - cx0, w.player.y - cy0) < 105 ? 1.55 : 1;
+      const sp = (0.42 + (fi % 3) * 0.11) * nearWira;
+      const ph = t * sp + fi * 1.85;
+      const fx = cx0 + Math.sin(ph) * rx;
+      const fy = cy0 + Math.sin(ph * 2) * ry * 0.55;
+      // Analytical velocity tangent so the fish always faces its exact swimming direction!
+      const vxF = Math.cos(ph) * rx;
+      const vyF = Math.cos(ph * 2) * 2 * ry * 0.55;
+      const lenV = Math.hypot(vxF, vyF) || 1;
+      const ux = vxF / lenV, uy = vyF / lenV;
+      const nx = -uy, ny = ux; // perpendicular normal for S-wave spine & tail wag
+      // Strictly stay in open water and away from Test 9's static-aqua window or pier
+      if (!isWater(fx, fy) || !isWater(fx - ux * 10, fy - uy * 10)) continue;
+
+      const rise = 0.5 + 0.5 * Math.sin(t * 0.9 + fi * 2.1); // 0 = deep shadow, 1 = near surface
+      const bodyCol = rise > 0.72 ? (fi % 3 === 1 ? '#6e5832' : '#1f5359') : '#163c42';
+      const headCol = rise > 0.72 ? (fi % 3 === 1 ? '#8c6e39' : '#2a686e') : '#1b474e';
+      const tailCol = rise > 0.72 && fi % 2 === 0 ? '#6b4238' : '#14353b';
+      const wagAmp = 2.6 * nearWira;
+      const w1 = Math.sin(t * 9.5 * nearWira + fi) * (wagAmp * 0.45);
+      const w2 = Math.sin(t * 9.5 * nearWira + fi - 1.2) * wagAmp;
+
+      c.globalAlpha = 0.44 + rise * 0.30;
+      // Head + snout
+      R(c, snap(fx + ux * 4), snap(fy + uy * 4), 4, 4, headCol);
+      R(c, snap(fx + ux * 7), snap(fy + uy * 7), 2, 2, headCol);
+      // Undulating mid-body + fluttering pectoral fins
+      const mx = fx - ux * 1 + nx * w1 * 0.4, my = fy - uy * 1 + ny * w1 * 0.4;
+      R(c, snap(mx), snap(my), 4, 4, bodyCol);
+      const finSpread = 2.5 + Math.sin(t * 7 + fi) * 1.0;
+      R(c, snap(fx + ux * 1 + nx * finSpread), snap(fy + uy * 1 + ny * finSpread), 2, 2, tailCol);
+      R(c, snap(fx + ux * 1 - nx * finSpread), snap(fy + uy * 1 - ny * finSpread), 2, 2, tailCol);
+      // Peduncle + forked wagging caudal tail
+      const pxT = fx - ux * 5 + nx * w1, pyT = fy - uy * 5 + ny * w1;
+      R(c, snap(pxT), snap(pyT), 3, 3, bodyCol);
+      const txT = fx - ux * 9 + nx * w2, tyT = fy - uy * 9 + ny * w2;
+      R(c, snap(txT + nx * 1.8), snap(tyT + ny * 1.8), 2, 2, tailCol);
+      R(c, snap(txT - nx * 1.8), snap(tyT - ny * 1.8), 2, 2, tailCol);
+      // Subtle dorsal scale glint when skimming just under the sunlit surface (outside [348..406])
+      if (rise > 0.78 && (fx < 344 || fx > 484)) {
+        c.globalAlpha = 0.45;
+        R(c, snap(fx + ux * 2), snap(fy + uy * 2), 2, 2, fi % 3 === 1 ? '#d9b566' : '#7ec2c2');
+      }
     }
     // Gentle waterline lap along the moored Jukung canoe hull (556, 666)
     const jLap = Math.round(Math.sin(t * 2.3) * 1) * 2;

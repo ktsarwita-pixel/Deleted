@@ -383,144 +383,281 @@ function rumahWira(c: CanvasRenderingContext2D) {
   R(c, 231, yFloor - 10, 5, 72, '#6b4b2d'); R(c, 231, yFloor - 10, 2, 72, '#b08954');
 }
 
-/* ---------- Warung Budi: Kalimantan Village Provision Shop ---------- */
+/* ---------- Warung Budi: Kalimantan Village Provision & Perlengkapan Shop ---------- */
 function warungBudi(c: CanvasRenderingContext2D) {
-  const x0 = 462, x1 = 668, yRoof = 72, yWall = 114;
-  R(c, x0 - 10, 244, x1 - x0 + 20, 11, '#0f19114a');
-  // Paved stone shop apron
-  for (let sx = x0 - 2; sx < x1 - 4; sx += 18) {
-    R(c, sx, 245, 16, 6, (sx / 18) % 2 ? '#9c8f73' : '#afa184');
-    R(c, sx + 1, 245, 14, 2, '#c7ba9c');
+  const x0 = 462, x1 = 668, yRoof = 68, yWall = 108;
+  // Ground contact shadow + stepped river-stone shop apron
+  R(c, x0 - 16, 243, x1 - x0 + 32, 13, '#0f191152');
+  R(c, x0 - 8, 244, x1 - x0 + 16, 9, '#7c7058');
+  for (let sx = x0 - 6; sx < x1 + 4; sx += 18) {
+    R(c, sx, 244, 16, 7, ((sx / 18) | 0) % 2 ? '#9e9074' : '#b2a384');
+    R(c, sx + 1, 244, 14, 2, '#cdc0a2');
+    R(c, sx, 250, 16, 2, '#5e5440');
   }
 
-  shingles(c, x0 - 14, yRoof + 6, x1 + 14, yWall - 5, '#7a442e', '#4c291b', '#ad6544');
-  ridge(c, x0 + 14, x1 - 14, yRoof - 2, '#5e3221');
+  // Side storage lean-to shed on left & stacked beras/provisions on right (within visual shop bay)
+  R(c, x0 - 12, 168, 12, 76, '#5c4026');
+  R(c, x0 - 14, 162, 15, 7, '#78442e'); R(c, x0 - 14, 162, 15, 2, '#b87350');
+  for (let y = 174; y < 240; y += 11) { R(c, x0 - 11, y, 10, 2, '#3d2a18'); R(c, x0 - 11, y + 2, 10, 1, '#825d39'); }
 
-  // Fascia board & carved trim
-  R(c, x0 - 8, yWall - 8, x1 - x0 + 16, 10, '#543a24');
-  R(c, x0 - 8, yWall - 8, x1 - x0 + 16, 2, '#ad8452');
-  plankWall(c, x0, yWall, x1 - x0, 30, '#a27b48', '#694b2c', '#cfa86e');
+  // Steep Kalimantan sirap ulin gabled main roof + carved Dayak bargeboards
+  shingles(c, x0 - 18, yRoof + 6, x1 + 18, yWall - 2, '#7d432c', '#4c2618', '#b56946');
+  ridge(c, x0 + 10, x1 - 10, yRoof - 2, '#5e301e');
+  // Carved fascia & decorative golden-ochre Dayak tooth frieze
+  R(c, x0 - 12, yWall - 4, x1 - x0 + 24, 9, '#4c321e');
+  R(c, x0 - 12, yWall - 4, x1 - x0 + 24, 2, '#c89a5b');
+  for (let fx = x0 - 8; fx < x1 + 6; fx += 8) R(c, fx, yWall + 1, 4, 3, '#dfb676');
 
-  // Awning rail beam
-  R(c, x0 - 10, 142, x1 - x0 + 20, 9, '#463120');
-  R(c, x0 - 10, 142, x1 - x0 + 20, 2, '#9c744a');
-  R(c, x0 - 10, 149, x1 - x0 + 20, 2, '#2a1d13');
-
-  // Deep shop interior
-  R(c, x0, 151, x1 - x0, 57, '#261e18');
-  R(c, x0, 151, x1 - x0, 4, '#17120e');
-  // Left doorway with warm interior depth
-  R(c, x0 + 8, 155, 42, 52, '#1c1510');
-  R(c, x0 + 6, 153, 46, 3, '#7a5938');
-
-  // Hanging golden banana bunches (pisang) & kerupuk packets under the eaves
-  for (const bx of [516, 650]) {
-    R(c, bx + 3, 151, 2, 6, '#6d5838');
-    R(c, bx, 156, 9, 5, '#ecc854'); R(c, bx - 1, 160, 11, 5, '#deb43c');
-    R(c, bx + 1, 156, 7, 2, '#fae282');
+  // Upper timber signboard wall + bespoke carved frame around 'WARUNG BUDI' sign (565, 111)
+  plankWall(c, x0, yWall + 5, x1 - x0, 24, '#9c7444', '#634627', '#caa26a');
+  // Ornate ulin backing frame behind 'WARUNG BUDI' plaque (x=501..629, y=97..128)
+  R(c, 499, 96, 132, 33, '#3c2516');
+  R(c, 501, 98, 128, 29, '#573721');
+  R(c, 501, 98, 128, 2, '#d9b071'); R(c, 501, 125, 128, 2, '#875c36');
+  // Flanking brass wall lanterns beside the main shop sign
+  for (const lx of [478, 646]) {
+    R(c, lx, 108, 8, 11, '#f7dc90'); R(c, lx + 2, 110, 4, 7, '#fff6d4');
+    R(c, lx - 1, 106, 10, 2, '#3d2919'); R(c, lx - 1, 119, 10, 2, '#3d2919');
   }
 
-  // Back shelves stocked with colourful provisions, buckets & bottles
-  for (const sy of [162, 178, 194]) {
-    R(c, 524, sy, 134, 4, '#8d6a42'); R(c, 524, sy, 134, 1, '#cfa86e'); R(c, 524, sy + 3, 134, 1, '#432e1d');
-    for (let i = 0; i < 10; i++) {
-      const gx = 528 + i * 13, kind = (i + sy) % 4;
-      if (kind === 0) { R(c, gx, sy - 11, 7, 11, '#4f8664'); R(c, gx + 1, sy - 13, 5, 3, '#b88d58'); R(c, gx + 1, sy - 9, 2, 6, '#8ac49d'); }
-      else if (kind === 1) { R(c, gx, sy - 9, 9, 9, '#cc4737'); R(c, gx, sy - 9, 9, 2, '#ee8870'); R(c, gx + 2, sy - 6, 5, 3, '#f5dbb2'); }
-      else if (kind === 2) { R(c, gx, sy - 9, 9, 9, '#deb954'); R(c, gx + 1, sy - 8, 7, 2, '#f7e49c'); R(c, gx + 3, sy - 5, 3, 3, '#9c7830'); }
-      else { R(c, gx, sy - 11, 8, 11, '#3f8fa3'); R(c, gx, sy - 11, 8, 2, '#8cd2d9'); R(c, gx + 1, sy - 8, 2, 6, '#6cb8c4'); }
+  // Structural awning header beam (live striped canopy attaches at y=133..151 in pixelRenderer.ts)
+  R(c, x0 - 12, 130, x1 - x0 + 24, 6, '#3e2919');
+  R(c, x0 - 12, 130, x1 - x0 + 24, 2, '#9e7548');
+
+  // Warm, deeply-lit Warung interior (unobstructed y=150..208!)
+  R(c, x0, 148, x1 - x0, 61, '#2d1f15');
+  R(c, x0 + 4, 152, x1 - x0 - 8, 55, '#38271a'); // warm tungsten-lit back planks
+  for (let py = 158; py < 206; py += 8) R(c, x0 + 4, py, x1 - x0 - 8, 1, '#261a11');
+  // Soft eave shadow just under the awning valance
+  R(c, x0, 148, x1 - x0, 6, '#18100b');
+  // Subtle warm ceiling lamp pool over shelves
+  R(c, 526, 154, 128, 18, '#4a3320');
+
+  // Left shopkeeper doorway (x=468..512) with carved threshold & warm backroom glow
+  R(c, 467, 153, 45, 56, '#5e4126');
+  R(c, 469, 155, 41, 54, '#1b130d');
+  R(c, 474, 162, 31, 44, '#2c1e13');
+  R(c, 480, 170, 18, 28, '#4d331c'); // warm back-room doorway light
+
+  // === HERO DISPLAY BAY (x=515..568): Karhutla Perlengkapan Pegboard ===
+  R(c, 515, 155, 52, 50, '#4f3822');
+  R(c, 515, 155, 52, 2, '#c89f64'); R(c, 517, 158, 48, 45, '#66492d');
+  for (let py = 162; py < 200; py += 6) for (let px = 521; px < 562; px += 6) R(c, px, py, 2, 2, '#47311d');
+  // Shelf 1 (top): Sky-blue Ember Biasa + Reinforced Golden-Crimson Ember Besar
+  R(c, 517, 179, 48, 3, '#b88e56');
+  // Ember Biasa (sky-blue galvanized bucket)
+  poly(c, [[520, 165], [534, 165], [532, 178], [522, 178]], '#3b92ab');
+  R(c, 519, 164, 16, 2, '#9be0eb'); R(c, 522, 167, 3, 9, '#76cad9');
+  R(c, 523, 160, 8, 2, '#cbd6d4'); R(c, 522, 161, 2, 4, '#cbd6d4'); R(c, 531, 161, 2, 4, '#cbd6d4');
+  // Ember Besar (large 2-unit brass-banded crimson bucket)
+  poly(c, [[539, 161], [559, 161], [556, 178], [542, 178]], '#c84833');
+  R(c, 538, 160, 22, 3, '#f6dc8c'); R(c, 540, 168, 18, 2, '#e6b85c'); R(c, 541, 174, 16, 2, '#e6b85c');
+  R(c, 543, 163, 3, 13, '#ee856e');
+  R(c, 544, 156, 10, 2, '#e8dec3'); R(c, 543, 157, 2, 4, '#e8dec3'); R(c, 553, 157, 2, 4, '#e8dec3');
+  // Shelf 2 (lower): Pair of sturdy Sepatu Baru trail boots with yellow laces & whitelug soles
+  R(c, 517, 200, 48, 3, '#b88e56');
+  for (const bx of [521, 541]) {
+    R(c, bx, 188, 9, 10, '#c93d2b'); R(c, bx, 193, 15, 5, '#df4f3a');
+    R(c, bx + 2, 189, 3, 5, '#8f2518');
+    R(c, bx + 6, 190, 3, 2, '#f7d358'); R(c, bx + 7, 193, 3, 2, '#f7d358'); // yellow boot laces
+    R(c, bx - 1, 198, 17, 2, '#f2ead7'); // white-cream rugged sole
+  }
+
+  // === WARUNG KELONTONG SHELVES (x=571..658): Groceries, Tins, Syrup Bottles & Rice Sacks ===
+  for (const sy of [169, 185, 201]) {
+    R(c, 571, sy, 86, 3, '#9a7346'); R(c, 571, sy, 86, 1, '#d6b078'); R(c, 571, sy + 2, 86, 1, '#4a331e');
+  }
+  // Top shelf: Emerald & ruby glass syrup bottles, Khong Guan red biscuit tins, tea boxes
+  for (let i = 0; i < 7; i++) {
+    const gx = 574 + i * 12;
+    if (i % 3 === 0) { R(c, gx + 1, 156, 6, 13, '#3e8c61'); R(c, gx + 2, 153, 4, 3, '#d9b56c'); R(c, gx + 2, 158, 2, 8, '#85cfa3'); }
+    else if (i % 3 === 1) { R(c, gx, 158, 10, 11, '#c93f31'); R(c, gx, 158, 10, 2, '#f3c868'); R(c, gx + 2, 162, 6, 4, '#f7ebd2'); }
+    else { R(c, gx, 159, 9, 10, '#d9a43b'); R(c, gx + 1, 160, 7, 2, '#fae29c'); R(c, gx + 2, 164, 5, 3, '#7a4f21'); }
+  }
+  // Middle shelf: Stacked instant-noodle packs, condensed milk cans & spice jars
+  for (let i = 0; i < 7; i++) {
+    const gx = 574 + i * 12;
+    if (i % 2 === 0) { R(c, gx, 174, 10, 11, '#e06d34'); R(c, gx + 1, 175, 8, 3, '#fbe39e'); R(c, gx + 2, 180, 6, 3, '#528a4e'); }
+    else { R(c, gx + 1, 173, 8, 12, '#3b7fa1'); R(c, gx + 1, 173, 8, 2, '#cbe6ee'); R(c, gx + 2, 177, 6, 4, '#f5efe0'); }
+  }
+  // Lower shelf: Burlap beras sacks & cooking oil pouches
+  for (let i = 0; i < 4; i++) {
+    const sx = 574 + i * 21;
+    R(c, sx, 190, 17, 11, i % 2 ? '#d8c396' : '#cbb382');
+    R(c, sx + 2, 194, 13, 2, i % 2 ? '#c44534' : '#3f7852');
+    R(c, sx + 1, 190, 15, 2, '#ede0be');
+  }
+
+  // Hanging Indonesian 'renceng' sachet strips + golden Pisang Kepok bunches!
+  for (const [rx, c1, c2] of [[567, '#2d8a5e', '#76d49e'], [657, '#cf4432', '#f7b955']] as [number, string, string][]) {
+    for (let k = 0; k < 5; k++) {
+      R(c, rx, 154 + k * 7, 6, 6, k % 2 ? c1 : c2);
+      R(c, rx + 1, 155 + k * 7, 4, 1, '#fff6dc');
     }
   }
+  // Lush hanging golden banana bunch on right post
+  R(c, 646, 152, 2, 7, '#6b5332');
+  R(c, 641, 158, 12, 5, '#f0cb52'); R(c, 640, 162, 14, 5, '#dfb238'); R(c, 642, 166, 10, 4, '#c79928');
+  R(c, 642, 158, 9, 2, '#fff099');
 
-  // Equipment display rack on left counter: blue Ember, brass Ember Besar & red Sepatu Baru!
-  R(c, 474, 195, 13, 13, '#3f8fa3'); R(c, 473, 194, 15, 3, '#8ad0d6'); // Ember air
-  R(c, 492, 192, 16, 16, '#c7934c'); R(c, 491, 191, 18, 3, '#ebd88c'); R(c, 492, 198, 16, 2, '#7d5628'); // Ember besar
-  R(c, 512, 200, 13, 8, '#c9412d'); R(c, 512, 206, 14, 2, '#f3ead4'); R(c, 515, 202, 4, 2, '#f5c650'); // Sepatu baru
-
-  // Front panelled ulin counter + glass etalase display case
-  R(c, x0 - 4, 212, x1 - x0 + 8, 32, '#694a2b');
-  R(c, x0 - 4, 207, x1 - x0 + 8, 7, '#cfa86e');
-  R(c, x0 - 4, 207, x1 - x0 + 8, 2, '#ebd09e');
-  R(c, x0 - 4, 213, x1 - x0 + 8, 2, '#47311d');
-  for (let x = x0 + 4; x < x1 - 12; x += 24) {
-    R(c, x, 217, 18, 21, '#593d23');
-    R(c, x + 2, 219, 14, 17, '#7a5634');
-    R(c, x + 2, 219, 14, 1, '#9e7449');
+  // === COUNTERTOP PROPS: Pastel Kaleng Kerupuk, Brass Scale & Glass Etalase ===
+  // Classic Indonesian Kaleng Kerupuk (pastel blue & rose tins with red lids & front glass window)
+  for (const [jx, body, lid] of [[562, '#6bb0c4', '#c93e30'], [576, '#e6958e', '#b83528'], [590, '#78b57e', '#c93e30']] as [number, string, string][]) {
+    R(c, jx, 193, 11, 15, body); R(c, jx + 1, 193, 3, 15, '#ffffff44');
+    R(c, jx + 3, 197, 6, 8, '#f5deb0'); R(c, jx + 4, 198, 4, 6, '#e0b05c'); // visible kerupuk inside window!
+    R(c, jx - 1, 191, 13, 3, lid); R(c, jx + 3, 189, 5, 2, lid);
   }
-  R(c, x0 - 5, 242, x1 - x0 + 10, 3, '#2e1f13');
+  // Glass Etalase Showcase (x=606..656, y=188..208) with aluminum frame & pastries
+  R(c, 606, 188, 50, 20, '#d8e4e6'); // silver aluminum frame
+  R(c, 608, 190, 46, 16, '#2b3b3d'); // dark glass interior
+  R(c, 608, 198, 46, 1, '#9fb8bc'); // middle glass shelf
+  // Treats on shelves
+  R(c, 611, 193, 11, 5, '#e8a948'); R(c, 625, 193, 11, 5, '#6eb365'); R(c, 639, 193, 11, 5, '#df664a');
+  R(c, 612, 201, 12, 5, '#f0d27a'); R(c, 627, 201, 12, 5, '#c95c3e'); R(c, 641, 201, 10, 5, '#86bf73');
+  // Crisp diagonal specular glass highlights
+  R(c, 611, 191, 8, 2, '#ffffff88'); R(c, 609, 193, 5, 2, '#ffffff66'); R(c, 636, 191, 6, 2, '#ffffff66');
 
-  // Glass etalase & kerupuk jars on the counter
-  R(c, 598, 191, 44, 17, '#a8cfd4'); R(c, 600, 193, 40, 13, '#3b4a47');
-  R(c, 603, 199, 10, 6, '#e2a84b'); R(c, 616, 198, 10, 7, '#7ab068'); R(c, 629, 199, 9, 6, '#de6c4e');
-  R(c, 602, 194, 12, 2, '#ffffff66'); R(c, 598, 190, 44, 2, '#cfa86e');
-  for (const [jx, col] of [[542, '#d44b3a'], [558, '#e6ab3c'], [574, '#569468']] as [number, string][]) {
-    R(c, jx, 195, 12, 13, '#dce8e2'); R(c, jx + 1, 198, 10, 9, col);
-    R(c, jx, 193, 12, 3, '#c9483a'); R(c, jx + 2, 196, 2, 9, '#ffffff70');
+  // === FRONT ULIN WOOD COUNTER WITH WOVEN BAMBOO PANELS & PRICE CHALKBOARD ===
+  R(c, x0 - 6, 207, x1 - x0 + 12, 7, '#d4ab70');
+  R(c, x0 - 6, 207, x1 - x0 + 12, 2, '#f2d9a7');
+  R(c, x0 - 6, 212, x1 - x0 + 12, 2, '#73502d');
+  R(c, x0 - 4, 214, x1 - x0 + 8, 30, '#664628');
+  for (let x = x0 + 4; x < x1 - 18; x += 33) {
+    R(c, x, 218, 26, 21, '#4a321b');
+    bambooWall(c, x + 2, 220, 22, 17);
+    R(c, x + 2, 220, 22, 1, '#cfa96e');
   }
+  // Small green Warung chalkboard sign mounted on front counter ('EMBER / SEPATU')
+  R(c, 536, 217, 34, 23, '#3b2615');
+  R(c, 538, 219, 30, 19, '#244232');
+  R(c, 541, 222, 18, 2, '#f5ecd2'); R(c, 541, 226, 24, 2, '#f5c767');
+  R(c, 541, 230, 15, 2, '#92d6be'); R(c, 541, 234, 21, 2, '#f28d6b');
+  R(c, x0 - 6, 242, x1 - x0 + 12, 3, '#2e1e12');
 
-  // Corner timber posts
-  R(c, x0 - 6, 142, 7, 104, '#543923'); R(c, x0 - 6, 142, 2, 104, '#9c744a');
-  R(c, x1 - 1, 142, 7, 104, '#46301d'); R(c, x1 - 1, 142, 2, 104, '#87633b');
+  // Heavy ulin corner & mid-bay posts with stone plinths
+  for (const px of [x0 - 6, 512, x1 - 1]) {
+    R(c, px, 134, 7, 110, '#523720');
+    R(c, px, 134, 2, 110, '#a67c4e');
+    R(c, px - 1, 238, 9, 7, '#8c8370'); R(c, px, 238, 7, 2, '#b8ae98');
+  }
 }
 
-/* ---------- Posko Siaga Karhutla: Field Command Post ---------- */
+/* ---------- Balai RT & Posko Siaga Karhutla (Pak RT Daman's Command Building) ---------- */
 function poskoSiaga(c: CanvasRenderingContext2D) {
-  const x0 = 756, x1 = 892, yTop = 110;
-  R(c, x0 - 10, 246, x1 - x0 + 20, 10, '#0f19114a');
+  const x0 = 754, x1 = 894, yRoof = 96, yEave = 136;
+  // Ground shadow & raised river-stone Balai plinth (within obstacle 752..896, 145..246)
+  R(c, x0 - 12, 244, x1 - x0 + 24, 12, '#0f191150');
+  R(c, x0 - 4, 238, x1 - x0 + 8, 10, '#787160');
+  for (let sx = x0 - 2; sx < x1 + 2; sx += 16) {
+    R(c, sx, 239, 14, 7, ((sx / 16) | 0) % 2 ? '#98907c' : '#aba28c');
+    R(c, sx + 1, 239, 12, 2, '#c8bfa8');
+  }
+  // Central stone & ulin veranda steps leading directly toward Pak RT Daman (825, 283)
+  R(c, 805, 242, 40, 10, '#635c4d');
+  R(c, 807, 241, 36, 4, '#b8925b'); R(c, 807, 241, 36, 1, '#dfc08c');
+  R(c, 807, 246, 36, 4, '#9c937e'); R(c, 809, 246, 32, 1, '#c7beaa');
 
-  // Radio mast rising behind Posko command tent
-  R(c, 770, 74, 3, 42, '#7d8580'); R(c, 770, 74, 1, 42, '#bac2bc');
-  R(c, 764, 82, 15, 2, '#9aa39d'); R(c, 767, 90, 9, 2, '#9aa39d');
-  R(c, 770, 71, 3, 3, '#e04838');
+  // Lattice VHF/UHF Emergency Radio Repeater Tower rising behind left gable
+  R(c, 764, 58, 2, 54, '#727c78'); R(c, 772, 58, 2, 54, '#5a6360');
+  for (let ty = 64; ty < 108; ty += 8) {
+    R(c, 765, ty, 8, 2, '#8d9792');
+    R(c, 766, ty + 3, 5, 2, '#66706c');
+  }
+  R(c, 757, 66, 24, 2, '#aeb8b3'); R(c, 760, 74, 18, 2, '#9ba5a0'); // VHF dipole cross-arms
+  R(c, 768, 52, 2, 7, '#cad4cf'); R(c, 767, 49, 4, 4, '#e04232'); // top beacon housing
 
-  // Layered olive canvas command canopy with ridge & red-white Posko valance stripe
-  poly(c, [[x0 - 14, yTop + 32], [x0 + 12, yTop], [x1 - 12, yTop], [x1 + 14, yTop + 32]], '#586941');
-  poly(c, [[x0 - 10, yTop + 30], [x0 + 14, yTop + 3], [x0 + 68, yTop + 3], [x0 + 68, yTop + 30]], '#687a4c');
-  R(c, x0 + 12, yTop, x1 - x0 - 24, 3, '#97a874');
-  // Red-and-white Indonesian BNPB/Posko Siaga trim band
-  R(c, x0 - 14, yTop + 31, x1 - x0 + 28, 4, '#c83e2e');
-  R(c, x0 - 14, yTop + 35, x1 - x0 + 28, 3, '#ece6d8');
-  for (let x = x0 - 12; x < x1 + 10; x += 16) {
-    R(c, x + 2, yTop + 38, 10, 4, (x / 16) % 2 ? '#4d5c38' : '#3e4b2d');
+  // Dignified Kalimantan Balai RT hipped-gable sirap roof + central command pediment
+  shingles(c, x0 - 14, yRoof + 6, x1 + 14, yEave, '#5a3a28', '#3b2418', '#8c5c3e');
+  ridge(c, x0 + 12, x1 - 12, yRoof - 1, '#472c1e');
+  // Central raised pediment gable framing the 'POSKO' sign (825, 136)
+  poly(c, [[788, yEave + 2], [825, yRoof + 4], [862, yEave + 2]], '#4a3121');
+  poly(c, [[792, yEave + 2], [825, yRoof + 8], [858, yEave + 2]], '#6b472f');
+  R(c, 790, yEave, 70, 3, '#d4ac6e');
+
+  // Crisp Indonesian Merah-Putih BNPB / Balai RT frieze banner across the eaves
+  R(c, x0 - 10, yEave + 1, x1 - x0 + 20, 5, '#c93829');
+  R(c, x0 - 10, yEave + 6, x1 - x0 + 20, 4, '#f2ede0');
+  R(c, x0 - 10, yEave + 10, x1 - x0 + 20, 3, '#394a32');
+
+  // Warm, brightly-lit Balai RT timber interior (x=758..890, y=149..238)
+  R(c, x0 + 4, 149, x1 - x0 - 8, 89, '#3e2e20');
+  plankWall(c, x0 + 6, 152, x1 - x0 - 12, 62, '#694e34', '#473320', '#8c6947');
+  // Lower wainscot dado rail
+  R(c, x0 + 6, 206, x1 - x0 - 12, 3, '#b89058');
+  R(c, x0 + 6, 209, x1 - x0 - 12, 29, '#4a3522');
+  // Overhead warm command light fixture (illuminates map & desk!)
+  R(c, 804, 151, 42, 3, '#d8dfd9'); R(c, 806, 153, 38, 2, '#fff7cf');
+  R(c, 796, 155, 58, 6, '#ffeaa024');
+
+  // === LEFT WALL BAY (x=766..804): Papan Data RT 03 & Manggala Agni Gear Rack ===
+  R(c, 767, 160, 34, 26, '#3a2717');
+  R(c, 769, 162, 30, 22, '#2d523d'); // green RT notice board
+  R(c, 771, 165, 11, 8, '#f5ebd0'); R(c, 784, 165, 12, 6, '#f7d47c'); // pinned notices
+  R(c, 771, 175, 14, 7, '#e8eef0'); R(c, 787, 173, 9, 9, '#f29f67');
+  // Hanging yellow safety helmets & orange backpack water-pumps (pompa punggung)
+  for (const hx of [769, 783]) {
+    R(c, hx, 191, 10, 5, '#ebb02d'); R(c, hx + 1, 189, 8, 3, '#ffda6b'); R(c, hx - 1, 195, 12, 2, '#a87718');
+    R(c, hx + 1, 199, 8, 11, '#d95b2b'); R(c, hx + 3, 201, 4, 6, '#f5c558');
   }
 
-  // Shaded command interior + canvas back wall + rolled side curtains
-  R(c, x0, yTop + 40, x1 - x0, 106, '#2d3627');
-  for (let x = x0 + 16; x < x1 - 10; x += 24) { R(c, x, yTop + 42, 2, 100, '#232b1e'); R(c, x + 2, yTop + 42, 1, 100, '#3e4a35'); }
-  // Rolled-up tent flaps tied at left & right posts
-  R(c, x0 + 1, yTop + 42, 12, 6, '#7a8a5c'); R(c, x1 - 13, yTop + 42, 12, 6, '#7a8a5c');
+  // === RIGHT WALL BAY (x=836..884): Kalimantan Karhutla Tactical Sector Map & Fire Danger Gauge ===
+  R(c, 836, 158, 48, 34, '#3b2818');
+  R(c, 838, 160, 44, 30, '#eadbc0'); // crisp parchment map
+  R(c, 840, 162, 40, 2, '#8c7756'); // map header bar
+  // Map terrain: green village west, blue Danau Rantau south-west, orange/red peat burn zone east!
+  R(c, 841, 166, 16, 12, '#73a662');
+  R(c, 842, 179, 15, 8, '#46929e'); R(c, 844, 181, 10, 3, '#8ad6de'); // lake
+  R(c, 859, 166, 20, 21, '#cf5236'); R(c, 863, 170, 12, 12, '#f39c38'); // active fire sector
+  // Red & gold tactical map pins
+  R(c, 865, 169, 2, 2, '#fff4b8'); R(c, 871, 175, 2, 2, '#fff4b8'); R(c, 862, 178, 2, 2, '#fff4b8');
+  // Fire Danger Rating Gauge ('FDRS SIAGA') beside map (x=814..832)
+  R(c, 814, 162, 18, 26, '#332315'); R(c, 816, 164, 14, 22, '#f0e6ce');
+  R(c, 818, 167, 4, 4, '#4ca65b'); R(c, 822, 167, 4, 4, '#ebbf3b');
+  R(c, 818, 172, 4, 4, '#e67e30'); R(c, 822, 172, 4, 4, '#d43b2c'); // active red alert!
+  R(c, 818, 179, 10, 4, '#2f4a3c');
 
-  // Timber support posts + guy ropes
-  R(c, x0 - 5, yTop + 34, 7, 114, '#6b4f33'); R(c, x0 - 5, yTop + 34, 2, 114, '#a67e53');
-  R(c, x1 - 2, yTop + 34, 7, 114, '#594028'); R(c, x1 - 2, yTop + 34, 2, 114, '#8f6b44');
-  R(c, x0 - 14, 150, 9, 2, '#b8a478'); R(c, x1 + 5, 150, 9, 2, '#b8a478');
-  R(c, x0 - 16, 150, 3, 6, '#6b5136'); R(c, x1 + 13, 150, 3, 6, '#6b5136');
+  // === COMMAND DESK (x=796..854, y=211..239) WITH GREEN BALAI RUNNER, VHF RADIO & MEGAPHONE ===
+  R(c, 796, 211, 58, 6, '#cfa76e'); R(c, 796, 211, 58, 2, '#edd09d');
+  R(c, 798, 217, 54, 21, '#593d24');
+  // Official green & gold Balai RT front cloth runner with emblem
+  R(c, 811, 214, 28, 19, '#2e6347'); R(c, 811, 231, 28, 2, '#e6be5a');
+  R(c, 822, 219, 6, 7, '#f0cb62'); R(c, 824, 221, 2, 3, '#2e6347');
+  // VHF Base-Station Radio Transceiver (left of desk)
+  R(c, 800, 200, 15, 11, '#2a3432'); R(c, 802, 202, 7, 5, '#7de084'); R(c, 811, 191, 2, 10, '#aeb8b4');
+  // Red-and-white Emergency Megaphone / Toa (center-right of desk)
+  poly(c, [[832, 207], [844, 202], [844, 211], [832, 209]], '#f2ede2');
+  R(c, 841, 202, 4, 9, '#cf3d2e'); R(c, 830, 206, 3, 4, '#cf3d2e');
+  // Duty Logbook
+  R(c, 818, 206, 11, 5, '#f5ebd2'); R(c, 819, 207, 9, 1, '#b83f2e');
 
-  // Tactical map board on back wall showing Lake (blue), Village (green) & East Burn Zone (red/orange)
-  R(c, 824, 162, 52, 34, '#594028');
-  R(c, 826, 164, 48, 30, '#e4d6b3');
-  R(c, 829, 168, 18, 12, '#6fa062'); R(c, 831, 181, 14, 9, '#4c8f96');
-  R(c, 851, 168, 19, 22, '#cf5338'); R(c, 855, 173, 10, 11, '#f29d38');
-  R(c, 829, 166, 42, 1, '#9c8a68');
-
-  // Field command desk with radio transceiver + lantern
-  R(c, 808, 214, 58, 10, '#a8804e'); R(c, 808, 214, 58, 2, '#d6b07a');
-  R(c, 811, 224, 5, 22, '#5c4026'); R(c, 858, 224, 5, 22, '#5c4026');
-  R(c, 814, 203, 12, 11, '#323c38'); R(c, 816, 205, 5, 4, '#88c478'); R(c, 823, 195, 2, 9, '#9aa59f'); // VHF radio
-  R(c, 846, 204, 14, 10, '#f2e6c9'); R(c, 848, 206, 10, 2, '#c84b38'); // logbook
-
-  // Emergency water drums, sandbags, fire hose reel & yellow safety helmets
-  barrel(c, 762, 212, '#3b7385'); barrel(c, 784, 215, '#467052');
-  for (let i = 0; i < 2; i++) for (let j = 0; j < 3 - i; j++) {
-    const sx = 812 + j * 15 + i * 7, sy = 237 - i * 8;
-    R(c, sx, sy, 14, 8, '#c2af80'); R(c, sx, sy, 14, 2, '#e0d0a2'); R(c, sx + 3, sy + 3, 4, 2, '#99865c');
+  // === FOREGROUND LOGISTICS: Blue Water Drum, Relief Aid Crates, Sandbags & Coiled Fire Hose ===
+  barrel(c, 760, 210, '#31758c'); // emergency water drum
+  // Bantuan Logistik crate with white & red badge on left veranda
+  crate(c, 780, 218, 16, 20, '#9c7548');
+  R(c, 784, 223, 8, 8, '#f5efe2'); R(c, 787, 224, 2, 6, '#cf3d2e'); R(c, 785, 226, 6, 2, '#cf3d2e');
+  // Stacked flood/fire sandbags & coiled crimson fire hose with brass nozzle on right
+  for (let j = 0; j < 2; j++) {
+    R(c, 856 + j * 15, 230, 14, 8, '#c7b382'); R(c, 856 + j * 15, 230, 14, 2, '#e6d6aa');
   }
-  crate(c, 869, 224, 21, 22, '#8d6a42');
-  for (const hx of [870, 881]) {
-    R(c, hx, 218, 9, 5, '#e6ac35'); R(c, hx + 1, 216, 7, 3, '#f8ce64'); R(c, hx - 1, 222, 11, 2, '#ab791e');
+  R(c, 860, 223, 15, 7, '#bda877'); R(c, 860, 223, 15, 2, '#dfd0a4');
+  // Coiled fire hose reel
+  R(c, 874, 214, 14, 16, '#b83c2b'); R(c, 876, 216, 10, 12, '#df5942');
+  R(c, 879, 219, 4, 6, '#473221'); R(c, 886, 226, 5, 3, '#e6be5a'); // brass nozzle
+
+  // Veranda timber columns + carved wooden KENTONGAN (traditional Indonesian alarm slit-drum!)
+  for (const px of [x0 + 2, 796, 854, x1 - 8]) {
+    R(c, px, yEave + 11, 6, 93, '#573b23');
+    R(c, px, yEave + 11, 2, 93, '#a87e50');
   }
-  // Coiled red canvas fire hose
-  for (let r = 0; r < 3; r++) R(c, 756 + r * 2, 240 + r * 3, 20 - r * 4, 4, r % 2 ? '#a63e2a' : '#cf583c');
+  // Veranda side wooden railings (left & right of central steps)
+  for (const [rx0, rx1] of [[x0 + 8, 796], [860, x1 - 8]] as [number, number][]) {
+    R(c, rx0, 225, rx1 - rx0, 3, '#8f6940'); R(c, rx0, 225, rx1 - rx0, 1, '#cfa76e');
+  }
+  // Iconic hanging carved wooden Kentongan on the left veranda column!
+  R(c, 756, 164, 2, 6, '#cbb88a');
+  R(c, 753, 169, 8, 24, '#8c5d34'); R(c, 754, 169, 2, 24, '#c79358');
+  R(c, 756, 174, 2, 14, '#24160c'); // resonant acoustic slit
+  R(c, 752, 167, 10, 3, '#a87644'); R(c, 761, 178, 5, 2, '#cfa76e'); // striker mallet
 }
 
 /* ---------- Organic Kalimantan Peat-Forest Floor & Perimeter Canopy ---------- */
@@ -928,8 +1065,8 @@ function villageBackground(c: CanvasRenderingContext2D) {
   R(c, 694, 224, 16, 22, '#4b7482'); R(c, 694, 224, 16, 3, '#8fb8c4'); R(c, 696, 228, 4, 14, '#729eab');
   R(c, 698, 220, 8, 5, '#a9834f');
   weatherBuilding(c, 118, 132, 184, 78, 3);
-  weatherBuilding(c, 462, 114, 206, 30, 9);
-  weatherBuilding(c, 756, 150, 136, 96, 17);
+  weatherBuilding(c, 462, 113, 34, 16, 9);
+  weatherBuilding(c, 760, 154, 126, 50, 17);
   bambooFence(c, 40, 300, 121);
   bambooFence(c, 690, 452, 110);
   villageWell(c, 372, 430);
@@ -937,8 +1074,11 @@ function villageBackground(c: CanvasRenderingContext2D) {
   handCart(c, 706, 392);
   chickenCoop(c, 104, 372);
   bicycle(c, 908, 246);
-  pottedRow(c, 482, 268, 3);
-  pottedRow(c, 622, 268, 2);
+  // Wooden customer bench & flower pots beside Warung Budi (clear of Pak Budi at 627,272)
+  R(c, 444, 249, 28, 6, '#9c7446'); R(c, 444, 249, 28, 2, '#cfa76e');
+  R(c, 447, 255, 4, 6, '#593e24'); R(c, 465, 255, 4, 6, '#593e24');
+  pottedRow(c, 480, 262, 2);
+  pottedRow(c, 650, 260, 2);
   for (let i = 0; i < 5; i++) R(c, 366 + (i % 2) * 5, 396 - i * 13, 13, 7, i % 2 ? '#b3a277' : '#a89468');
 }
 

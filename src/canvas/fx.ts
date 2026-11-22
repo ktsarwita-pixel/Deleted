@@ -96,13 +96,80 @@ export class FxSystem {
         }
         case 'fish': {
           const u = clamp01(p.age / p.life);
-          const x = (p.ox ?? p.x) + ((p.tx ?? p.x) - (p.ox ?? p.x)) * u;
-          const y = (p.oy ?? p.y) - Math.sin(u * Math.PI) * 26;
-          const dir = (p.tx ?? 0) >= (p.ox ?? 0) ? 1 : -1;
-          const tilt = u < 0.5 ? -2 : 2;
+          const ox = p.ox ?? p.x, oy = p.oy ?? p.y, tx = p.tx ?? p.x;
+          const x = ox + (tx - ox) * u;
+          const arcH = 30 + (Math.floor(p.seed) % 3) * 4;
+          const lift = Math.sin(u * Math.PI) * arcH;
+          const y = oy - lift;
+          const dir = tx >= ox ? 1 : -1;
+          // 3 Kalimantan lake species: 0 = Ikan Jelawat (silver-emerald + red fins), 1 = Ikan Mas (gold carp), 2 = Ikan Haruan (river teal-bronze)
+          const sp = Math.floor(p.seed) % 3;
+          const dorsal = sp === 0 ? '#4d7f6a' : sp === 1 ? '#d96f28' : '#3a6f7d';
+          const flank  = sp === 0 ? '#9ec4b4' : sp === 1 ? '#f29f3d' : '#6cb4c0';
+          const belly  = sp === 0 ? '#f0f7f4' : sp === 1 ? '#fbe5a2' : '#dff0ee';
+          const finCol = sp === 0 ? '#df4d36' : sp === 1 ? '#cf4228' : '#2d535e';
+          const glint  = sp === 0 ? '#ffffff' : sp === 1 ? '#fff7cf' : '#c8f6f8';
+
+          // Soft dark oval shadow directly on the water surface beneath the leaping fish
+          const shW = Math.max(6, snap(14 - lift * 0.2));
+          c.globalAlpha = prev * (0.28 * Math.sin(u * Math.PI));
+          R(x - shW / 2, oy + 1, shW, 2, '#102a2e');
+
+          // High-speed caudal tail wagging + 5-stage pitch angle along ballistic trajectory
+          const wag = Math.round(Math.sin(p.age * 38 + p.seed) * 1) * 2;
+          // pitchSlope: -2 (steep climb), -1 (climb), 0 (arched apex), +1 (descent), +2 (steep dive)
+          const pitch = u < 0.18 ? -2 : u < 0.38 ? -1 : u < 0.62 ? 0 : u < 0.82 ? 1 : 2;
           c.globalAlpha = prev;
-          R(x - 4 * dir, y - tilt, 8, 4, '#e09b54'); R(x - 2 * dir, y - tilt, 4, 2, '#f6d39a');
-          R(x - 8 * dir, y - tilt * 2, 4, 4, '#c56f36'); R(x + 3 * dir, y - tilt, 2, 2, '#1f1a17');
+          const P = (dx: number, dy: number, w: number, h: number, col: string) => {
+            const wx = dir === 1 ? x + dx : x - dx - w;
+            R(wx, y + dy, w, h, col);
+          };
+
+          if (pitch === 0) {
+            // Graceful arched crest pose at the top of the leap
+            P(-12, 2 + wag, 4, 2, finCol); P(-12, -2 + wag, 4, 2, finCol); P(-9, wag >> 1, 3, 2, finCol); // forked tail
+            P(-6, -2, 12, 2, dorsal); // arched emerald/gold back
+            P(-6, 0, 14, 2, flank);   // lateral line
+            P(-4, 2, 10, 2, belly);   // silver/gold belly
+            P(6, 0, 4, 2, dorsal); P(6, 2, 2, 2, flank); // tapered snout
+            P(-2, -4, 4, 2, finCol);  // raised dorsal fin
+            P(0, 4, 3, 2, finCol);    // ventral pectoral fin
+            P(-1, -1, 2, 2, glint); P(3, 0, 2, 1, glint); // sunlit wet scale glints
+            P(5, 0, 2, 2, '#171a1c'); // crisp eye
+          } else {
+            // Sloped body segments following climb (pitch < 0) or dive (pitch > 0)
+            const s = pitch; // -2, -1, +1, +2 vertical step from tail toward snout
+            const ty = -s * 2; // tail is lower when climbing, higher when diving!
+            const hy = s * 2;  // head is higher when climbing, lower when diving!
+            // Forked wagging tail fin
+            P(-11, ty - 2 + wag, 3, 2, finCol);
+            P(-11, ty + 2 + wag, 3, 2, finCol);
+            P(-8, ty + (wag >> 1), 3, 2, finCol);
+            // Peduncle (rear body)
+            P(-5, (ty >> 1) - 1, 5, 2, dorsal);
+            P(-5, (ty >> 1) + 1, 5, 2, flank);
+            // Mid torso + belly + dorsal & pectoral fins
+            P(-1, -2, 6, 2, dorsal);
+            P(-1, 0, 6, 2, flank);
+            P(-1, 2, 5, 2, belly);
+            P(0, -4, 4, 2, finCol);
+            P(1, 3, 3, 2, finCol);
+            // Head + tapered snout + eye
+            P(4, (hy >> 1) - 1, 5, 2, dorsal);
+            P(4, (hy >> 1) + 1, 4, 2, belly);
+            P(7, hy, 3, 2, flank);
+            P(1, -1, 2, 2, glint);
+            P(5, (hy >> 1) - 1, 2, 2, '#171a1c');
+          }
+
+          // Trailing airborne water droplets flicked off the wagging tail near the crest!
+          if (u > 0.16 && u < 0.82) {
+            c.globalAlpha = prev * 0.78;
+            const d1x = x - dir * (13 + ((Math.floor(p.age * 24) % 3) * 2));
+            const d1y = y + (pitch < 0 ? 5 : -3) + wag;
+            R(d1x, d1y, 2, 2, '#dffaf6');
+            if (u > 0.32 && u < 0.68) R(d1x - dir * 4, d1y + 3, 2, 2, '#9ce6dc');
+          }
           break;
         }
       }

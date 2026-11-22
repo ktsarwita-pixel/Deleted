@@ -28,7 +28,8 @@ export function isWater(x: number, y: number) {
 
 /** Small lake fish only jump when both the launch and landing water are open. */
 export function fishJumpStaysInWater(x: number, y: number, direction: -1 | 1, distance = 36) {
-  return isWater(x, y) && isWater(x + distance * direction, y);
+  const tx = x + distance * direction, mx = x + distance * 0.5 * direction;
+  return isWater(x, y) && isWater(mx, y) && isWater(tx, y);
 }
 
 /** Traces the open-water region so ripples can be clipped to it exactly. */
