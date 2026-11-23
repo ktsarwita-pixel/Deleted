@@ -160,9 +160,32 @@ function houseBackground(c: CanvasRenderingContext2D) {
     for (let ly = 140; ly < 138 + vh; ly += 5) R(c, vx - 1, ly, 5, 3, ly % 2 ? '#78b35c' : '#589149');
   }
 
-  // === NORTH-WEST LEMARI ULIN HUTCH (obstacle + wallet at 204,176) ===
-  cabinet(c, 138, 124, 112, 68);
-  R(c, 136, 117, 116, 9, '#b88950'); R(c, 136, 117, 116, 2, '#e4be84');
+  // === NORTH-WEST LEMARI PAKAIAN WARDROBE (proper hinged-door carcass + rich interior shelves & hanging batik!) ===
+  shadow(c, 138, 124, 112, 68);
+  R(c, 138, 124, 112, 68, '#4a3221'); // solid ironwood outer carcass
+  R(c, 141, 127, 106, 61, '#6e4b30'); // inner carcass frame
+  R(c, 144, 192, 9, 7, '#422c1d'); R(c, 235, 192, 9, 7, '#422c1d'); // sturdy feet
+  // Deep cedar wardrobe interior (x=144..244, y=131..184)
+  R(c, 144, 131, 100, 53, '#26180f');
+  R(c, 144, 131, 100, 3, '#170e08'); // top interior shadow
+  R(c, 193, 131, 3, 53, '#5c3d25'); // center vertical divider partition
+  // Left bay (145..192): brass closet rod + hanging batik & ikat shirts!
+  R(c, 146, 136, 46, 2, '#d4af64');
+  for (const [sx, col, trim] of [[150, '#b54a36', '#f0cf82'], [164, '#3a6e58', '#cbe6d2'], [178, '#466985', '#e8d49c']] as [number, string, string][]) {
+    R(c, sx + 4, 137, 2, 3, '#c79e60'); // wooden hanger neck
+    poly(c, [[sx, 141], [sx + 5, 139], [sx + 10, 141], [sx + 9, 169], [sx + 1, 169]], col);
+    R(c, sx + 2, 145, 6, 2, trim); R(c, sx + 4, 141, 2, 26, trim);
+  }
+  R(c, 145, 173, 47, 10, '#3d2819'); R(c, 148, 175, 18, 8, '#8c623c'); R(c, 170, 176, 18, 7, '#a87c4f'); // bottom shoe/linen boxes
+  // Right bay (196..243): wooden cubby shelves + folded kain sarongs + wallet tray at (204,176)!
+  R(c, 196, 151, 47, 3, '#734e30'); R(c, 196, 169, 47, 3, '#734e30');
+  R(c, 199, 140, 19, 11, '#c99854'); R(c, 201, 143, 15, 3, '#8a3929'); // keepsake box on upper shelf
+  R(c, 221, 142, 19, 9, '#d95f43'); R(c, 222, 146, 17, 4, '#f2d388'); // folded sarong stack
+  R(c, 218, 158, 22, 11, '#3e6e68'); R(c, 220, 161, 18, 3, '#e8d5a0'); // middle shelf folded batik
+  R(c, 198, 164, 16, 5, '#9e7242'); // woven wallet valet tray right behind (204, 176)!
+  R(c, 199, 174, 40, 9, '#7a5234'); R(c, 214, 177, 10, 2, '#d9b368'); // bottom drawer inside right bay
+  // Molded crown cornice on top of lemari
+  R(c, 136, 117, 116, 9, '#b88950'); R(c, 136, 117, 116, 2, '#e4be84'); R(c, 138, 124, 112, 2, '#69462a');
   // Books, woven bakul basket & framed family portrait on top of lemari
   const bookColors = ['#4f7a5a', '#bf4d38', '#deb868', '#3e6e7d', '#7c5838', '#c97842', '#5d7a4c', '#b84b39'];
   for (let i = 0; i < 8; i++) {
@@ -309,17 +332,18 @@ function houseBackground(c: CanvasRenderingContext2D) {
     R(c, sx, 492, 11, 20, '#3e5c4e'); R(c, sx + 1, 493, 9, 17, '#58826e');
     R(c, sx + 2, 497, 7, 3, '#e8c468'); R(c, sx + 4, 495, 3, 3, '#cf4b38');
   }
-  // Thick 3D cutaway timber walls with mortised corner blocks & stepped front veranda treads
-  R(c, 99, 174, 14, 202, '#473020'); R(c, 102, 174, 4, 200, '#c49458');
-  R(c, 99, 446, 14, 90, '#473020'); R(c, 102, 446, 4, 88, '#c49458');
+  // Thick 3D cutaway timber walls (leaving crisp doorway openings at West y=388..442 & South x=404..476!)
+  R(c, 99, 174, 14, 214, '#473020'); R(c, 102, 174, 4, 212, '#c49458');
+  R(c, 99, 442, 14, 94, '#473020'); R(c, 102, 442, 4, 92, '#c49458');
   R(c, 767, 174, 14, 362, '#473020'); R(c, 770, 174, 4, 358, '#bf8f54');
   R(c, 99, 532, 305, 14, '#473020'); R(c, 476, 532, 305, 14, '#473020');
   R(c, 101, 533, 301, 4, '#c49558'); R(c, 478, 533, 301, 4, '#c49558');
   // Mortise timber joint studs along cutaway wall tops
   for (let wx = 128; wx < 390; wx += 54) R(c, wx, 534, 6, 4, '#8c6239');
   for (let wx = 496; wx < 764; wx += 54) R(c, wx, 534, 6, 4, '#8c6239');
-  // Exterior ironwood veranda steps below the front double doors
-  for (let y = 538; y < 580; y += 10) {
+  // Exterior ironwood veranda landing & stepped treads outside the front doorway (x=398..482)
+  R(c, 398, 534, 84, 12, '#8f693c'); R(c, 400, 535, 80, 3, '#cfa66c');
+  for (let y = 546; y < 586; y += 10) {
     R(c, 402, y, 76, 8, '#ad864e'); R(c, 404, y, 72, 2, '#dbb87e'); R(c, 402, y + 7, 76, 2, '#543920');
   }
   // Subtle warm sunbeams angled across the ulin floor from both north windows

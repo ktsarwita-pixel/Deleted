@@ -664,21 +664,25 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, doors: DoorRig
     R(c, wx, wy + Math.floor(wh / 2), ww, 4, '#735436');
   }
 
-  // 2. Billowing Batik Window Curtains (pinned to curtain rods at y=97, gently breathing in the draft!)
-  R(c, 305, 96, 96, 3, '#4a311e'); R(c, 412, 96, 108, 3, '#4a311e'); // ironwood curtain rods
-  for (const [cx0, side] of [[308, -1], [386, 1], [415, -1], [504, 1]] as [number, number][]) {
-    const breath = motion ? Math.sin(t * 1.55 + cx0 * 0.04) * 2.2 : 0;
-    for (let k = 0; k < 7; k++) {
-      const env = k / 6; // 0 at rod rings -> full billow at hem!
-      const dx = Math.round(breath * env - side * k * 0.25);
-      const wSeg = k === 3 ? 11 : 13; // gathered waist at brass tie-back (k=3)
-      const xSeg = cx0 + dx + (k === 3 ? 1 : 0);
-      const ySeg = 99 + k * 10;
-      R(c, xSeg, ySeg, wSeg, 10, k % 2 ? '#2f5266' : '#3a647a');
-      R(c, xSeg + 2, ySeg, 3, 10, '#4f7f96'); // pleat highlight
-      // Gold-ochre Kalimantan batik diamond dot motif
-      R(c, xSeg + 5, ySeg + 4, 2, 2, '#ebd08a');
-      if (k === 3) R(c, xSeg - 1, ySeg + 3, wSeg + 2, 2, '#d9ad5b'); // brass tie-back cord
+  // 2. Billowing Cream & Crimson Batik Window Drapes (matching windowArt at 306/384 & 413/504, pinned at rod y=96!)
+  for (const [cx0, shade] of [[306, false], [384, true], [413, false], [504, true]] as [number, boolean][]) {
+    const breath = motion ? Math.sin(t * 1.5 + cx0 * 0.04) * 1.8 : 0;
+    for (let k = 0; k < 6; k++) {
+      const env = k / 5; // 0 at top curtain rod -> gentle billow at hem!
+      const dx = Math.round(breath * env);
+      const ySeg = 96 + k * 11;
+      const hSeg = k === 5 ? 11 : 11;
+      R(c, cx0 + dx, ySeg, 17, hSeg, shade ? '#cbb688' : '#d8c69a');
+      R(c, cx0 + dx + 2, ySeg, 4, hSeg, '#efe1bc');
+      R(c, cx0 + dx + 10, ySeg, 3, hSeg, '#ab9468');
+      if (k === 3) {
+        R(c, cx0 + dx - 1, ySeg + 2, 19, 4, '#b85338');
+        R(c, cx0 + dx + 1, ySeg + 3, 15, 2, '#e8be6b');
+      }
+      if (k === 5) {
+        R(c, cx0 + dx, ySeg + 3, 17, 4, '#9c4332');
+        for (let bx = cx0 + dx + 1; bx < cx0 + dx + 16; bx += 4) R(c, bx, ySeg + 4, 2, 2, '#f0ce7a');
+      }
     }
   }
 
@@ -696,11 +700,10 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, doors: DoorRig
   }
   c.globalAlpha = 1;
 
-  // 4. Warm Breathing Bedside Lamp & Study Desk Tungsten Light Pools
+  // 4. Warm Breathing Bedside Lamp (274, 208) & Living-Room Tungsten Light Pools
   const lampPulse = 0.10 + (motion ? 0.025 * Math.sin(t * 2.7) : 0);
   c.globalAlpha = lampPulse;
-  R(c, 134, 206, 46, 38, '#ffd884'); // warm bedside lamp glow
-  R(c, 682, 198, 42, 32, '#ffe299'); // study desk lamp glow
+  R(c, 250, 194, 48, 42, '#ffd884'); // warm bedside rattan-shade lamp glow
   c.globalAlpha = lampPulse * 0.55;
   R(c, 318, 252, 196, 108, '#ffd98e'); // cozy overhead living-room warmth on the Dayak rug
   c.globalAlpha = 1;
@@ -721,11 +724,11 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, doors: DoorRig
   R(c, cx - 1 + Math.round(sw * 0.5), cy + 10, 2, 8, '#c9a35c');
   R(c, cx - 3 + sw, cy + 17, 6, 5, '#ebd078'); R(c, cx - 2 + sw, cy + 18, 2, 2, '#fff9d6');
 
-  // 6. Vintage Emergency Radio: Warm Amber Dial Scale, Hunting Needle, Signal LED & Broadcast Waves
-  R(c, 632, 204, 16, 4, '#47331f'); R(c, 633, 205, 14, 2, '#f5cf7a'); // illuminated tuning scale
-  const needleX = 635 + (motion ? Math.round((0.5 + 0.5 * Math.sin(t * 0.9)) * 9) : 4);
-  R(c, needleX, 204, 2, 4, '#d94534'); // red frequency needle
-  R(c, 648, 197, 4, 2, Math.floor(t * 2.4) % 2 ? '#8cf078' : '#4b7548');
+  // 6. Vintage Emergency Radio: Illuminated Dial Window (644..663, 193..200), Hunting Needle, LED & Waves
+  R(c, 644, 193, 19, 7, '#dfecc2');
+  const needleX = 646 + (motion ? Math.round((0.5 + 0.5 * Math.sin(t * 0.85)) * 13) : 6);
+  R(c, needleX, 194, 2, 5, '#d94534'); // red frequency needle gliding inside dial window!
+  R(c, 645, 198, 3, 2, Math.floor(t * 2.4) % 2 ? '#62d95c' : '#4b7548');
   for (let i = 0; i < 3; i++) {
     const ph = (t * 1.15 + i / 3) % 1;
     c.globalAlpha = (1 - ph) * 0.72;
@@ -735,29 +738,29 @@ function drawHouseLife(c: CanvasRenderingContext2D, w: GameWorld, doors: DoorRig
     R(c, snap(668 + r) - 2, 195 + Math.round(r / 3) * 2, 2, 2, '#d8ebb5');
   }
   c.globalAlpha = 1;
-  // Fluttering corner of Wira's open notebook on the radio desk in the window draft
+  // Fluttering corner of Wira's leaflet on the radio desk (682..706, 195..209)
   if (motion && (t % 5.2) < 0.75) {
     const lift = Math.round(Math.sin(((t % 5.2) / 0.75) * Math.PI) * 3);
-    R(c, 608, 224 - lift, 9, 3, '#fffdf5'); R(c, 608, 227 - lift, 9, 1, '#c9bea6');
+    R(c, 697, 195 - lift, 9, 3, '#fffdf5'); R(c, 697, 198 - lift, 9, 1, '#c9bea6');
   }
 
-  // 7. Dining Table Hot Tea Steam (621, 339) + Dapur Kitchen Stove Blue Simmer Flame & Kettle Steam!
+  // 7. Dining Table Hot Kopi Steam (621, 339) + Dapur Stove Burner Flame (692..703, 447) & Kettle Spout Steam (710, 438)!
   for (let i = 0; i < 3; i++) {
     const ph = ((t * 0.45 + i * 0.33) % 1);
     c.globalAlpha = (1 - ph) * 0.52;
     R(c, snap(621 + Math.sin(t * 2.2 + i) * 3), snap(339 - ph * 19), 2, 4, '#f2e8cc');
   }
-  // Flickering blue gas burner flame under the kitchen kettle (around 684..694, 485)
+  // Flickering blue gas burner ring directly under the right-burner ceret kettle (690..706, y=447)
   const flameFlicker = motion ? Math.floor(t * 14) % 3 : 1;
-  c.globalAlpha = 0.85;
-  R(c, 682, 485, 12, 2, '#2d8cf0');
-  R(c, 684 + (flameFlicker === 0 ? 1 : 0), 484, 8 - (flameFlicker === 2 ? 2 : 0), 2, '#7ce8ff');
-  // Spouted ceret kettle steam puffs rising in the kitchen corner!
+  c.globalAlpha = 0.86;
+  R(c, 692, 447, 12, 2, '#2d8cf0');
+  R(c, 694 + (flameFlicker === 0 ? 1 : 0), 446, 8 - (flameFlicker === 2 ? 2 : 0), 2, '#82ecff');
+  // Spouted ceret kettle steam puffs rising directly from the spout tip (710, 439)!
   for (let i = 0; i < 4; i++) {
     const ph = ((t * 0.65 + i * 0.25) % 1);
-    c.globalAlpha = (1 - ph) * 0.48;
-    const kx = snap(696 + ph * 8 + Math.sin(t * 3 + i) * 2);
-    const ky = snap(471 - ph * 22);
+    c.globalAlpha = (1 - ph) * 0.50;
+    const kx = snap(710 + ph * 8 + Math.sin(t * 3 + i) * 2);
+    const ky = snap(437 - ph * 20);
     const ksz = ph > 0.5 ? 4 : 2;
     R(c, kx, ky, ksz, ksz, '#f2f5f0');
   }
