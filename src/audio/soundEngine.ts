@@ -1,3 +1,4 @@
+import { SIX_SEVEN_PCM16_B64, SIX_SEVEN_SAMPLE_RATE } from './sixSevenVoice';
 // Realistic Physical Foley & Outdoor Pyrotechnic Web Audio Synthesizer
 
 class SoundEngine {
@@ -574,205 +575,63 @@ class SoundEngine {
   }
 
   /**
-   * Builds a crystal-clear, studio-articulated 1.24s PCM AudioBuffer of a human voice
-   * saying "Six... Se-ven" (/s ɪ k s ... s ɛ v ə n/) using a Fant LF glottal flow derivative
-   * (with organic cycle-to-cycle jitter & shimmer), Klatt (1980) alternating-sign parallel
-   * formant tract (exact unity-peak-calibrated F1..F4 + 270 Hz nasal murmur pole),
-   * velar-pinch + /k/ release burst + dual-band alveolar /s/ + glottal-pulsed /v/ friction.
+   * Decodes the studio-mastered 22,050 Hz 16-bit neural VITS human voice recording ("Six, seven!")
+   * and resamples it via 4-point Hermite cubic interpolation into a cached native AudioBuffer
+   * (zero robotic oscillator/formant synthesis, zero stutter, instant 0ms playback).
    */
   private getSixSevenBuffer(ctx: AudioContext): AudioBuffer {
     if (this.sixSevenBuf && this.sixSevenBuf.sampleRate === ctx.sampleRate) {
       return this.sixSevenBuf;
     }
-    const sr = ctx.sampleRate;
-    const dur = 1.24;
-    const len = Math.floor(sr * dur);
-    const buf = ctx.createBuffer(1, len, sr);
+
+    // Decode little-endian Int16 PCM from base64 (works in browser + Node test environments)
+    let bytes: Uint8Array;
+    if (typeof atob === 'function') {
+      const bin = atob(SIX_SEVEN_PCM16_B64);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } else {
+      const nodeBuf = (globalThis as unknown as { Buffer: { from(s: string, enc: string): Uint8Array } }).Buffer.from(
+        SIX_SEVEN_PCM16_B64,
+        'base64',
+      );
+      bytes = new Uint8Array(nodeBuf.buffer, nodeBuf.byteOffset, nodeBuf.byteLength);
+    }
+
+    const srcLen = bytes.byteLength >> 1;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const src = new Float32Array(srcLen);
+    for (let i = 0; i < srcLen; i++) {
+      src[i] = view.getInt16(i * 2, true) / 32768;
+    }
+
+    const dstSr = ctx.sampleRate;
+    const ratio = SIX_SEVEN_SAMPLE_RATE / dstSr;
+    const dstLen = Math.max(1, Math.floor(srcLen / ratio));
+    const buf = ctx.createBuffer(1, dstLen, dstSr);
     const out = buf.getChannelData(0);
 
-    // [t, f0, vAmp, oq, F1, B1, A1, F2, B2, A2, F3, B3, A3, nasalAmp, sAmp, kAmp, vFricAmp, aspAmp]
-    const KF: number[][] = [
-      // Word 1: "SIX" (/s ɪ k s/) — crisp alveolar "/s/" onset
-      [0.000, 148, 0.00, 0.58, 400,  90, 1.00, 1980, 115, 0.62, 2630, 160, 0.42, 0.00, 0.00, 0.00, 0.00, 0.00],
-      [0.020, 148, 0.00, 0.58, 400,  90, 1.00, 1990, 115, 0.62, 2630, 160, 0.42, 0.00, 0.48, 0.00, 0.00, 0.00],
-      [0.078, 150, 0.00, 0.58, 405,  88, 1.00, 2000, 110, 0.65, 2640, 155, 0.44, 0.00, 0.42, 0.00, 0.00, 0.16],
-      // Bright, unmistakable front-high lax "/ɪ/" ("-IH-")
-      [0.100, 155, 0.95, 0.53, 410,  78, 1.00, 2010, 105, 0.70, 2650, 148, 0.46, 0.00, 0.02, 0.00, 0.00, 0.05],
-      [0.182, 168, 1.00, 0.51, 415,  76, 1.00, 1995, 102, 0.70, 2635, 145, 0.46, 0.00, 0.00, 0.00, 0.00, 0.00],
-      // Classic Klatt velar pinch into "/k/" (F2 rises to 2270 Hz, F3 drops to 2360 Hz)
-      [0.246, 160, 0.86, 0.54, 340,  88, 0.90, 2250, 115, 0.74, 2370, 155, 0.48, 0.00, 0.00, 0.00, 0.00, 0.00],
-      [0.274, 156, 0.03, 0.60, 290, 110, 0.50, 2290, 130, 0.40, 2340, 170, 0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
-      // Clean 30ms "/k/" oral stop closure
-      [0.304, 154, 0.00, 0.60, 300, 110, 0.50, 2300, 140, 0.40, 2350, 180, 0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
-      // Crisp "/k/" velar plosive release burst -> immediate "/s/" coda ("-ks")
-      [0.313, 154, 0.00, 0.60, 340, 110, 0.50, 2260, 140, 0.50, 2460, 180, 0.30, 0.00, 0.08, 0.65, 0.00, 0.20],
-      [0.330, 154, 0.00, 0.60, 360, 110, 0.50, 2050, 140, 0.50, 2580, 180, 0.30, 0.00, 0.52, 0.04, 0.00, 0.05],
-      [0.404, 154, 0.00, 0.60, 380, 110, 0.50, 1920, 140, 0.50, 2600, 180, 0.30, 0.00, 0.42, 0.00, 0.00, 0.00],
-      // Clean 50ms inter-word breath boundary so "Six" and "Seven" are two distinct words
-      [0.436, 160, 0.00, 0.60, 420, 110, 0.50, 1850, 140, 0.50, 2560, 180, 0.30, 0.00, 0.01, 0.00, 0.00, 0.00],
-      [0.484, 166, 0.00, 0.60, 460, 110, 0.60, 1820, 130, 0.55, 2550, 175, 0.34, 0.00, 0.02, 0.00, 0.00, 0.00],
-      // Word 2: "SEVEN" (/s ɛ v ə n/) — crisp "/s/" onset + natural aspiration
-      [0.508, 170, 0.00, 0.58, 510, 100, 0.80, 1810, 120, 0.62, 2540, 165, 0.40, 0.00, 0.54, 0.00, 0.00, 0.00],
-      [0.562, 174, 0.00, 0.56, 555,  92, 0.90, 1805, 115, 0.68, 2540, 160, 0.44, 0.00, 0.42, 0.00, 0.00, 0.18],
-      // Expressive, wide-open stressed "/ɛ/" ("SEH-") with playful upward pitch scoop
-      [0.588, 184, 0.98, 0.50, 590,  80, 1.05, 1805, 102, 0.80, 2540, 148, 0.50, 0.00, 0.02, 0.00, 0.00, 0.04],
-      [0.672, 202, 1.00, 0.49, 600,  78, 1.05, 1785, 100, 0.80, 2530, 146, 0.50, 0.00, 0.00, 0.00, 0.00, 0.00],
-      [0.742, 182, 0.88, 0.53, 515,  88, 0.96, 1560, 112, 0.66, 2440, 158, 0.40, 0.00, 0.00, 0.00, 0.06, 0.00],
-      // Crisp voiced labiodental "/v/" (labial F1/F2 dip + glottal-modulated lip friction)
-      [0.798, 168, 0.54, 0.60, 325, 105, 0.74, 1230, 130, 0.46, 2340, 175, 0.28, 0.00, 0.00, 0.00, 0.52, 0.00],
-      // Clear unstressed "/ə/" -> alveolar tongue-tip transition into nasal "/n/" ("-vuhn")
-      [0.858, 158, 0.90, 0.53, 500,  84, 0.96, 1475, 108, 0.66, 2460, 155, 0.40, 0.04, 0.00, 0.00, 0.02, 0.00],
-      [0.938, 146, 0.84, 0.56, 430,  92, 0.84, 1615, 118, 0.58, 2490, 165, 0.36, 0.24, 0.00, 0.00, 0.00, 0.00],
-      [1.008, 138, 0.74, 0.60, 285,  95, 0.38, 1640, 155, 0.32, 2460, 190, 0.20, 0.74, 0.00, 0.00, 0.00, 0.00],
-      [1.125, 131, 0.46, 0.63, 275, 105, 0.30, 1600, 175, 0.22, 2440, 205, 0.15, 0.66, 0.00, 0.00, 0.00, 0.00],
-      [1.235, 126, 0.00, 0.66, 270, 120, 0.25, 1580, 195, 0.16, 2420, 215, 0.10, 0.00, 0.00, 0.00, 0.00, 0.00],
-    ];
-
-    const nCols = KF[0].length;
-    const cur = new Float64Array(nCols);
-    const interp = (t: number) => {
-      if (t <= KF[0][0]) {
-        for (let j = 0; j < nCols; j++) cur[j] = KF[0][j];
-        return;
-      }
-      if (t >= KF[KF.length - 1][0]) {
-        const last = KF[KF.length - 1];
-        for (let j = 0; j < nCols; j++) cur[j] = last[j];
-        return;
-      }
-      let k = 0;
-      while (k < KF.length - 2 && t > KF[k + 1][0]) k++;
-      const a = KF[k], b = KF[k + 1];
-      const u = (t - a[0]) / Math.max(0.00001, b[0] - a[0]);
-      const s = 0.5 - 0.5 * Math.cos(Math.PI * u);
-      for (let j = 0; j < nCols; j++) cur[j] = a[j] + (b[j] - a[j]) * s;
-    };
-
-    // Exact unity-peak-normalized 2-pole resonator (0 dB gain at center frequency)
-    const calcBp = (freq: number, bw: number): [number, number, number] => {
-      const w0 = (2 * Math.PI * Math.min(sr * 0.45, freq)) / sr;
-      const r = Math.exp((-Math.PI * bw) / sr);
-      const c = -r * r;
-      const b = 2 * r * Math.cos(w0);
-      const re = 1 - b * Math.cos(w0) - c * Math.cos(2 * w0);
-      const im = b * Math.sin(w0) + c * Math.sin(2 * w0);
-      return [Math.hypot(re, im), b, c];
-    };
-
-    let y1_1 = 0, y1_2 = 0, y2_1 = 0, y2_2 = 0, y3_1 = 0, y3_2 = 0, y4_1 = 0, y4_2 = 0, yn_1 = 0, yn_2 = 0;
-    let ys1_1 = 0, ys1_2 = 0, ys2_1 = 0, ys2_2 = 0, yk1_1 = 0, yk1_2 = 0, yk2_1 = 0, yk2_2 = 0, yv_1 = 0, yv_2 = 0;
-    let prevN = 0, prevSrc = 0, hpX1 = 0, hpY1 = 0;
-
-    const [a4, b4, c4] = calcBp(3420, 220);
-    const [an, bn, cn] = calcBp(270, 95);
-    const [as1, bs1, cs1] = calcBp(5650, 950);
-    const [as2, bs2, cs2] = calcBp(7650, 1300);
-    const [ak1, bk1, ck1] = calcBp(2320, 420);
-    const [ak2, bk2, ck2] = calcBp(4200, 900);
-    const [av, bv, cv] = calcBp(3750, 1100);
-
-    let a1 = 0, b1 = 0, c1 = 0, A1 = 1;
-    let a2 = 0, b2 = 0, c2 = 0, A2 = 0.6;
-    let a3 = 0, b3 = 0, c3 = 0, A3 = 0.4;
-    let f0 = 150, vAmp = 0, oq = 0.55;
-    let nasalAmp = 0, sAmp = 0, kAmp = 0, vFricAmp = 0, aspAmp = 0;
-
-    let phase = 0, jitter = 1, shimmer = 1;
-    let rng = 2463534242;
-    const nextNoise = () => {
-      rng ^= rng << 13; rng ^= rng >>> 17; rng ^= rng << 5;
-      return ((rng >>> 0) / 4294967295) * 2 - 1;
-    };
-    const diffScale = sr / 6200;
-
-    for (let i = 0; i < len; i++) {
-      if ((i & 15) === 0) {
-        const t = i / sr;
-        interp(t);
-        const drift = 1 + 0.0032 * Math.sin(t * 10.7) + 0.0022 * Math.sin(t * 21.3 + 0.9);
-        f0 = cur[1] * drift * jitter;
-        vAmp = cur[2] * shimmer;
-        oq = cur[3];
-        [a1, b1, c1] = calcBp(cur[4], cur[5]); A1 = cur[6];
-        [a2, b2, c2] = calcBp(cur[7], cur[8]); A2 = cur[9];
-        [a3, b3, c3] = calcBp(cur[10], cur[11]); A3 = cur[12];
-        nasalAmp = cur[13]; sAmp = cur[14]; kAmp = cur[15]; vFricAmp = cur[16]; aspAmp = cur[17];
-      }
-
-      phase += f0 / sr;
-      if (phase >= 1) {
-        phase -= 1;
-        jitter = 1 + nextNoise() * 0.0028;
-        shimmer = 1 + nextNoise() * 0.018;
-      }
-
-      // Fant LF glottal flow derivative e_LF(t) with smooth return phase Ta = 0.028
-      const tp = oq * 0.74;
-      const te = oq;
-      let glot: number;
-      if (phase < tp) {
-        glot = 0.62 * Math.sin(Math.PI * (phase / tp));
-      } else if (phase < te) {
-        glot = -Math.sin(Math.PI * 0.5 * ((phase - tp) / (te - tp)));
-      } else {
-        glot = -Math.exp(-(phase - te) / 0.028);
-      }
-      glot += 0.038;
-
-      const n = nextNoise();
-      const hpN = n - 0.86 * prevN;
-      prevN = n;
-
-      const openEnv = phase < te ? 1.0 : 0.22;
-      const src = glot * vAmp + n * (aspAmp * 0.20 + vAmp * 0.022 * openEnv);
-      const srcHi = (src - prevSrc) * diffScale;
-      prevSrc = src;
-
-      // Klatt (1980) alternating-sign parallel vocal tract (+R1 - R2 + R3 - R4) + nasal murmur
-      const r1 = a1 * src   + b1 * y1_1 + c1 * y1_2; y1_2 = y1_1; y1_1 = r1;
-      const r2 = a2 * srcHi + b2 * y2_1 + c2 * y2_2; y2_2 = y2_1; y2_1 = r2;
-      const r3 = a3 * srcHi + b3 * y3_1 + c3 * y3_2; y3_2 = y3_1; y3_1 = r3;
-      const r4 = a4 * srcHi + b4 * y4_1 + c4 * y4_2; y4_2 = y4_1; y4_1 = r4;
-      const rn = an * (src * nasalAmp) + bn * yn_1 + cn * yn_2; yn_2 = yn_1; yn_1 = rn;
-
-      const voiced = A1 * r1 * 1.40
-                   - A2 * r2 * 1.55
-                   + A3 * r3 * 1.45
-                   - 0.24 * r4 * 1.25
-                   + rn * 0.52;
-
-      // Crisp studio consonants: dual-band /s/, velar /k/ burst, glottal-pulsed labiodental /v/
-      const rs1 = as1 * (hpN * sAmp) + bs1 * ys1_1 + cs1 * ys1_2; ys1_2 = ys1_1; ys1_1 = rs1;
-      const rs2 = as2 * (hpN * sAmp) + bs2 * ys2_1 + cs2 * ys2_2; ys2_2 = ys2_1; ys2_1 = rs2;
-      const rk1 = ak1 * (hpN * kAmp) + bk1 * yk1_1 + ck1 * yk1_2; yk1_2 = yk1_1; yk1_1 = rk1;
-      const rk2 = ak2 * (hpN * kAmp) + bk2 * yk2_1 + ck2 * yk2_2; yk2_2 = yk2_1; yk2_1 = rk2;
-      const rv  = av  * (hpN * vFricAmp * (0.40 + 0.60 * openEnv)) + bv * yv_1 + cv * yv_2; yv_2 = yv_1; yv_1 = rv;
-
-      const consonants = (rs1 * 1.05 + rs2 * 0.78) + (rk1 * 1.80 + rk2 * 1.10) + rv * 0.90;
-
-      // 85 Hz studio high-pass filter (strips low-end mud, keeps consonants dry & razor-sharp)
-      const raw = voiced + consonants;
-      const hpOut = 0.989 * (hpY1 + raw - hpX1);
-      hpX1 = raw; hpY1 = hpOut;
-      out[i] = hpOut;
-    }
-
-    // Broadcast-grade soft saturation & clean peak normalization (zero comb-filter echo!)
-    let peak = 0.001;
-    for (let i = 0; i < len; i++) {
-      const a = Math.abs(out[i]);
-      if (a > peak) peak = a;
-    }
-    const norm = 1.0 / peak;
-    for (let i = 0; i < len; i++) {
-      out[i] = Math.tanh(out[i] * norm * 1.38) * 0.90;
+    // 4-point Catmull-Rom / Hermite cubic interpolation for silky anti-aliased resampling
+    for (let i = 0; i < dstLen; i++) {
+      const pos = i * ratio;
+      const idx = Math.floor(pos);
+      const frac = pos - idx;
+      const y0 = src[Math.max(0, idx - 1)];
+      const y1 = src[Math.min(srcLen - 1, idx)];
+      const y2 = src[Math.min(srcLen - 1, idx + 1)];
+      const y3 = src[Math.min(srcLen - 1, idx + 2)];
+      const c0 = y1;
+      const c1 = 0.5 * (y2 - y0);
+      const c2 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3;
+      const c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
+      out[i] = ((c3 * frac + c2) * frac + c1) * frac + c0;
     }
 
     this.sixSevenBuf = buf;
     return buf;
   }
 
-  /** Plays the crystal-clear human-voiced "Six... Se-ven" phrase with anti-overlap protection. */
+  /** Plays the natural neural-voiced human "Six, seven!" clip with smooth anti-overlap protection. */
   public playEmote67() {
     const ctx = this.getContext();
     if (!ctx) return;
@@ -789,7 +648,8 @@ class SoundEngine {
 
     const src = ctx.createBufferSource();
     src.buffer = this.getSixSevenBuffer(ctx);
-    src.playbackRate.setValueAtTime(0.99 + Math.random() * 0.025, now);
+    // Subtle ±1.2% natural pitch micro-variation so repeated triggers stay organic without shifting voice character
+    src.playbackRate.setValueAtTime(0.994 + Math.random() * 0.012, now);
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.95, now);
