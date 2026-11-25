@@ -2,7 +2,7 @@ import type { GameWorld, Viewport } from '../game/model';
 import type { CollectibleItem, Direction, FireHotspot, PlayerState, SceneType } from '../types/gameTypes';
 import { getBackground, hash, poly, R, text } from './backgrounds';
 import { createDoorRig, drawHouseBackDoors, drawHouseFrontDoor, drawVillageDoors, updateDoors, type DoorRig } from './doors';
-import { drawEmoteGround, drawEmoteOverlay, drawEmoteScreen, emoteHopOffset } from './emotes';
+import { drawEmoteGround, drawEmoteOverlay, emoteHopOffset } from './emotes';
 import {
   catSprite, chickenSprite, drawBucketLive, drawCharacter, drawShadow,
   handPoint, resetRigs, type FrameSpec, type MotionInfo, type Pose, type Who,
@@ -1346,9 +1346,6 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       wind,
       reduced: !motion,
     });
-  }
-  if (!preview && world.emote?.id === 'smpn7_fireworks') {
-    drawEmoteScreen(c, world.emote, width, height, world.reducedMotion);
   }
   if (!preview) c.drawImage(getVignette(width, height), 0, 0);
   if (world.transition > 0 && !preview) {

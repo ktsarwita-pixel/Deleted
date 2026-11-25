@@ -140,7 +140,6 @@ export default function App() {
       if(key==='escape') {
         e.preventDefault();
         if(emoteWheelOpen)setEmoteWheelOpen(false);
-        else if(engine.world.emote?.id==='smpn7_fireworks')engine.cancelEmote();
         else if(engine.world.panel)engine.setPanel(null);else if(engine.world.dialogue)engine.skipCutscene();else engine.setPanel('pause');
       } else if(key==='g') {
         if(!engine.world.panel&&!engine.world.dialogue&&engine.world.cutscene<0) {
