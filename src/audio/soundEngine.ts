@@ -571,62 +571,223 @@ class SoundEngine {
     }
   }
 
-  /** Energetic '67!' emote: real acoustic hand-claps, kendang drum groove & wooden marimba hook */
+  /**
+   * Expressive human vocal-tract formant synthesis saying "Siiiix... Se-ven!"
+   * Uses a glottal harmonic source (sawtooth + chest sub + natural vibrato + breathiness)
+   * sculpted through 3 parallel resonant vocal-tract formants (F1, F2, F3) plus real
+   * alveolar sibilants (/s/), velar plosive (/k/), labiodental buzz (/v/), and nasal murmur (/n/).
+   */
   public playEmote67() {
     const ctx = this.getContext();
     if (!ctx) return;
-    const t0 = ctx.currentTime;
+    const t0 = ctx.currentTime + 0.01;
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.95, t0);
+    const sat = this.makeSaturator(ctx);
+    master.connect(sat);
+    sat.connect(ctx.destination);
 
-    // Rhythmic kendang hand-drum + clap pattern synced to Wira's 6-7 palm seesaw!
-    for (const [off, f0, clap] of [
-      [0.00, 145, true],
-      [0.22, 185, false],
-      [0.36, 130, true],
-      [0.64, 165, false],
-      [0.78, 195, true],
-    ] as const) {
-      const drum = ctx.createOscillator();
-      const dg = ctx.createGain();
-      drum.type = 'sine';
-      drum.frequency.setValueAtTime(f0, t0 + off);
-      drum.frequency.exponentialRampToValueAtTime(54, t0 + off + 0.11);
-      dg.gain.setValueAtTime(0.12, t0 + off);
-      dg.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.12);
-      drum.connect(dg);
-      dg.connect(ctx.destination);
-      drum.start(t0 + off);
-      drum.stop(t0 + off + 0.13);
-      if (clap) this.triggerHandClap(ctx, t0 + off, 0.9);
-    }
-
-    // Warm resonant wooden marimba "SIX — SE-VEN!" riff
-    const notes = [
-      { f: 392.0, d: 0.18, t: 0.00 },
-      { f: 587.3, d: 0.15, t: 0.21 },
-      { f: 659.3, d: 0.28, t: 0.36 },
-      { f: 523.3, d: 0.14, t: 0.64 },
-      { f: 784.0, d: 0.36, t: 0.78 },
-    ];
-    for (const n of notes) {
-      const st = t0 + n.t;
-      const osc = ctx.createOscillator();
-      const over = ctx.createOscillator();
+    // Helper: crisp alveolar sibilant "/s/" or plosive "/k/" burst
+    const sibilant = (start: number, dur: number, freq: number, q: number, peak: number) => {
+      if (!this.whiteBuf) return;
+      const src = ctx.createBufferSource();
+      src.buffer = this.whiteBuf;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.setValueAtTime(3200, start);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(freq, start);
+      bp.Q.setValueAtTime(q, start);
       const g = ctx.createGain();
-      osc.type = 'sine';
-      over.type = 'triangle';
-      osc.frequency.setValueAtTime(n.f, st);
-      over.frequency.setValueAtTime(n.f * 3.0, st);
-      g.gain.setValueAtTime(0.0001, st);
-      g.gain.linearRampToValueAtTime(0.10, st + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.0001, st + n.d);
-      osc.connect(g);
-      over.connect(g);
-      g.connect(ctx.destination);
-      osc.start(st);
-      over.start(st);
-      osc.stop(st + n.d + 0.01);
-      over.stop(st + 0.045);
-    }
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.linearRampToValueAtTime(peak, start + Math.min(0.025, dur * 0.35));
+      g.gain.setValueAtTime(peak * 0.85, start + dur * 0.72);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      src.connect(hp);
+      hp.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      src.start(start);
+      src.stop(start + dur + 0.01);
+    };
+
+    // Helper: voiced vocal-fold phrase through parallel F1 / F2 / F3 vocal-tract formants
+    const speakVoiced = (
+      start: number,
+      dur: number,
+      pitchCurve: [number, number][],
+      formants: { t: number; f1: number; f2: number; f3: number; g1: number; g2: number; g3: number }[],
+      ampEnv: [number, number][]
+    ) => {
+      // Glottal source: sawtooth + warm fundamental sine + natural 5.6 Hz human vibrato + breath aspiration
+      const glot = ctx.createOscillator();
+      const chest = ctx.createOscillator();
+      const vib = ctx.createOscillator();
+      const vibGain = ctx.createGain();
+      glot.type = 'sawtooth';
+      chest.type = 'sine';
+      vib.type = 'sine';
+      vib.frequency.setValueAtTime(5.6, start);
+      vibGain.gain.setValueAtTime(3.2, start);
+      vib.connect(vibGain);
+      vibGain.connect(glot.frequency);
+      vibGain.connect(chest.frequency);
+
+      for (const [relT, hz] of pitchCurve) {
+        const at = start + relT;
+        if (relT === 0) {
+          glot.frequency.setValueAtTime(hz, at);
+          chest.frequency.setValueAtTime(hz, at);
+        } else {
+          glot.frequency.linearRampToValueAtTime(hz, at);
+          chest.frequency.linearRampToValueAtTime(hz, at);
+        }
+      }
+
+      // Spectral tilt filter mimicking real human vocal folds (-12 dB/oct above 900 Hz)
+      const tilt = ctx.createBiquadFilter();
+      tilt.type = 'lowpass';
+      tilt.frequency.setValueAtTime(3400, start);
+      tilt.Q.setValueAtTime(0.5, start);
+
+      const srcMix = ctx.createGain();
+      srcMix.gain.setValueAtTime(1.0, start);
+      const chestGain = ctx.createGain();
+      chestGain.gain.setValueAtTime(0.16, start);
+
+      glot.connect(tilt);
+      tilt.connect(srcMix);
+
+      // Subtle vocal breathiness mixed into the formant tract
+      let breathSrc: AudioBufferSourceNode | null = null;
+      if (this.pinkBuf) {
+        breathSrc = ctx.createBufferSource();
+        breathSrc.buffer = this.pinkBuf;
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.055, start);
+        breathSrc.connect(bg);
+        bg.connect(srcMix);
+      }
+
+      // 3 parallel bandpass formant resonators (F1 pharyngeal, F2 oral tongue, F3 lip/tip)
+      const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), f3 = ctx.createBiquadFilter();
+      const g1 = ctx.createGain(), g2 = ctx.createGain(), g3 = ctx.createGain();
+      f1.type = 'bandpass'; f1.Q.setValueAtTime(5.2, start);
+      f2.type = 'bandpass'; f2.Q.setValueAtTime(7.8, start);
+      f3.type = 'bandpass'; f3.Q.setValueAtTime(9.0, start);
+
+      for (let i = 0; i < formants.length; i++) {
+        const kf = formants[i];
+        const at = start + kf.t;
+        if (i === 0) {
+          f1.frequency.setValueAtTime(kf.f1, at); g1.gain.setValueAtTime(kf.g1, at);
+          f2.frequency.setValueAtTime(kf.f2, at); g2.gain.setValueAtTime(kf.g2, at);
+          f3.frequency.setValueAtTime(kf.f3, at); g3.gain.setValueAtTime(kf.g3, at);
+        } else {
+          f1.frequency.linearRampToValueAtTime(kf.f1, at); g1.gain.linearRampToValueAtTime(kf.g1, at);
+          f2.frequency.linearRampToValueAtTime(kf.f2, at); g2.gain.linearRampToValueAtTime(kf.g2, at);
+          f3.frequency.linearRampToValueAtTime(kf.f3, at); g3.gain.linearRampToValueAtTime(kf.g3, at);
+        }
+      }
+
+      const vca = ctx.createGain();
+      for (let i = 0; i < ampEnv.length; i++) {
+        const [relT, amp] = ampEnv[i];
+        const at = start + relT;
+        if (i === 0) vca.gain.setValueAtTime(Math.max(0.0001, amp), at);
+        else vca.gain.linearRampToValueAtTime(Math.max(0.0001, amp), at);
+      }
+
+      srcMix.connect(f1); f1.connect(g1); g1.connect(vca);
+      srcMix.connect(f2); f2.connect(g2); g2.connect(vca);
+      srcMix.connect(f3); f3.connect(g3); g3.connect(vca);
+      chest.connect(chestGain); chestGain.connect(vca);
+      vca.connect(master);
+
+      glot.start(start); chest.start(start); vib.start(start);
+      breathSrc?.start(start);
+      const end = start + dur + 0.02;
+      glot.stop(end); chest.stop(end); vib.stop(end);
+      breathSrc?.stop(end);
+    };
+
+    // ==================== WORD 1: "S-I-X" (t = 0.00s .. 0.48s) ====================
+    // 1a) Initial "/s/" ("Sss-")
+    sibilant(t0 + 0.00, 0.085, 6300, 3.6, 0.14);
+
+    // 1b) Drawn-out "/ɪ/" vowel ("-iiih-") with warm rising inflection
+    speakVoiced(
+      t0 + 0.065,
+      0.29,
+      [
+        [0.00, 156],
+        [0.08, 174],
+        [0.22, 182],
+        [0.29, 168],
+      ],
+      [
+        { t: 0.00, f1: 395, f2: 1990, f3: 2580, g1: 0.42, g2: 0.30, g3: 0.14 },
+        { t: 0.22, f1: 410, f2: 1950, f3: 2550, g1: 0.42, g2: 0.28, g3: 0.14 },
+        // Velar coarticulation pinch into "/k/"
+        { t: 0.29, f1: 310, f2: 2120, f3: 2420, g1: 0.24, g2: 0.22, g3: 0.10 },
+      ],
+      [
+        [0.00, 0.001],
+        [0.03, 0.55],
+        [0.23, 0.52],
+        [0.29, 0.001],
+      ]
+    );
+
+    // 1c) Short "/k/" stop gap (0.355..0.38s) -> "/k/" plosive click + "/s/" coda ("-ks")
+    this.noiseSlice(ctx, this.whiteBuf, t0 + 0.38, 0.022, 'bandpass', 2200, 1800, 2.2, 0.11, 0.002);
+    sibilant(t0 + 0.395, 0.095, 6500, 3.8, 0.13);
+
+    // ==================== WORD 2: "S-E-V-E-N" (t = 0.56s .. 1.28s) ====================
+    // 2a) Initial "/s/" ("Sss-")
+    sibilant(t0 + 0.56, 0.085, 6100, 3.5, 0.14);
+
+    // 2b) Continuous two-syllable voiced contour: "/ɛ/" ("SE-") -> "/v/" buzz -> "/ə/" -> "/n/" ("-VEN")
+    speakVoiced(
+      t0 + 0.625,
+      0.64,
+      [
+        [0.00, 206], // higher iconic accent on "SE-"!
+        [0.10, 224],
+        [0.24, 204],
+        [0.31, 178], // step down across "-v-"
+        [0.44, 162], // "-ven"
+        [0.64, 138], // natural relaxed vocal fall
+      ],
+      [
+        // "/ɛ/" ("eh")
+        { t: 0.00, f1: 575, f2: 1810, f3: 2510, g1: 0.44, g2: 0.30, g3: 0.14 },
+        { t: 0.21, f1: 560, f2: 1760, f3: 2480, g1: 0.44, g2: 0.28, g3: 0.13 },
+        // "/v/" labiodental constriction
+        { t: 0.28, f1: 330, f2: 1260, f3: 2280, g1: 0.25, g2: 0.12, g3: 0.06 },
+        // "/ə/" ("uh")
+        { t: 0.36, f1: 495, f2: 1490, f3: 2420, g1: 0.38, g2: 0.24, g3: 0.11 },
+        // "/n/" resonant alveolar nasal closure ("-nnn")
+        { t: 0.47, f1: 285, f2: 1420, f3: 2350, g1: 0.40, g2: 0.09, g3: 0.05 },
+        { t: 0.64, f1: 270, f2: 1390, f3: 2320, g1: 0.32, g2: 0.06, g3: 0.04 },
+      ],
+      [
+        [0.00, 0.001],
+        [0.03, 0.60], // strong "SE-"
+        [0.21, 0.54],
+        [0.28, 0.24], // dip during voiced "/v/"
+        [0.36, 0.48], // "-VE-"
+        [0.50, 0.38], // "-N" sustain
+        [0.64, 0.001],
+      ]
+    );
+    // Soft labiodental "/v/" friction buzz right at the syllable bridge (t = 0.88s)
+    this.noiseSlice(ctx, this.pinkBuf, t0 + 0.875, 0.065, 'bandpass', 2600, 2100, 2.0, 0.05, 0.01);
+
+    // Subtle soft hand-weighing taps underneath so Wira's palms still feel physical
+    this.triggerHandClap(ctx, t0 + 0.07, 0.28);
+    this.triggerHandClap(ctx, t0 + 0.63, 0.32);
   }
 
   /**

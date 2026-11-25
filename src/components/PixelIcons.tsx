@@ -77,25 +77,21 @@ export function EmoteWheelTriggerIcon({ size = 22 }: { size?: number }) {
 /** Custom 24x24 pixel-art '67!' Emote icon: seesaw palms + bold gold '6', cyan '7' & '!' spark. */
 export function Emote67PixelIcon({ size = 32 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
-    {/* Dark pixel backing silhouette */}
-    <path d="M2 4H10V16H2ZM10 2H19V14H10ZM19 3H23V14H19Z" fill="#171421" />
+    {/* Dark pixel backing silhouette for centered '6' and '7' (no '!') */}
+    <path d="M3 4H11V16H3ZM13 2H21V14H13Z" fill="#171421" />
     {/* Bold Pixel '6' (solar gold + cream top shine) */}
-    <path d="M4 5H9V7H5V9H9V15H3V6H4ZM5 11V13H7V11Z" fill="#ffbe3b" />
-    <path d="M4 5H9V6H4Z" fill="#fff5bf" />
+    <path d="M5 5H10V7H6V9H10V15H4V6H5ZM6 11V13H8V11Z" fill="#ffbe3b" />
+    <path d="M5 5H10V6H5Z" fill="#fff5bf" />
     {/* Bold Pixel '7' (elevated seesaw step, electric cyan-mint + white shine) */}
-    <path d="M11 3H18V6H17V8H16V10H15V13H13V9H14V7H15V5H11Z" fill="#5ef5d8" />
-    <path d="M11 3H18V4H11Z" fill="#ebfffb" />
-    {/* Exclamation '!' */}
-    <path d="M20 4H22V10H20ZM20 12H22V14H20Z" fill="#ff6b7a" />
+    <path d="M14 3H20V6H19V8H18V10H17V13H15V9H16V7H17V5H14Z" fill="#5ef5d8" />
+    <path d="M14 3H20V4H14Z" fill="#ebfffb" />
     {/* Seesaw weighing palms underneath (left low, right high) */}
-    <path d="M2 18H9V21H2Z" fill="#261911" />
-    <path d="M3 19H8V20H3Z" fill="#f2c18d" />
-    <path d="M2 17H9V18H2Z" fill="#ffbe3b" />
-    <path d="M12 16H19V19H12Z" fill="#261911" />
-    <path d="M13 17H18V18H13Z" fill="#f2c18d" />
-    <path d="M12 15H19V16H12Z" fill="#5ef5d8" />
-    {/* Tiny star glint */}
-    <path d="M10 16H11V17H10ZM21 16H22V18H21ZM20 17H23V18H20Z" fill="#fff6cc" />
+    <path d="M3 18H10V21H3Z" fill="#261911" />
+    <path d="M4 19H9V20H4Z" fill="#f2c18d" />
+    <path d="M3 17H10V18H3Z" fill="#ffbe3b" />
+    <path d="M14 16H21V19H14Z" fill="#261911" />
+    <path d="M15 17H20V18H15Z" fill="#f2c18d" />
+    <path d="M14 15H21V16H14Z" fill="#5ef5d8" />
   </svg>;
 }
 

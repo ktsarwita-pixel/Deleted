@@ -145,7 +145,6 @@ export function emoteHopOffset(_emote: ActiveEmote | null, _reducedMotion: boole
 
 const GLYPH_6 = [' 111 ', '1    ', '1111 ', '1   1', '1   1', ' 111 '];
 const GLYPH_7 = ['11111', '    1', '   1 ', '  1  ', '  1  ', '  1  '];
-const GLYPH_BANG = ['1', '1', '1', '1', ' ', '1'];
 
 function drawSmallGlyph(c: CanvasRenderingContext2D, rows: string[], x: number, y: number, fill: string, hi: string) {
   const px = 2;
@@ -250,11 +249,8 @@ export function drawEmoteOverlay(
     const rightY = snap(py - 54 - lift * 5);
 
     c.globalAlpha = fade;
-    drawSmallGlyph(c, GLYPH_6, snap(px - 24), leftY, '#eab85c', '#fff2be');
-    drawSmallGlyph(c, GLYPH_7, snap(px + 14), rightY, '#da674b', '#ffd8c2');
-    if (age > 0.35) {
-      drawSmallGlyph(c, GLYPH_BANG, snap(px + 28), rightY - 2, '#f0e2bf', '#ffffff');
-    }
+    drawSmallGlyph(c, GLYPH_6, snap(px - 22), leftY, '#eab85c', '#fff2be');
+    drawSmallGlyph(c, GLYPH_7, snap(px + 12), rightY, '#5ef5d8', '#ebfffb');
     if (!reducedMotion) {
       const mY = snap(py - 60 - ((age * 18) % 10));
       R(c, snap(px - 20), mY, 2, 2, lift < 0 ? '#fff2be' : '#cbb88f');
@@ -271,14 +267,28 @@ export function drawEmoteOverlay(
     const mx = emote.originX - 24;
     const my = emote.originY - 17;
 
-    // Subtle soft dark smoke/contrast haze right behind the sky-written fireworks so the bright sparks pop on any background!
-    if (age > 0.95) {
-      const hazeIn = clamp01((age - 0.95) / 0.30);
-      c.globalAlpha = hazeIn * fade * 0.42;
-      R(c, snap(cx - 126), snap(baseY - 174), 252, 82, '#0d1520');
-      R(c, snap(cx - 118), snap(baseY - 178), 236, 90, '#0d1520');
-      c.globalAlpha = 1;
+    // Per-star crisp micro-shadow (in normal blend, ZERO screen/box border!) so every spark pops cleanly on bright sky/grass
+    const textOrigins = [
+      { x: cx + WORLD_SHELLS[2].dx, y: baseY - WORLD_SHELLS[2].peakH, tBurst: WORLD_SHELLS[2].tLaunch + WORLD_SHELLS[2].flight },
+      { x: cx + WORLD_SHELLS[3].dx, y: baseY - WORLD_SHELLS[3].peakH, tBurst: WORLD_SHELLS[3].tLaunch + WORLD_SHELLS[3].flight },
+      { x: cx + WORLD_SHELLS[4].dx, y: baseY - WORLD_SHELLS[4].peakH, tBurst: WORLD_SHELLS[4].tLaunch + WORLD_SHELLS[4].flight },
+    ];
+    for (let i = 0; i < WORLD_SMPN7_STARS.length; i++) {
+      const st = WORLD_SMPN7_STARS[i];
+      const orig = textOrigins[st.zone];
+      const sAge = age - orig.tBurst;
+      if (sAge < 0 || sAge > 3.2) continue;
+      const bloom = sAge < 0.28 ? 1 - Math.pow(1 - sAge / 0.28, 3.2) : 1;
+      const droop = sAge > 2.25 ? Math.pow((sAge - 2.25) / 1.20, 2.1) * (16 + st.seed * 14) : 0;
+      const driftX = reducedMotion ? 0 : Math.max(0, sAge - 0.28) * (1.8 + (st.seed - 0.5) * 2.4);
+      const sx = orig.x + st.jx * (1 - bloom) + (cx + st.dx - orig.x) * bloom + driftX;
+      const sy = orig.y + st.jy * (1 - bloom) + (baseY + st.dy - orig.y) * bloom + droop;
+      if (sAge < 0.24) continue;
+      const burnFade = sAge > 2.45 ? Math.max(0, 1 - (sAge - 2.45) / 1.0) : 1;
+      c.globalAlpha = fade * burnFade * 0.22;
+      R(c, Math.round(sx), Math.round(sy), 3, 3, '#3d2814');
     }
+    c.globalAlpha = 1;
 
     // Muzzle smoke puffs from the bamboo mortar
     if (!reducedMotion) {
