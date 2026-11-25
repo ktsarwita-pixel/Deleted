@@ -1,4 +1,5 @@
 import type { CollectibleItem, DialogueMessage, FireHotspot, PlayerState, SceneType, ShopItem } from '../types/gameTypes';
+import type { ActiveEmote, EmoteId } from '../canvas/emotes';
 
 export interface Point { x: number; y: number }
 export type Panel = 'shop' | 'map' | 'help' | 'pause' | 'victory' | null;
@@ -39,6 +40,7 @@ export interface GameWorld {
   muted: boolean;
   reducedMotion: boolean;
   notice: { id: number; text: string; tone: 'success' | 'info' | 'error' } | null;
+  emote?: ActiveEmote | null;
 }
 export interface GameSnapshot {
   scene: SceneType;
@@ -54,6 +56,7 @@ export interface GameSnapshot {
   reducedMotion: boolean;
   notice: GameWorld['notice'];
   saved: boolean;
+  activeEmote?: EmoteId | null;
 }
 export interface Viewport { x: number; y: number; scale: number; width: number; height: number }
 

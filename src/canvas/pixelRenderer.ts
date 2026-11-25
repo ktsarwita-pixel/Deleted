@@ -2,6 +2,7 @@ import type { GameWorld, Viewport } from '../game/model';
 import type { CollectibleItem, Direction, FireHotspot, PlayerState, SceneType } from '../types/gameTypes';
 import { getBackground, hash, poly, R, text } from './backgrounds';
 import { createDoorRig, drawHouseBackDoors, drawHouseFrontDoor, drawVillageDoors, updateDoors, type DoorRig } from './doors';
+import { drawEmoteGround, drawEmoteOverlay, emoteHopOffset } from './emotes';
 import {
   catSprite, chickenSprite, drawBucketLive, drawCharacter, drawShadow,
   handPoint, resetRigs, type FrameSpec, type MotionInfo, type Pose, type Who,
@@ -383,8 +384,9 @@ function npcSpec(who: Who, x: number, y: number, w: GameWorld, t: number): Frame
   let dir: Direction = 'down';
   if (near) { const dx = p.x - x, dy = p.y - y; dir = Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down'; }
   let pose: Pose = 'stand';
-  if (who === 'budi' && dir === 'down' && ((t + 1.3) % (near ? 3.2 : 6.5)) < 1.4) pose = 'wave';
-  if (who === 'pak_rt' && (w.cutscene === 1 || (!near && ((t + 2) % 7.5) < 1.8))) { pose = 'point'; dir = 'down'; }
+  if (w.emote && near) { pose = 'wave'; dir = 'down'; }
+  else if (who === 'budi' && dir === 'down' && ((t + 1.3) % (near ? 3.2 : 6.5)) < 1.4) pose = 'wave';
+  else if (who === 'pak_rt' && (w.cutscene === 1 || (!near && ((t + 2) % 7.5) < 1.8))) { pose = 'point'; dir = 'down'; }
   const talking = w.dialogue?.portrait === who;
   return {
     who, dir, pose, frame: Math.floor(t * 6) % 4, blink: (t + seed) % 4.7 > 4.55, holding: false, newShoes: false,
@@ -399,7 +401,10 @@ function playerSpec(w: GameWorld, m: Mem | null, t: number): FrameSpec {
   if (a?.type === 'pour') { pose = 'pour'; dir = a.target.x >= p.x ? 'right' : 'left'; }
   else if (a?.type === 'fill') pose = 'fill';
   else if (w.cutscene === 0 && w.scene === 'village' && (w.time % 2.6) < 0.8) pose = 'cough';
-  const frame = Math.floor(p.animFrame / (GAIT_DISTANCE / 4)) % 4;
+  else if (w.emote && !p.isMoving) { pose = 'wave'; dir = 'down'; }
+  const frame = (w.emote && !p.isMoving)
+    ? Math.floor(t * 8) % 4
+    : Math.floor(p.animFrame / (GAIT_DISTANCE / 4)) % 4;
   const gait = (p.animFrame % GAIT_DISTANCE) / GAIT_DISTANCE;
   const still = m ? w.time - m.stillSince : 0;
   const g = Math.floor(still / 1.6) % 4;
@@ -411,7 +416,7 @@ function playerSpec(w: GameWorld, m: Mem | null, t: number): FrameSpec {
     newShoes: p.hasNewShoes,
     flutter: Math.floor(t * (p.isMoving ? 9 : 3)) % 3,
     breath: Math.floor(t / 0.9) % 2,
-    mouth: pose === 'cough' || (talking && Math.floor(t * 7) % 2 === 0),
+    mouth: pose === 'cough' || (!!w.emote && Math.floor(t * 6) % 2 === 0) || (talking && Math.floor(t * 7) % 2 === 0),
     glance: pose === 'stand' && dir === 'down' && still > 3 ? (g === 1 ? -1 : g === 3 ? 1 : 0) : 0,
     sway: p.isMoving ? (frame === 1 || frame === 2 ? 1 : 0) : Math.floor(t * 1.2) % 2,
     gait,
@@ -477,7 +482,9 @@ function bucketPose(w: GameWorld, spec: FrameSpec, m: Mem | null) {
 
 function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, m: Mem | null, t: number, wind: Wind) {
   const p = w.player;
-  drawShadow(c, p.x, p.y, spec.pose === 'fill' ? 34 : 30);
+  const hopY = emoteHopOffset(w.emote ?? null, w.reducedMotion);
+  drawEmoteGround(c, w.emote ?? null, p.x, p.y, w.reducedMotion);
+  drawShadow(c, p.x, p.y, (spec.pose === 'fill' ? 34 : 30) + Math.round(hopY * 0.4));
   const motion: MotionInfo | undefined = m ? { dt: m.dt, vx: m.vx, vy: m.vy, speed: m.speed, lean: m.lean, wind, reduced: w.reducedMotion } : undefined;
   if (p.hasNewShoes && p.isMoving && m) {
     const back = p.dir === 'left' ? 1 : p.dir === 'right' ? -1 : 0;
@@ -522,7 +529,7 @@ function drawPlayer(c: CanvasRenderingContext2D, w: GameWorld, spec: FrameSpec, 
     }
   };
   if (spec.dir === 'up' && !bp?.rope) paintBucket();
-  drawCharacter(c, p.x, p.y, spec, motion);
+  drawCharacter(c, p.x, p.y + hopY, spec, motion);
   if (spec.dir !== 'up' || bp?.rope) paintBucket();
 }
 
@@ -1281,6 +1288,10 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   if (!preview) fx.draw(c, false);
   world.effects.forEach(e => { c.globalAlpha = Math.max(0, 1 - e.age / e.duration); R(c, snap(e.x), snap(e.y), Math.max(2, snap(e.size)), Math.max(2, snap(e.size)), e.color); });
   c.globalAlpha = 1;
+  if (!preview && world.emote) {
+    const hopY = emoteHopOffset(world.emote, world.reducedMotion);
+    drawEmoteOverlay(c, world.emote, world.player.x, world.player.y, hopY, world.reducedMotion);
+  }
 
   const prog = progressOf(world);
   if (village) {

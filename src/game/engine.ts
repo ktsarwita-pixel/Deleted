@@ -1,4 +1,5 @@
 import { soundEngine } from '../audio/soundEngine';
+import { createActiveEmote, stepActiveEmote, type EmoteId } from '../canvas/emotes';
 import { canStand, CUTSCENE, HOUSE_INTERACTIONS, HOUSE_SIZE, INITIAL_COLLECTIBLES, INITIAL_FIRE_HOTSPOTS, VILLAGE_INTERACTIONS, VILLAGE_SIZE } from '../canvas/worldData';
 import { renderGameWorld } from '../canvas/pixelRenderer';
 import { warmupSprites } from '../canvas/sprites';
@@ -15,7 +16,7 @@ const freshWorld = (): GameWorld => ({
   scene: 'house', player: initialPlayer(), fires: INITIAL_FIRE_HOTSPOTS.map(f => ({ ...f })),
   collectibles: INITIAL_COLLECTIBLES.map(c => ({ ...c })), discovered: false, cutscene: -1,
   dialogue: null, panel: null, prompt: null, path: [], destination: null, effects: [], action: null,
-  time: 0, transition: 0, muted: false, reducedMotion: false, notice: null,
+  time: 0, transition: 0, muted: false, reducedMotion: false, notice: null, emote: null,
 });
 
 export class GameEngine {
@@ -52,7 +53,8 @@ export class GameEngine {
     const w = this.world;
     return { scene: w.scene, player: { ...w.player }, progress: this.progress, discovered: w.discovered, cutscene: w.cutscene,
       dialogue: w.dialogue, panel: w.panel, prompt: w.prompt ? { id: w.prompt.id, label: w.prompt.label } : null,
-      walking: w.path.length > 0, muted: w.muted, reducedMotion: w.reducedMotion, notice: w.notice, saved: this.saved };
+      walking: w.path.length > 0, muted: w.muted, reducedMotion: w.reducedMotion, notice: w.notice, saved: this.saved,
+      activeEmote: w.emote?.id ?? null };
   }
   private publish(save = false) {
     if (save) this.save();
@@ -153,6 +155,10 @@ export class GameEngine {
     if (w.panel) { p.isMoving = false; return; }
     w.time += dt;
     w.transition = Math.max(0, w.transition - dt);
+    if (w.emote) {
+      const nextEmote = stepActiveEmote(w.emote, dt);
+      if (!nextEmote) { w.emote = null; this.publish(); }
+    }
     if (w.action) {
       w.action.age += dt;
       const dur = w.action.type === 'fill' ? .64 : .60;
@@ -284,7 +290,7 @@ export class GameEngine {
 
   private exitHouse() {
     const w = this.world;
-    this.clearKeys(); w.path = []; w.destination = null; this.queued = null;
+    this.clearKeys(); w.path = []; w.destination = null; this.queued = null; w.emote = null;
     w.scene = 'village'; w.player.x = 210; w.player.y = 315; w.player.isMoving = false; w.player.dir = 'down';
     w.transition = w.reducedMotion ? 0 : .38; w.prompt = null;
     soundEngine.playDoorOpen();
@@ -316,7 +322,7 @@ export class GameEngine {
       }
     } else if (target.kind === 'exit') { this.exitHouse(); return; }
     else if (target.kind === 'home') {
-      w.scene='house'; p.x=440; p.y=480; p.dir='up'; w.prompt=null; w.transition=w.reducedMotion?0:.38;
+      w.scene='house'; w.emote=null; p.x=440; p.y=480; p.dir='up'; w.prompt=null; w.transition=w.reducedMotion?0:.38;
       soundEngine.playDoorOpen(); this.updateCamera(1,true);
     } else if (target.kind === 'shop') w.panel='shop';
     else if (target.kind === 'radio') {
@@ -392,4 +398,11 @@ export class GameEngine {
     this.updateCamera(1,true);this.publish(true);
   };
   face(direction: Direction) { this.world.player.dir=direction; }
+  triggerEmote = (id: EmoteId) => {
+    const w = this.world, p = w.player;
+    if (w.panel || w.dialogue) return;
+    if (!p.isMoving && !w.action) p.dir = 'down';
+    w.emote = createActiveEmote(id, p.x, p.y);
+    this.publish();
+  };
 }

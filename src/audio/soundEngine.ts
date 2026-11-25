@@ -74,24 +74,37 @@ class SoundEngine {
 
   public playDoorLatch(opening: boolean = true) {
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
-    if (now - this.lastLatchTime < 320) return;
+    if (now - this.lastLatchTime < 290) return;
     this.lastLatchTime = now;
 
     const ctx = this.getContext();
     if (!ctx) return;
     const t0 = ctx.currentTime;
-    // Soft wooden latch click + warm hinge creak
+    // 1) Crisp brass spring-latch click
+    const click = ctx.createOscillator();
+    const clickGain = ctx.createGain();
+    click.type = 'square';
+    click.frequency.setValueAtTime(opening ? 680 : 520, t0);
+    click.frequency.exponentialRampToValueAtTime(opening ? 340 : 220, t0 + 0.028);
+    clickGain.gain.setValueAtTime(0.032, t0);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.03);
+    click.connect(clickGain);
+    clickGain.connect(ctx.destination);
+    click.start(t0);
+    click.stop(t0 + 0.035);
+
+    // 2) Warm oiled ulin timber swing resonance
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(opening ? 165 : 210, t0);
-    osc.frequency.exponentialRampToValueAtTime(opening ? 245 : 125, t0 + 0.09);
-    gain.gain.setValueAtTime(0.055, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.10);
+    osc.frequency.setValueAtTime(opening ? 150 : 215, t0 + 0.015);
+    osc.frequency.exponentialRampToValueAtTime(opening ? 255 : 118, t0 + 0.12);
+    gain.gain.setValueAtTime(0.058, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.13);
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + 0.11);
+    osc.start(t0 + 0.015);
+    osc.stop(t0 + 0.14);
   }
 
   public playDoorOpen() {
@@ -343,6 +356,105 @@ class SoundEngine {
       osc.start(start);
       osc.stop(start + n.d + 0.02);
     });
+  }
+
+  public playEmote67() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    // Playful seesaw "SIX — SE-VEN!" arcade chiptune riff
+    const notes = [
+      { f: 392.0, d: 0.14, t: 0.00 }, // G4 ("SIX")
+      { f: 587.3, d: 0.11, t: 0.19 }, // D5 ("SE-")
+      { f: 659.3, d: 0.22, t: 0.32 }, // E5 ("-VEN!")
+      { f: 523.3, d: 0.11, t: 0.62 }, // C5
+      { f: 784.0, d: 0.26, t: 0.76 }, // G5
+    ];
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(n.f, t0 + n.t);
+      osc.frequency.exponentialRampToValueAtTime(n.f * 1.03, t0 + n.t + n.d);
+      gain.gain.setValueAtTime(0.085, t0 + n.t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + n.t + n.d);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0 + n.t);
+      osc.stop(t0 + n.t + n.d + 0.015);
+    }
+  }
+
+  public playFireworkLaunch() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(340, t0);
+    osc.frequency.exponentialRampToValueAtTime(1280, t0 + 0.34);
+    gain.gain.setValueAtTime(0.045, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.36);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.37);
+  }
+
+  public playFireworkBurst(pitchScale: number = 1) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    // Deep festive mortar thump
+    const boom = ctx.createOscillator();
+    const boomGain = ctx.createGain();
+    boom.type = 'triangle';
+    boom.frequency.setValueAtTime(155 * pitchScale, t0);
+    boom.frequency.exponentialRampToValueAtTime(42, t0 + 0.22);
+    boomGain.gain.setValueAtTime(0.13, t0);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+    boom.connect(boomGain);
+    boomGain.connect(ctx.destination);
+    boom.start(t0);
+    boom.stop(t0 + 0.25);
+
+    // Shimmering starburst crackle arpeggio
+    const sparkles = [1046.5, 1318.5, 1568.0, 2093.0];
+    sparkles.forEach((f, i) => {
+      const sp = ctx.createOscillator();
+      const sg = ctx.createGain();
+      sp.type = 'square';
+      const st = t0 + 0.04 + i * 0.045;
+      sp.frequency.setValueAtTime(f * pitchScale, st);
+      sg.gain.setValueAtTime(0.04, st);
+      sg.gain.exponentialRampToValueAtTime(0.001, st + 0.08);
+      sp.connect(sg);
+      sg.connect(ctx.destination);
+      sp.start(st);
+      sp.stop(st + 0.09);
+    });
+  }
+
+  public playEmoteCheer(waveOnly: boolean = false) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const seq = waveOnly
+      ? [{ f: 523.25, t: 0, d: 0.09 }, { f: 659.25, t: 0.1, d: 0.16 }]
+      : [{ f: 523.25, t: 0, d: 0.08 }, { f: 659.25, t: 0.09, d: 0.08 }, { f: 783.99, t: 0.18, d: 0.22 }];
+    for (const n of seq) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(n.f, t0 + n.t);
+      gain.gain.setValueAtTime(0.09, t0 + n.t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + n.t + n.d);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0 + n.t);
+      osc.stop(t0 + n.t + n.d + 0.02);
+    }
   }
 }
 

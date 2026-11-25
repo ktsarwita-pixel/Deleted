@@ -8,6 +8,7 @@ import { Icon, type IconName } from './components/Icon';
 import { BigBucketPixelIcon, FireFlameIcon, NewShoesPixelIcon, NormalBucketPixelIcon, PortraitPixelArt, RupiahCoinIcon } from './components/PixelIcons';
 import { Modal } from './components/Modal';
 import { WarungBudiModal } from './components/WarungBudiModal';
+import { EMOTE_OPTIONS, EmoteWheel } from './components/EmoteWheel';
 import { formatRupiah } from './utils/formatRupiah';
 
 function GameCanvas({ engine }: { engine: GameEngine }) {
@@ -101,7 +102,7 @@ function Help() {
       ['02','Beli perlengkapan','Ember air Rp 12.000,00. Ember besar Rp 24.000,00 menampung dua kali air. Sepatu baru Rp 22.000,00 menambah kecepatan 20%.'],
       ['03','Isi air, lalu padamkan','Isi ember di dermaga danau. Siram titik api untuk menambah progres 10% dan menerima bantuan Rp 6.000,00. Ulangi hingga 100%.'],
     ].map(([n,h,p])=><div key={n}><span>{n}</span><div><h3>{h}</h3><p>{p}</p></div></div>)}</div>
-    <div className="help-shortcuts"><span><kbd>W A S D</kbd> atau panah untuk bergerak</span><span><kbd>E</kbd> berinteraksi</span><span><kbd>B</kbd> warung</span><span><kbd>M</kbd> peta</span><span><kbd>Esc</kbd> jeda</span></div>
+    <div className="help-shortcuts"><span><kbd>W A S D</kbd> atau panah untuk bergerak</span><span><kbd>E</kbd> berinteraksi</span><span><kbd>G</kbd> roda emote</span><span><kbd>B</kbd> warung</span><span><kbd>M</kbd> peta</span><span><kbd>Esc</kbd> jeda</span></div>
     <p className="safety-note"><Icon name="shield" size={19}/><span>Ini permainan fiksi. Di dunia nyata, jangan mendekati karhutla. Jauhi asap, evakuasi ke tempat aman, dan hubungi petugas.</span></p>
   </>;
 }
@@ -122,6 +123,11 @@ export default function App() {
   const state=useSyncExternalStore(engine.subscribe,engine.getSnapshot,engine.getSnapshot);
   const consoleRef=useRef<HTMLElement>(null);
   const [isFullscreen,setFullscreen]=useState(false);
+  const [emoteWheelOpen,setEmoteWheelOpen]=useState(false);
+
+  useEffect(()=>{
+    if(state.panel||state.dialogue||state.cutscene>=0) setEmoteWheelOpen(false);
+  },[state.panel,state.dialogue,state.cutscene]);
 
   useEffect(()=>{
     const down=(e:KeyboardEvent)=>{
@@ -133,7 +139,16 @@ export default function App() {
       if(e.repeat) return;
       if(key==='escape') {
         e.preventDefault();
-        if(engine.world.panel)engine.setPanel(null);else if(engine.world.dialogue)engine.skipCutscene();else engine.setPanel('pause');
+        if(emoteWheelOpen)setEmoteWheelOpen(false);
+        else if(engine.world.panel)engine.setPanel(null);else if(engine.world.dialogue)engine.skipCutscene();else engine.setPanel('pause');
+      } else if(key==='g') {
+        if(!engine.world.panel&&!engine.world.dialogue&&engine.world.cutscene<0) {
+          e.preventDefault();
+          setEmoteWheelOpen(v=>!v);
+        }
+      } else if(['1','2','3','4'].includes(key)&&!engine.world.panel&&!engine.world.dialogue&&engine.world.cutscene<0) {
+        const picked=EMOTE_OPTIONS.find(o=>o.hotkey===key);
+        if(picked) { e.preventDefault(); engine.triggerEmote(picked.id); setEmoteWheelOpen(false); }
       } else if(key==='e'||((key===' '||key==='enter')&&target.tagName!=='BUTTON')) {e.preventDefault();engine.interact();}
       else if(key==='m') {e.preventDefault();engine.setPanel(engine.world.panel==='map'?null:'map');}
       else if(key==='b') {e.preventDefault();engine.setPanel(engine.world.panel==='shop'?null:'shop');}
@@ -142,7 +157,7 @@ export default function App() {
     const onFullscreen=()=>setFullscreen(!!document.fullscreenElement);
     window.addEventListener('keydown',down);window.addEventListener('keyup',up);document.addEventListener('fullscreenchange',onFullscreen);
     return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);document.removeEventListener('fullscreenchange',onFullscreen);};
-  },[engine]);
+  },[engine,emoteWheelOpen]);
 
   const toggleFullscreen=async()=>{
     try { if(document.fullscreenElement)await document.exitFullscreen();else if(consoleRef.current?.requestFullscreen)await consoleRef.current.requestFullscreen();else engine.notify('Layar penuh tidak tersedia di peramban ini.'); }
@@ -176,6 +191,14 @@ export default function App() {
             {state.cutscene>=0&&<button className="skip-scene" onClick={engine.skipCutscene}>Lewati cerita<Icon name="chevron" size={13}/></button>}
             {state.dialogue&&<div className="dialogue" key={state.dialogue.text} role="region" aria-label="Dialog cerita"><PortraitPixelArt portrait={state.dialogue.portrait} size={48} animated/><div className="dialogue-text"><div><strong>{state.dialogue.speaker}</strong><span>{state.cutscene>=0?`${state.cutscene+1} / ${CUTSCENE.length}`:state.dialogue.role}</span></div><p>{state.dialogue.text}</p></div><button className="dialogue-next" onClick={engine.advanceDialogue} aria-label={state.cutscene>=0?'Lanjutkan cerita':'Tutup dialog'}><span>{state.cutscene===CUTSCENE.length-1?'Mulai misi':state.cutscene>=0?'Lanjut':'Tutup'}</span><Icon name="arrow" size={18}/></button></div>}
             {state.notice&&!state.panel&&<div className={`game-notice notice-${state.notice.tone}`} key={state.notice.id} role="status"><Icon name={state.notice.tone==='success'?'check':state.notice.tone==='error'?'help':'leaf'} size={17}/><span>{state.notice.text}</span></div>}
+            <EmoteWheel
+              open={emoteWheelOpen}
+              disabled={!!state.panel || !!state.dialogue || state.cutscene >= 0}
+              activeEmote={state.activeEmote ?? null}
+              onToggle={() => setEmoteWheelOpen(v => !v)}
+              onClose={() => setEmoteWheelOpen(false)}
+              onSelect={engine.triggerEmote}
+            />
           </div>
           <div className="console-controls">
             <div className="keyboard-controls"><span className="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Bergerak</span><i/><span className="mouse-control"><svg width="13" height="18" viewBox="0 0 14 18" fill="none" aria-hidden="true"><rect x="1" y="1" width="12" height="16" rx="5" stroke="currentColor"/><path d="M7 1v6M1 7h12" stroke="currentColor"/></svg>Klik untuk berjalan</span></div>

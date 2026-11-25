@@ -1,4 +1,4 @@
-/* Critically-damped 2.5D pixel-art doors & doorway interior sprites for Rumah Wira. */
+/* High-craft 2.5D pixel-art doors, animated latches & doorway interior sprites for Rumah Wira. */
 import type { GameWorld } from '../game/model';
 import { R, poly } from './backgrounds';
 import { soundEngine } from '../audio/soundEngine';
@@ -7,10 +7,13 @@ interface DoorSpring {
   angle: number;
   vel: number;
   wasOpen: boolean;
+  latchFlash: number; // brief glint when brass latch clicks home
 }
 
 export interface DoorRig {
   scene: string;
+  prevX: number;
+  prevY: number;
   houseFront: DoorSpring;
   lemariLeft: DoorSpring;
   lemariRight: DoorSpring;
@@ -18,22 +21,32 @@ export interface DoorRig {
   villageHome: DoorSpring;
 }
 
+const OUTLINE = '#22150d';
+
+const mkSpring = (angle: number, wasOpen: boolean): DoorSpring => ({
+  angle,
+  vel: 0,
+  wasOpen,
+  latchFlash: 0,
+});
+
 export function createDoorRig(scene: string): DoorRig {
   const inHouse = scene === 'house';
   return {
     scene,
-    // Start open on scene entry so Wira sees the door smoothly swing shut behind him!
-    houseFront: { angle: inHouse ? 1.22 : 0, vel: 0, wasOpen: inHouse },
-    lemariLeft: { angle: 0, vel: 0, wasOpen: false },
-    lemariRight: { angle: inHouse ? 0.42 : 0, vel: 0, wasOpen: false },
-    houseBedroom: { angle: 0, vel: 0, wasOpen: false },
-    villageHome: { angle: !inHouse ? 1.18 : 0, vel: 0, wasOpen: !inHouse },
+    prevX: inHouse ? 435 : 210,
+    prevY: inHouse ? 365 : 310,
+    // Start open on scene entry so Wira sees the heavy timber door swing shut behind him!
+    houseFront: mkSpring(inHouse ? 1.24 : 0, inHouse),
+    lemariLeft: mkSpring(0, false),
+    lemariRight: mkSpring(inHouse ? 0.44 : 0, false),
+    houseBedroom: mkSpring(0, false),
+    villageHome: mkSpring(!inHouse ? 1.20 : 0, !inHouse),
   };
 }
 
 /**
- * Critically-damped second-order spring (zeta ~ 0.96) so heavy wooden doors
- * accelerate smoothly and settle cleanly onto their latch with zero rubbery bounce.
+ * Critically-damped weighted timber door physics (zeta ~ 0.96) + subtle draft sway when ajar/open.
  */
 function stepDoor(
   d: DoorSpring,
@@ -44,21 +57,28 @@ function stepDoor(
   openThreshold = 0.5,
 ) {
   if (dt <= 0) return;
+  d.latchFlash = Math.max(0, d.latchFlash - dt * 3.2);
   const h = Math.min(dt, 1 / 30);
   const steps = 2;
   const sh = h / steps;
   const k = omega * omega;
   const c = 2 * 0.96 * omega;
+  const prevAngle = d.angle;
   for (let i = 0; i < steps; i++) {
     const acc = (target - d.angle) * k - d.vel * c;
     d.vel += acc * sh;
     d.angle += d.vel * sh;
   }
-  if (Math.abs(target - d.angle) < 0.004 && Math.abs(d.vel) < 0.01) {
+  if (Math.abs(target - d.angle) < 0.003 && Math.abs(d.vel) < 0.008) {
     d.angle = target;
     d.vel = 0;
   }
-  d.angle = Math.max(0, Math.min(1.32, d.angle));
+  d.angle = Math.max(0, Math.min(1.34, d.angle));
+
+  // Trigger a tiny brass latch glint right as a closing door seats into the strike plate
+  if (prevAngle >= 0.05 && d.angle < 0.05 && target === 0) {
+    d.latchFlash = 1;
+  }
 
   const nowOpen = target > openThreshold;
   if (nowOpen !== d.wasOpen) {
@@ -69,76 +89,114 @@ function stepDoor(
 
 export function updateDoors(rig: DoorRig, w: GameWorld, dt: number) {
   const walletLeft = !w.collectibles.find(c => c.id === 'wallet')?.collected;
+  const p = w.player;
 
   if (rig.scene !== w.scene) {
     const enteredVillage = w.scene === 'village';
     rig.scene = w.scene;
+    rig.prevX = p.x;
+    rig.prevY = p.y;
     if (enteredVillage) {
       rig.villageHome.angle = 1.22;
       rig.villageHome.vel = 0;
       rig.villageHome.wasOpen = true;
     } else {
-      rig.houseFront.angle = 1.24;
+      rig.houseFront.angle = 1.25;
       rig.houseFront.vel = 0;
       rig.houseFront.wasOpen = true;
       rig.lemariLeft.angle = 0;
       rig.lemariLeft.vel = 0;
-      rig.lemariRight.angle = walletLeft ? 0.42 : 0;
+      rig.lemariRight.angle = walletLeft ? 0.44 : 0;
       rig.lemariRight.vel = 0;
     }
   }
 
-  const p = w.player;
+  // Compute gentle look-ahead position (~0.18s ahead of Wira's stride) so doors open proactively!
+  const vx = dt > 0 ? Math.max(-260, Math.min(260, (p.x - rig.prevX) / dt)) : 0;
+  const vy = dt > 0 ? Math.max(-260, Math.min(260, (p.y - rig.prevY) / dt)) : 0;
+  rig.prevX = p.x;
+  rig.prevY = p.y;
+  const leadX = p.x + vx * 0.18;
+  const leadY = p.y + vy * 0.18;
   const canSound = w.time > 0.45;
+  const t = w.time;
 
   if (w.reducedMotion) {
     if (w.scene === 'house') {
-      rig.houseFront.angle = Math.hypot(p.x - 440, p.y - 520) < 124 ? 1.26 : 0;
+      rig.houseFront.angle = Math.hypot(p.x - 440, p.y - 520) < 126 ? 1.26 : 0;
       const nearWardrobe = Math.hypot(p.x - 214, p.y - 204) < 92;
       rig.lemariLeft.angle = nearWardrobe ? 1.16 : 0;
-      rig.lemariRight.angle = nearWardrobe ? 1.20 : (walletLeft ? 0.42 : 0);
-      rig.houseBedroom.angle = Math.hypot(p.x - 126, p.y - 414) < 84 ? 0.68 : 0;
+      rig.lemariRight.angle = nearWardrobe ? 1.22 : (walletLeft ? 0.44 : 0);
+      rig.houseBedroom.angle = Math.hypot(p.x - 126, p.y - 414) < 84 ? 0.72 : 0;
     } else {
       rig.villageHome.angle = Math.hypot(p.x - 210, p.y - 278) < 114 ? 1.22 : 0;
     }
     return;
   }
 
+  // Gentle breeze micro-sway when a door is held open or cracked ajar
+  const draft = Math.sin(t * 1.9) * 0.022;
+
   if (w.scene === 'house') {
-    // 1. Front Double Doors: swing wide open smoothly when approaching threshold or pathing to 'exit'
+    // 1. Front Double Doors (Pintu Kupu-Tarung Kayu Ulin)
     const headingExit =
       w.prompt?.id === 'exit' ||
-      (w.destination ? Math.hypot(w.destination.x - 440, w.destination.y - 518) < 28 : false);
-    const distExit = Math.hypot(p.x - 440, p.y - 522);
-    const wantFront = distExit < 126 || (headingExit && distExit < 185) ? 1.28 : 0;
-    stepDoor(rig.houseFront, wantFront, dt, 9.2, canSound, 0.5);
+      (w.destination ? Math.hypot(w.destination.x - 440, w.destination.y - 518) < 30 : false);
+    const distExit = Math.min(Math.hypot(p.x - 440, p.y - 522), Math.hypot(leadX - 440, leadY - 522));
+    const openFront = distExit < 128 || (headingExit && distExit < 190);
+    stepDoor(rig.houseFront, openFront ? 1.28 + draft : 0, dt, 9.5, canSound, 0.5);
 
-    // 2. North-West Lemari Wardrobe Doors: right leaf rests ajar (0.42) over wallet tray until collected;
-    //    both leaves swing wide open when Wira approaches to inspect/collect!
+    // 2. North-West Lemari Pakaian Hinged Double Doors
     const headingWallet =
       w.prompt?.id === 'wallet' ||
-      (w.destination ? Math.hypot(w.destination.x - 254, w.destination.y - 207) < 30 : false);
-    const distWardrobe = Math.hypot(p.x - 214, p.y - 204);
-    const openWardrobe = distWardrobe < (walletLeft ? 98 : 74) || headingWallet;
-    stepDoor(rig.lemariLeft, openWardrobe ? 1.16 : 0, dt, 10.2, false, 0.6);
-    stepDoor(rig.lemariRight, openWardrobe ? 1.22 : (walletLeft ? 0.42 : 0), dt, 11.0, canSound, 0.6);
+      (w.destination ? Math.hypot(w.destination.x - 254, w.destination.y - 207) < 32 : false);
+    const distWardrobe = Math.min(Math.hypot(p.x - 214, p.y - 204), Math.hypot(leadX - 214, leadY - 204));
+    const openWardrobe = distWardrobe < (walletLeft ? 100 : 76) || headingWallet;
+    stepDoor(rig.lemariLeft, openWardrobe ? 1.16 - draft * 0.6 : 0, dt, 10.4, false, 0.6);
+    stepDoor(
+      rig.lemariRight,
+      openWardrobe ? 1.22 + draft * 0.6 : (walletLeft ? 0.44 + draft * 0.5 : 0),
+      dt,
+      11.2,
+      canSound,
+      0.6,
+    );
 
-    // 3. West Cutaway Bedroom Door: cracks smoothly inward when Wira walks along the West side
-    const distBedDoor = Math.hypot(p.x - 126, p.y - 414);
-    stepDoor(rig.houseBedroom, distBedDoor < 86 ? 0.72 : 0, dt, 8.8, false, 0.35);
+    // 3. West Cutaway Bedroom Door
+    const distBedDoor = Math.min(Math.hypot(p.x - 126, p.y - 414), Math.hypot(leadX - 126, leadY - 414));
+    const openBed = distBedDoor < 88;
+    stepDoor(rig.houseBedroom, openBed ? 0.74 + draft : 0, dt, 9.0, false, 0.35);
   } else {
-    // Village Exterior Rumah Wira Front Door
+    // Village Exterior Rumah Wira Carved Front Door
     const headingHome =
       w.prompt?.id === 'home' ||
-      (w.destination ? Math.hypot(w.destination.x - 210, w.destination.y - 293) < 28 : false);
-    const distHome = Math.hypot(p.x - 210, p.y - 278);
-    const wantHome = distHome < 114 || (headingHome && distHome < 175) ? 1.22 : 0;
-    stepDoor(rig.villageHome, wantHome, dt, 9.0, canSound, 0.5);
+      (w.destination ? Math.hypot(w.destination.x - 210, w.destination.y - 293) < 30 : false);
+    const distHome = Math.min(Math.hypot(p.x - 210, p.y - 278), Math.hypot(leadX - 210, leadY - 278));
+    const openHome = distHome < 116 || (headingHome && distHome < 180);
+    stepDoor(rig.villageHome, openHome ? 1.22 + draft : 0, dt, 9.2, canSound, 0.5);
   }
 }
 
+/** Outlined polygon helper for crisp hand-pixeled door silhouettes (zero allocations). */
+function outlinedQuad(
+  c: CanvasRenderingContext2D,
+  x0: number, y0: number,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  x3: number, y3: number,
+  fill: string,
+) {
+  poly(c, [[x0 - 1, y0 - 1], [x1 + 1, y1 - 1], [x2 + 1, y2 + 1], [x3 - 1, y3 + 1]], OUTLINE);
+  poly(c, [[x0, y0], [x1, y1], [x2, y2], [x3, y3]], fill);
+}
+
+/** Picks an angle-shaded timber hex from 3 steps (0=lit face, 1=mid swing, 2=angled deep). */
+function swingTone(angle: number, c0: string, c1: string, c2: string): string {
+  return angle < 0.38 ? c0 : angle < 0.88 ? c1 : c2;
+}
+
 /**
- * Draws a single hinged Lemari wardrobe door leaf in 2.5D perspective (with louvers, panel & 3D edge).
+ * Draws a single hinged Lemari wardrobe door leaf with dark pixel outline, louvers, keyhole & brass knob.
  */
 function drawLemariLeaf(
   c: CanvasRenderingContext2D,
@@ -146,180 +204,198 @@ function drawLemariLeaf(
   yTop: number,
   fullW: number,
   h: number,
-  dir: 1 | -1, // +1 = left door (hinged at left), -1 = right door (hinged at right)
-  angle: number,
+  dir: 1 | -1, // +1 = left door, -1 = right door
+  sp: DoorSpring,
 ) {
+  const angle = sp.angle;
   const projW = Math.max(5, Math.round(fullW * Math.cos(angle)));
-  const outY = Math.round(Math.sin(angle) * 8); // outward swing toward viewer (+y)
+  const outY = Math.round(Math.sin(angle) * 8);
   const freeX = hingeX + dir * projW;
-  const xMin = Math.min(hingeX, freeX);
+  const lx = Math.min(hingeX, freeX);
+  const rx = Math.max(hingeX, freeX);
+  const ly = dir > 0 ? yTop : yTop + outY;
+  const ry = dir > 0 ? yTop + outY : yTop;
 
-  // Soft cast shadow on wardrobe frame when swung open
+  // Soft cast shadow on wardrobe sill & floor when swung open
   if (angle > 0.06) {
-    c.globalAlpha = 0.24 * Math.min(1, angle);
+    c.globalAlpha = 0.26 * Math.min(1, angle);
     poly(c, [
       [hingeX, yTop + h],
-      [freeX, yTop + h + outY + 3],
-      [freeX, yTop + h + outY + 7],
-      [hingeX, yTop + h + 3],
+      [freeX, yTop + h + outY + 4],
+      [freeX, yTop + h + outY + 8],
+      [hingeX, yTop + h + 4],
     ], '#120b06');
     c.globalAlpha = 1;
   }
 
-  // Main carved teak door leaf polygon
-  poly(c, [
-    [hingeX, yTop],
-    [freeX, yTop + outY],
-    [freeX, yTop + h + outY],
-    [hingeX, yTop + h],
-  ], dir > 0 ? '#855b37' : '#7c5432');
+  const bodyCol = dir > 0
+    ? swingTone(angle, '#8a5f3a', '#7d5533', '#6e492b')
+    : swingTone(angle, '#825835', '#754e2e', '#664327');
 
-  // Top 3D thickness edge catching overhead room light
-  poly(c, [
-    [hingeX, yTop],
-    [freeX, yTop + outY],
-    [freeX, yTop + outY + 2],
-    [hingeX, yTop + 2],
-  ], '#cfa266');
+  // Outlined carved teak door leaf
+  outlinedQuad(c, lx, ly, rx, ry, rx, ry + h, lx, ly + h, bodyCol);
 
-  // Recessed upper louvered panel & lower solid panel (when face is wide enough)
-  if (projW >= 11) {
+  // Sunlit top 3D thickness bevel
+  poly(c, [[lx, ly], [rx, ry], [rx, ry + 2], [lx, ly + 2]], '#d8ab6e');
+
+  // Recessed upper louvered panel & lower raised-field panel
+  if (projW >= 12) {
     const pad = 4;
-    const p0x = hingeX + dir * pad;
-    const p1x = freeX - dir * pad;
-    const p0y = yTop + Math.round(outY * (pad / fullW));
-    const p1y = yTop + Math.round(outY * ((fullW - pad) / fullW));
+    const pLx = lx + pad;
+    const pRx = rx - pad;
+    const pLy = ly + Math.round((ry - ly) * (pad / Math.max(1, projW)));
+    const pRy = ry - Math.round((ry - ly) * (pad / Math.max(1, projW)));
 
-    // Upper panel recess + tropical louver slats
-    poly(c, [[p0x, p0y + 5], [p1x, p1y + 5], [p1x, p1y + 26], [p0x, p0y + 26]], '#6b472a');
-    for (let ly = 8; ly <= 23; ly += 4) {
-      poly(c, [[p0x + dir, p0y + ly], [p1x - dir, p1y + ly], [p1x - dir, p1y + ly + 2], [p0x + dir, p0y + ly + 2]], '#9e7044');
+    // Upper louvered vent box
+    poly(c, [[pLx, pLy + 5], [pRx, pRy + 5], [pRx, pRy + 26], [pLx, pLy + 26]], '#4f331d');
+    for (let s = 7; s <= 23; s += 4) {
+      poly(c, [[pLx + 1, pLy + s], [pRx - 1, pRy + s], [pRx - 1, pRy + s + 2], [pLx + 1, pLy + s + 2]], '#a67749');
+      poly(c, [[pLx + 1, pLy + s], [pRx - 1, pRy + s], [pRx - 1, pRy + s + 1], [pLx + 1, pLy + s + 1]], '#c99762');
     }
-    // Lower recessed panel
-    poly(c, [[p0x, p0y + 30], [p1x, p1y + 30], [p1x, p1y + 47], [p0x, p0y + 47]], '#996c42');
-    poly(c, [[p0x, p0y + 30], [p1x, p1y + 30], [p1x, p1y + 32], [p0x, p0y + 32]], '#634126');
+
+    // Lower raised-field carved panel
+    poly(c, [[pLx, pLy + 30], [pRx, pRy + 30], [pRx, pRy + 47], [pLx, pLy + 47]], '#5c3b22');
+    poly(c, [[pLx + 2, pLy + 32], [pRx - 2, pRy + 32], [pRx - 2, pRy + 45], [pLx + 2, pLy + 45]], '#a17346');
+    poly(c, [[pLx + 2, pLy + 32], [pRx - 2, pRy + 32], [pRx - 2, pRy + 33], [pLx + 2, pLy + 33]], '#cfa068');
   }
 
-  // Solid 2px meeting-stile thickness edge when open
+  // Solid 2px meeting-stile thickness face & spring latch bolt when open
   if (angle > 0.08) {
-    R(c, dir > 0 ? freeX - 2 : freeX, yTop + outY, 2, h, '#472e1b');
+    const edgeX = dir > 0 ? freeX - 2 : freeX;
+    R(c, edgeX, yTop + outY, 2, h, '#422a18');
+    // Tiny brass latch tongue on right door edge
+    if (dir < 0) R(c, edgeX, yTop + outY + 27, 2, 3, '#e8c468');
   }
 
-  // Wrought-iron barrel hinges on outer stile
-  R(c, dir > 0 ? hingeX - 1 : hingeX - 1, yTop + 7, 2, 5, '#d4af62');
-  R(c, dir > 0 ? hingeX - 1 : hingeX - 1, yTop + h - 12, 2, 5, '#d4af62');
+  // Brass pivot barrel hinges on outer jamb stile
+  const hPinX = dir > 0 ? hingeX - 1 : hingeX - 1;
+  R(c, hPinX, yTop + 7, 2, 5, '#dfb864');
+  R(c, hPinX, yTop + h - 12, 2, 5, '#dfb864');
 
-  // Gleaming brass pull knob near meeting edge
-  if (projW >= 8) {
+  // Brass keyhole escutcheon & pull knob (unlatching handle drop when opening!)
+  if (projW >= 9) {
+    const drop = sp.vel > 0.14 ? 1 : 0;
     const kx = freeX - dir * 5;
-    const ky = yTop + 27 + Math.round(outY * 0.85);
-    R(c, Math.max(xMin, kx - 1), ky, 3, 4, '#f7d882');
-    R(c, Math.max(xMin, kx), ky + 1, 2, 2, '#fff5cc');
+    const ky = yTop + 26 + Math.round(outY * 0.85);
+    R(c, kx - 1, ky, 3, 6, '#8f6932');
+    R(c, kx - 1, ky + drop, 3, 3, sp.latchFlash > 0.3 ? '#ffffff' : '#fae08c');
   }
 }
 
 /**
- * Draws House Interior Back & Side Doors + threshold light spill (rendered before collectibles & player):
- * 1) Floor light wedge from Front Threshold Double Doors
- * 2) North-West Lemari Wardrobe Hinged Double Doors (over rich hanging-batik & shelf interior!)
- * 3) West Cutaway Wall 2.5D Upright Bedroom Door + Bedroom Interior Glimpse
+ * Draws House Interior Back & Side Doors + threshold floor light spill:
+ * 1) Layered golden/smoky floor light rays from Front Double Doors
+ * 2) North-West Lemari Pakaian Hinged Double Doors
+ * 3) West Cutaway Wall 2.5D Upright Bedroom Door & Bedroom Interior Sprite
  */
 export function drawHouseBackDoors(c: CanvasRenderingContext2D, rig: DoorRig, smokyOutside: boolean) {
-  // --- 1. Warm Daylight / Smoky Amber Floor Light Wedge from Front Doorway ---
+  // --- 1. Layered Floor Light Wedge from Front Threshold Double Doors ---
   {
     const openRatio = Math.min(1, rig.houseFront.angle / 1.15);
     if (openRatio > 0.03) {
-      const spread = Math.round(16 + openRatio * 24);
-      const reach = Math.round(18 + openRatio * 36);
-      c.globalAlpha = (smokyOutside ? 0.18 : 0.22) * openRatio;
-      poly(c, [
-        [404, 531], [476, 531],
-        [476 + spread, 531 - reach], [404 - spread, 531 - reach],
-      ], smokyOutside ? '#f2a456' : '#fff0ad');
+      const spread = Math.round(16 + openRatio * 26);
+      const reach = Math.round(20 + openRatio * 38);
+      const outerCol = smokyOutside ? '#eb9b4d' : '#ffefab';
+      const coreCol = smokyOutside ? '#f7ba72' : '#fff8d4';
+      c.globalAlpha = (smokyOutside ? 0.16 : 0.20) * openRatio;
+      poly(c, [[404, 531], [476, 531], [476 + spread, 531 - reach], [404 - spread, 531 - reach]], outerCol);
+      c.globalAlpha = (smokyOutside ? 0.10 : 0.13) * openRatio;
+      poly(c, [[414, 531], [466, 531], [466 + Math.round(spread * 0.55), 531 - Math.round(reach * 0.65)], [414 - Math.round(spread * 0.55), 531 - Math.round(reach * 0.65)]], coreCol);
       c.globalAlpha = 1;
     }
   }
 
   // --- 2. North-West Lemari Pakaian Hinged Double Doors (x=144..244, y=131..184) ---
-  // Note: When ajar/open, the detailed hanging batik shirts & cubby shelves in backgrounds.ts are revealed!
-  drawLemariLeaf(c, 144, 131, 49, 53, 1, rig.lemariLeft.angle);
-  drawLemariLeaf(c, 244, 131, 49, 53, -1, rig.lemariRight.angle);
+  drawLemariLeaf(c, 144, 131, 49, 53, 1, rig.lemariLeft);
+  drawLemariLeaf(c, 244, 131, 49, 53, -1, rig.lemariRight);
 
-  // --- 3. West Cutaway Wall 2.5D Upright Bedroom Door & Inside Bedroom Sprite (y_floor=390..442) ---
+  // --- 3. West Cutaway Wall 2.5D Upright Bedroom Door & Bedroom Inside Sprite (y_floor=390..442) ---
   {
-    const a = rig.houseBedroom.angle;
-    const doorH = 36;
+    const sp = rig.houseBedroom;
+    const a = sp.angle;
+    const doorH = 38;
 
-    // Inside Bedroom Glimpse (visible inside the West doorway opening x=99..112, y=354..442!)
-    R(c, 99, 354, 14, 36, '#593b24'); // warm bedroom inner wainscot wall
-    R(c, 100, 362, 12, 2, '#9c6e42');
-    // Honey ulin bedroom floorboards continuing west through doorway
-    R(c, 99, 390, 14, 52, '#9e7244');
+    // Bedroom Inside Sprite (visible through the open West doorway x=99..112, y=352..442!)
+    R(c, 98, 352, 15, 38, '#543721'); // warm bedroom wainscot wall
+    R(c, 99, 360, 13, 2, '#9e7044');
+    R(c, 100, 366, 8, 14, '#754e2e'); R(c, 101, 367, 6, 3, '#cfa266'); // corner of bedroom chest
+    // Honey ulin bedroom floorboards + dowel joints
+    R(c, 98, 390, 15, 52, '#a47849');
     for (let py = 396; py < 438; py += 12) {
-      R(c, 99, py, 14, 2, '#6b4a2b');
-      R(c, 99, py + 2, 14, 2, '#c79860');
+      R(c, 98, py, 15, 2, '#6b4a2b');
+      R(c, 98, py + 2, 15, 2, '#cc9d64');
     }
-    // Cozy corner of bedroom pandan mat & indoor slippers peeking inside doorway!
-    R(c, 99, 404, 8, 24, '#3e6950'); R(c, 105, 406, 2, 20, '#ebd08a');
-    R(c, 102, 430, 7, 4, '#bf4d38'); // slipper toe peek
+    // Woven emerald pandan bedroom rug & terracotta house slippers peeking inside!
+    R(c, 98, 402, 9, 26, '#3b6950'); R(c, 105, 404, 2, 22, '#f0d28a');
+    R(c, 101, 430, 8, 4, '#c44d38'); R(c, 102, 431, 5, 2, '#f2cf7e');
 
-    // North & South 2.5D upright carved doorjamb posts on West cutaway wall
-    R(c, 99, 350, 14, 40, '#3d2819'); R(c, 101, 351, 5, 38, '#9c6e42'); R(c, 99, 349, 14, 3, '#cfa266'); // North jamb post
-    R(c, 110, 390, 3, 52, '#69472a'); // Flush brass-trimmed threshold strip
+    // North upright cutaway carved doorjamb post (outlined)
+    R(c, 98, 348, 16, 43, OUTLINE);
+    R(c, 99, 349, 14, 41, '#473020');
+    R(c, 101, 351, 5, 37, '#9c6e42');
+    R(c, 99, 348, 14, 3, '#d4a66a');
+    // Rabbeted brass-trimmed threshold sill strip
+    R(c, 110, 390, 3, 52, '#5e3f24'); R(c, 112, 412, 1, 8, '#ebd07e');
 
-    // Warm amber bedroom lamp light spilling across the living room runner when ajar!
+    // Layered warm amber bedroom lamp cone spilling onto living-room runner when ajar!
     if (a > 0.03) {
-      const openK = Math.min(1, a / 0.72);
-      const reach = Math.round(14 + openK * 38);
+      const openK = Math.min(1, a / 0.74);
+      const reach = Math.round(16 + openK * 40);
       c.globalAlpha = 0.22 * openK;
-      poly(c, [
-        [113, 391],
-        [113 + reach, 384],
-        [113 + reach, 448],
-        [113, 441],
-      ], '#ffd98a');
+      poly(c, [[113, 391], [113 + reach, 383], [113 + reach, 449], [113, 441]], '#ffd98a');
+      c.globalAlpha = 0.12 * openK;
+      poly(c, [[113, 398], [113 + Math.round(reach * 0.6), 394], [113 + Math.round(reach * 0.6), 438], [113, 434]], '#fff3c4');
       c.globalAlpha = 1;
     }
 
-    // Upright 2.5D Bedroom Door Leaf (hinged at North jamb hx=111, hyBot=391, height=36px)
+    // Upright 2.5D Bedroom Door Leaf (hinged at North jamb hx=111, hyBot=391, height=38px)
     const spanY = 49;
-    const tx = 111 + Math.round(Math.sin(a) * 26);
+    const tx = 111 + Math.round(Math.sin(a) * 27);
     const tyBot = 391 + Math.round(Math.cos(a) * spanY);
     const hyBot = 391;
     const hyTop = hyBot - doorH;
     const tyTop = tyBot - doorH;
 
-    // Floor shadow under swinging door leaf
     if (a > 0.05) {
-      c.globalAlpha = 0.25;
-      poly(c, [[111, hyBot + 1], [tx + 3, tyBot + 2], [tx - 1, tyBot + 4], [111, hyBot + 3]], '#140d08');
+      c.globalAlpha = 0.26;
+      poly(c, [[111, hyBot + 1], [tx + 3, tyBot + 2], [tx - 1, tyBot + 5], [111, hyBot + 3]], '#140d08');
       c.globalAlpha = 1;
     }
 
-    // Door room-facing wooden leaf (36px tall upright quad!)
-    poly(c, [[111, hyTop], [tx, tyTop], [tx, tyBot], [111, hyBot]], '#7d5533');
-    // Recessed carved panel on door face
-    if (a > 0.08) {
-      const p0x = Math.round(111 + (tx - 111) * 0.18), p0yB = Math.round(hyBot + (tyBot - hyBot) * 0.18);
-      const p1x = Math.round(111 + (tx - 111) * 0.82), p1yB = Math.round(hyBot + (tyBot - hyBot) * 0.82);
-      poly(c, [[p0x, p0yB - 30], [p1x, p1yB - 30], [p1x, p1yB - 6], [p0x, p0yB - 6]], '#9e7044');
-    }
-    // Bright 3px top beveled wooden thickness rail + free-stile edge
-    poly(c, [[108, hyTop], [tx - 3, tyTop], [tx, tyTop], [111, hyTop]], '#cfa266');
-    poly(c, [[tx - 3, tyTop], [tx, tyTop], [tx, tyBot], [tx - 3, tyBot]], '#4a311c');
-    // Brass lever handle at waist height
-    const kx = Math.round(111 + (tx - 111) * 0.82);
-    const ky = Math.round(hyBot + (tyBot - hyBot) * 0.82) - 16;
-    R(c, kx - 1, ky, 4, 3, '#f7d882');
+    const bedFaceCol = swingTone(a, '#785130', '#875c37', '#94673f');
+    // Outlined upright wooden door quad
+    poly(c, [[107, hyTop - 1], [tx + 1, tyTop - 1], [tx + 1, tyBot + 1], [110, hyBot + 1]], OUTLINE);
+    poly(c, [[111, hyTop], [tx, tyTop], [tx, tyBot], [111, hyBot]], bedFaceCol);
 
-    // South cutaway jamb cap (drawn in front of closed door tip so the door seats cleanly into the wall!)
-    R(c, 99, 438, 14, 8, '#473020'); R(c, 101, 438, 10, 3, '#c49458');
+    // Twin recessed carved panels on the swinging face
+    if (a > 0.07) {
+      const p0x = Math.round(111 + (tx - 111) * 0.16), p0y = Math.round(hyBot + (tyBot - hyBot) * 0.16);
+      const p1x = Math.round(111 + (tx - 111) * 0.84), p1y = Math.round(hyBot + (tyBot - hyBot) * 0.84);
+      poly(c, [[p0x, p0y - 33], [p1x, p1y - 33], [p1x, p1y - 20], [p0x, p0y - 20]], '#a47649');
+      poly(c, [[p0x, p0y - 16], [p1x, p1y - 16], [p1x, p1y - 5], [p0x, p0y - 5]], '#96693f');
+    }
+
+    // Sunlit 3px top wooden thickness rail + free-stile solid edge
+    poly(c, [[108, hyTop], [tx - 3, tyTop], [tx, tyTop], [111, hyTop]], '#d9ab6e');
+    poly(c, [[tx - 3, tyTop], [tx, tyTop], [tx, tyBot], [tx - 3, tyBot]], '#472e1b');
+
+    // Depressing brass lever handle & latch tongue
+    const handleDrop = sp.vel > 0.12 ? 1 : 0;
+    const kx = Math.round(111 + (tx - 111) * 0.82);
+    const ky = Math.round(hyBot + (tyBot - hyBot) * 0.82) - 17;
+    R(c, kx - 1, ky - 1, 3, 5, '#b88c42');
+    R(c, kx - 1, ky + handleDrop, 5, 2, '#fff2b2');
+
+    // South cutaway jamb cap (seats the closed door cleanly into the cutaway wall!)
+    R(c, 98, 438, 16, 9, OUTLINE);
+    R(c, 99, 439, 14, 7, '#473020');
+    R(c, 101, 439, 10, 3, '#c49458');
   }
 }
 
 /**
- * Draws a single 34px-tall upright 2.5D Kalimantan Carved Ulin Front Door Leaf
- * swinging outward onto the front veranda steps.
+ * Draws a single 36px-tall upright 2.5D Kalimantan Carved Ulin Front Door Leaf
+ * with crisp pixel outline, vertical plank seams, Dayak sun-shield relief, brass kickplate & animated lever!
  */
 function drawUprightFrontLeaf(
   c: CanvasRenderingContext2D,
@@ -328,196 +404,272 @@ function drawUprightFrontLeaf(
   dx: number,
   dy: number,
   side: 1 | -1, // +1 = left leaf, -1 = right leaf
-  angle: number,
+  sp: DoorSpring,
 ) {
-  const doorH = 34;
+  const angle = sp.angle;
+  const doorH = 36;
   const tx = hx + dx;
   const tyBot = hyBot + dy;
   const hyTop = hyBot - doorH;
   const tyTop = tyBot - doorH;
+  const lx = side > 0 ? hx : tx;
+  const rx = side > 0 ? tx : hx;
+  const lyTop = side > 0 ? hyTop : tyTop;
+  const ryTop = side > 0 ? tyTop : hyTop;
+  const lyBot = side > 0 ? hyBot : tyBot;
+  const ryBot = side > 0 ? tyBot : hyBot;
 
-  // Cast shadow onto the veranda landing & steps
-  c.globalAlpha = 0.26;
+  // Cast angled door shadow onto the veranda landing & steps
+  c.globalAlpha = 0.28;
   poly(c, [
     [hx, hyBot + 2],
     [tx, tyBot + 2],
-    [tx + side * 2, tyBot + 7],
+    [tx + side * 3, tyBot + 8],
     [hx, hyBot + 7],
   ], '#120c07');
   c.globalAlpha = 1;
 
-  // Upright wooden door body (34px tall!)
-  poly(c, [
-    [hx, hyTop],
-    [tx, tyTop],
-    [tx, tyBot],
-    [hx, hyBot],
-  ], side > 0 ? '#6e492b' : '#664327');
+  // Dynamic timber lighting as the door turns from indoor warm light into outdoor veranda light
+  const faceCol = side > 0
+    ? swingTone(angle, '#785030', '#6b4629', '#5c3b22')
+    : swingTone(angle, '#704a2c', '#634025', '#54361f');
 
-  // Upper & lower recessed carved Kalimantan panels + golden Dayak diamond medallion
+  // Crisp dark pixel-art silhouette around entire upright leaf + top bevel!
+  poly(c, [
+    [lx - 1, lyTop - 4],
+    [rx + 1, ryTop - 4],
+    [rx + 1, ryBot + 1],
+    [lx - 1, lyBot + 1],
+  ], OUTLINE);
+
+  // Upright carved ironwood door face
+  poly(c, [[lx, lyTop], [rx, ryTop], [rx, ryBot], [lx, lyBot]], faceCol);
+
+  // Vertical tongue-and-groove ironwood plank grain lines
   const span = Math.hypot(dx, dy);
-  if (span >= 12) {
-    const p0x = Math.round(hx + dx * 0.16), p0y = Math.round(hyBot + dy * 0.16);
-    const p1x = Math.round(hx + dx * 0.84), p1y = Math.round(hyBot + dy * 0.84);
-    // Upper recessed panel + diamond carving
-    poly(c, [[p0x, p0y - 29], [p1x, p1y - 29], [p1x, p1y - 17], [p0x, p0y - 17]], '#96683e');
-    const mx = Math.round((p0x + p1x) * 0.5), my = Math.round((p0y + p1y) * 0.5) - 23;
-    poly(c, [[mx, my - 4], [mx + 4, my], [mx, my + 4], [mx - 4, my]], '#ebd084');
-    R(c, mx - 1, my - 1, 2, 2, '#b84632');
-    // Lower recessed panel
-    poly(c, [[p0x, p0y - 13], [p1x, p1y - 13], [p1x, p1y - 4], [p0x, p0y - 4]], '#875c36');
+  if (span >= 14) {
+    for (const f of [0.33, 0.66]) {
+      const gx = Math.round(hx + dx * f);
+      const gyB = Math.round(hyBot + dy * f);
+      R(c, gx, gyB - doorH + 2, 1, doorH - 5, '#4c311c');
+    }
+
+    const p0x = Math.round(hx + dx * 0.15), p0y = Math.round(hyBot + dy * 0.15);
+    const p1x = Math.round(hx + dx * 0.85), p1y = Math.round(hyBot + dy * 0.85);
+    // Upper recessed carved panel + inner gold-ochre bevel
+    poly(c, [[p0x, p0y - 31], [p1x, p1y - 31], [p1x, p1y - 18], [p0x, p0y - 18]], '#4d321d');
+    poly(c, [[p0x + side, p0y - 30], [p1x - side, p1y - 30], [p1x - side, p1y - 19], [p0x + side, p0y - 19]], '#9e6f43');
+
+    // Carved Kalimantan Dayak Sun-Shield Medallion in upper panel center
+    const mx = Math.round((p0x + p1x) * 0.5), my = Math.round((p0y + p1y) * 0.5) - 24;
+    poly(c, [[mx, my - 5], [mx + 5, my], [mx, my + 5], [mx - 5, my]], '#f0d488');
+    poly(c, [[mx, my - 3], [mx + 3, my], [mx, my + 3], [mx - 3, my]], '#bd4834');
+    R(c, mx - 1, my - 1, 2, 2, '#fff6cc');
+
+    // Lower recessed carved panel
+    poly(c, [[p0x, p0y - 14], [p1x, p1y - 14], [p1x, p1y - 5], [p0x, p0y - 5]], '#4d321d');
+    poly(c, [[p0x + side, p0y - 13], [p1x - side, p1y - 13], [p1x - side, p1y - 6], [p0x + side, p0y - 6]], '#8c6039');
+
+    // Protective weathered brass kickplate along bottom rail!
+    poly(c, [[p0x, p0y - 3], [p1x, p1y - 3], [p1x, p1y - 1], [p0x, p0y - 1]], '#c49b50');
   }
 
-  // Sunlit 3px top thickness bevel (gives unmistakable 2.5D cutaway solidity!)
-  poly(c, [
-    [hx, hyTop - 3],
-    [tx, tyTop - 3],
-    [tx, tyTop],
-    [hx, hyTop],
-  ], '#d4a66a');
+  // Sunlit 3px top wooden thickness rail + bright inner bevel highlight
+  poly(c, [[lx, lyTop - 3], [rx, ryTop - 3], [rx, ryTop], [lx, lyTop]], '#d9ab6e');
+  poly(c, [[lx, lyTop - 3], [rx, ryTop - 3], [rx, ryTop - 2], [lx, lyTop - 2]], '#f2cf98');
 
-  // Solid 3px meeting-stile thickness face visible as the leaf swings open
-  if (angle > 0.08) {
+  // Solid 3px meeting-stile thickness face & retracting spring latch bolt when open
+  if (angle > 0.07) {
     const edgeX = side > 0 ? tx - 2 : tx - 1;
-    R(c, edgeX, tyTop - 2, 3, doorH + 2, '#3d2716');
+    R(c, edgeX, tyTop - 2, 3, doorH + 2, '#3b2514');
+    // Gleaming brass spring-latch bolt protruding from meeting stile (retracts while unlatching!)
+    if (sp.vel <= 0.18) {
+      R(c, side > 0 ? tx : tx - 2, tyBot - 17, 2, 3, '#f7dc88');
+    }
   } else {
-    // Crisp dark center meeting seam when closed flush at x=440
-    R(c, 439, hyTop - 2, 2, doorH + 2, '#362214');
+    // Crisp center meeting seam at x=440 when closed flush
+    R(c, 439, hyTop - 3, 2, doorH + 3, OUTLINE);
   }
 
-  // Wrought-iron strap hinges anchored to the doorpost
-  R(c, side > 0 ? hx : hx - 3, hyTop + 6, 3, 4, '#d9b566');
-  R(c, side > 0 ? hx : hx - 3, hyBot - 9, 3, 4, '#d9b566');
+  // Wrought-iron & brass pivot strap hinges on outer jamb
+  const hX = side > 0 ? hx : hx - 4;
+  R(c, hX, hyTop + 6, 4, 4, '#362c26'); R(c, side > 0 ? hx : hx - 2, hyTop + 7, 2, 2, '#e8c468');
+  R(c, hX, hyBot - 10, 4, 4, '#362c26'); R(c, side > 0 ? hx : hx - 2, hyBot - 9, 2, 2, '#e8c468');
 
-  // Brass escutcheon plate & lever handle at waist height
+  // Animated Brass Escutcheon & Lever Handle (tilts downward on unlatch + glints when latching shut!)
+  const handleDrop = sp.vel > 0.14 ? 2 : 0;
   const kx = Math.round(hx + dx * 0.82);
-  const ky = Math.round(hyBot + dy * 0.82) - 16;
-  R(c, kx - 2, ky - 2, 4, 7, '#cfa252');
-  R(c, kx - 2, ky, 5, 3, '#fff0ad');
+  const ky = Math.round(hyBot + dy * 0.82) - 17;
+  R(c, kx - 2, ky - 3, 4, 8, '#9e7638');
+  R(c, kx - 3, ky - 1 + handleDrop, 6, 3, sp.latchFlash > 0.3 ? '#ffffff' : '#fff0ad');
+  R(c, kx - 1, ky + 3, 2, 2, '#362214'); // keyhole
 }
 
 /**
- * Draws the Foreground 2.5D Cutaway Threshold Jamb Posts, Rabbeted Sill & Upright Double Doors (depth y=534).
+ * Draws the Foreground 2.5D Cutaway Threshold Jamb Posts, Sill & Upright Double Doors (depth y=534).
  */
 export function drawHouseFrontDoor(c: CanvasRenderingContext2D, rig: DoorRig) {
-  const a = rig.houseFront.angle;
+  const sp = rig.houseFront;
+  const a = sp.angle;
 
-  // Rabbeted ironwood doorway threshold sill + gleaming central brass strike plate
+  // Stepped ironwood doorway threshold sill + recessed rabbet + gleaming brass strike plate
+  R(c, 401, 529, 78, 8, OUTLINE);
   R(c, 402, 530, 76, 6, '#593c23');
-  R(c, 404, 531, 72, 3, '#b88c52');
-  R(c, 404, 534, 72, 2, '#422b18');
-  R(c, 436, 531, 8, 3, '#f0ce78'); // brass latch strike plate
+  R(c, 404, 530, 72, 3, '#c4965a');
+  R(c, 404, 533, 72, 2, '#3d2716');
+  R(c, 435, 530, 10, 3, sp.latchFlash > 0.3 ? '#fff9d6' : '#f2cf78');
+  R(c, 439, 531, 2, 2, '#6e4c24'); // center bolt socket
 
-  // Upright 2.5D Carved Kayu Ulin Doorway Jamb Posts (flanking x=394..404 and x=476..486, height=44px)
-  for (const jx of [394, 476]) {
-    R(c, jx, 500, 10, 46, '#3b2618');
-    R(c, jx + 2, 501, 6, 43, '#8c6038');
-    R(c, jx + 3, 508, 4, 24, '#ad7b49'); // carved vertical stile relief
-    R(c, jx + 4, 517, 2, 6, '#ebd084'); // Dayak post inlay
-    // Beveled cutaway post cap
-    R(c, jx - 1, 497, 12, 4, '#593b24');
-    R(c, jx, 496, 10, 3, '#d4a66a');
+  // Upright 48px-tall Carved Kayu Ulin Doorway Jamb Posts (with dark pixel outlines & Dayak scroll inlays!)
+  for (const jx of [393, 475]) {
+    R(c, jx, 496, 12, 50, OUTLINE);
+    R(c, jx + 1, 498, 10, 47, '#4c321e');
+    R(c, jx + 3, 500, 6, 43, '#8f6239');
+    R(c, jx + 4, 506, 4, 28, '#b3814e');
+    // Carved Dayak diamond & scroll inlay on each jamb post
+    R(c, jx + 5, 514, 2, 10, '#f0d284');
+    R(c, jx + 4, 518, 4, 2, '#c44b35');
+    // Beveled cutaway post cap + highlight
+    R(c, jx, 495, 12, 4, OUTLINE);
+    R(c, jx + 1, 496, 10, 3, '#dfa668');
+    R(c, jx + 2, 496, 8, 1, '#fae0b0');
   }
 
-  // Twin 36px-wide x 34px-tall carved Kalimantan door leaves swinging outward onto veranda!
+  // Twin 36px-wide x 36px-tall carved Kalimantan door leaves swinging outward onto veranda!
   const leafSpan = 36;
   const dx = Math.round(Math.cos(a) * leafSpan);
   const dy = Math.round(Math.sin(a) * 20);
 
-  drawUprightFrontLeaf(c, 404, 534, dx, dy, 1, a);
-  drawUprightFrontLeaf(c, 476, 534, -dx, dy, -1, a);
+  drawUprightFrontLeaf(c, 404, 534, dx, dy, 1, sp);
+  drawUprightFrontLeaf(c, 476, 534, -dx, dy, -1, sp);
 }
 
 /**
- * Draws Village Exterior Rumah Wira Carved Front Door & Miniature Foyer Inside Sprite (x=193..227, y=155..202).
+ * Draws Village Exterior Rumah Wira Carved Front Door, Transom Fanlight & Miniature Foyer Inside Sprite.
  */
 export function drawVillageDoors(c: CanvasRenderingContext2D, rig: DoorRig) {
-  const a = rig.villageHome.angle;
-  const fullW = 34, x0 = 193, yTop = 160, h = 42; // y=160..202 beneath rolled rotan blind (155..160)
+  const sp = rig.villageHome;
+  const a = sp.angle;
+  const fullW = 34, x0 = 193, yTop = 161, h = 41; // y=161..202 beneath carved transom fanlight (154..161)
 
-  // --- 1. Miniature 2.5D Foyer Inside Sprite (visible when door swings open!) ---
-  R(c, x0, 155, fullW, 47, '#21150d');
+  // Outer dark doorway rabbet
+  R(c, x0 - 1, 154, fullW + 2, 49, OUTLINE);
+
+  // --- 1. Carved Kalimantan Transom Fanlight Window above Door (y=154..160, glowing warmly!) ---
+  R(c, x0, 154, fullW, 6, '#4a311d');
+  for (let fx = x0 + 2; fx < x0 + fullW - 3; fx += 6) {
+    R(c, fx, 155, 4, 4, '#f5d484'); // warm indoor lamp glow through transom panes!
+    R(c, fx + 1, 156, 2, 2, '#fff5c8');
+  }
+  R(c, x0, 160, fullW, 2, '#8c6139'); // transom mullion bar
+
+  // --- 2. Miniature 2.5D Foyer Inside Sprite (revealed when door swings inward!) ---
+  R(c, x0, yTop, fullW, h, '#21150d');
   if (a > 0.03) {
-    // Warm interior back wall wainscot + overhead tungsten lamp halo
-    R(c, x0 + 2, yTop, fullW - 4, 18, '#5e3e24');
-    R(c, x0 + 2, yTop + 16, fullW - 4, 2, '#3d2817'); // baseboard
-    R(c, x0 + 9, yTop + 2, fullW - 18, 10, '#ad783e');
-    R(c, x0 + 13, yTop + 3, 8, 5, '#fae298'); // warm indoor lamp glow
-    // Perspective ulin floorboards inside foyer (y=178..202)
-    R(c, x0 + 1, yTop + 18, fullW - 2, 24, '#9c6e42');
-    for (let py = yTop + 22; py < yTop + 41; py += 6) {
+    // Warm interior back wall wainscot + glowing pendant ceiling lamp
+    R(c, x0 + 2, yTop + 1, fullW - 4, 17, '#634126');
+    R(c, x0 + 2, yTop + 16, fullW - 4, 2, '#3d2817');
+    R(c, x0 + 8, yTop + 2, fullW - 16, 11, '#b57e42');
+    R(c, x0 + 16, yTop + 1, 2, 3, '#3d2817'); // lamp cord
+    R(c, x0 + 13, yTop + 3, 8, 5, '#ffe89e');
+    R(c, x0 + 15, yTop + 4, 4, 3, '#fffbe0');
+
+    // Perspective ulin floorboards inside foyer (y=179..202)
+    R(c, x0 + 1, yTop + 18, fullW - 2, 23, '#a47446');
+    for (let py = yTop + 22; py < yTop + 40; py += 6) {
       R(c, x0 + 1, py, fullW - 2, 1, '#6b492b');
+      R(c, x0 + 1, py + 1, fullW - 2, 1, '#c89660');
     }
-    // Glimpse of Wira's crimson-and-gold Dayak ikat medallion rug inside!
-    poly(c, [[x0 + 6, yTop + 25], [x0 + fullW - 6, yTop + 25], [x0 + fullW - 3, yTop + 37], [x0 + 3, yTop + 37]], '#a84432');
-    poly(c, [[x0 + 9, yTop + 27], [x0 + fullW - 9, yTop + 27], [x0 + fullW - 7, yTop + 34], [x0 + 7, yTop + 34]], '#ebd08a');
+    // Wira's crimson-and-gold Dayak ikat medallion rug visible inside the foyer!
+    poly(c, [[x0 + 6, yTop + 24], [x0 + fullW - 6, yTop + 24], [x0 + fullW - 3, yTop + 37], [x0 + 3, yTop + 37]], '#ad4633');
+    poly(c, [[x0 + 9, yTop + 26], [x0 + fullW - 9, yTop + 26], [x0 + fullW - 7, yTop + 34], [x0 + 7, yTop + 34]], '#f0d48c');
     R(c, x0 + 14, yTop + 29, 6, 3, '#385c47');
 
-    // Warm indoor lamp light spilling onto the front porch deck!
-    c.globalAlpha = 0.22 * Math.min(1, a);
+    // Warm indoor foyer light spilling onto the front porch planks & top stair!
+    const spillA = Math.min(1, a);
+    c.globalAlpha = 0.24 * spillA;
     poly(c, [
       [x0, yTop + h],
       [x0 + fullW, yTop + h],
-      [x0 + fullW + 9, yTop + h + 11],
-      [x0 - 5, yTop + h + 11],
+      [x0 + fullW + 10, yTop + h + 12],
+      [x0 - 6, yTop + h + 12],
     ], '#ffd984');
     c.globalAlpha = 1;
   }
 
-  // Neat rolled rotan sun-blind valance mounted at top of doorway (y=155..160, never overwritten!)
-  R(c, x0, 155, fullW, 5, '#be955c');
-  R(c, x0, 157, fullW, 1, '#785632');
-  R(c, x0, 159, fullW, 2, '#593e22');
-
-  // --- 2. 3D Foreshortened Carved Kayu Ulin Front Door Leaf (hinged on left jamb x=193, swings inward) ---
+  // --- 3. 3D Foreshortened Carved Kayu Ulin Front Door Leaf (hinged on left jamb x=193, swings inward) ---
   const leafW = Math.max(4, Math.round(fullW * Math.cos(a)));
-  const persp = Math.round(Math.sin(a) * 5); // inward perspective convergence at free edge
+  const persp = Math.round(Math.sin(a) * 5);
+  const doorFaceCol = swingTone(a, '#785030', '#694528', '#593920');
 
+  // Outlined inward-swinging door quad
+  poly(c, [
+    [x0 - 1, yTop - 1],
+    [x0 + leafW + 1, yTop + persp - 1],
+    [x0 + leafW + 1, yTop + h - persp + 1],
+    [x0 - 1, yTop + h + 1],
+  ], OUTLINE);
   poly(c, [
     [x0, yTop],
     [x0 + leafW, yTop + persp],
     [x0 + leafW, yTop + h - persp],
     [x0, yTop + h],
-  ], '#6e492b');
+  ], doorFaceCol);
 
-  // Left hinge-stile highlight & lit solid-wood door thickness edge when open
-  R(c, x0, yTop, 2, h, '#ad7e4c');
+  // Left hinge-stile highlight & warm foyer-lit solid-wood inner thickness edge when open!
+  R(c, x0, yTop, 2, h, '#b88652');
   if (a > 0.08) {
-    R(c, x0 + leafW, yTop + persp, 2, h - persp * 2, '#cfa266'); // lit inner edge catching foyer lamp!
-    R(c, x0 + leafW + 2, yTop + persp + 1, 1, h - persp * 2 - 2, '#3b2616');
+    R(c, x0 + leafW, yTop + persp, 2, h - persp * 2, '#dfb272'); // inner stile catching warm foyer lamp!
+    R(c, x0 + leafW + 2, yTop + persp + 1, 1, h - persp * 2 - 2, OUTLINE);
   }
 
   if (leafW >= 10) {
     const inW = Math.max(3, leafW - 7);
     const pUp = Math.round(persp * 0.75);
-    // Upper recessed teak panel + carved Dayak sun-diamond
+    // Upper recessed carved teak panel
     poly(c, [
       [x0 + 4, yTop + 4],
       [x0 + 4 + inW, yTop + 4 + pUp],
-      [x0 + 4 + inW, yTop + 19 + Math.round(pUp * 0.4)],
-      [x0 + 4, yTop + 19],
-    ], '#8f6239');
-    // Lower recessed teak panel
+      [x0 + 4 + inW, yTop + 18 + Math.round(pUp * 0.4)],
+      [x0 + 4, yTop + 18],
+    ], '#4d321d');
     poly(c, [
-      [x0 + 4, yTop + 24],
-      [x0 + 4 + inW, yTop + 24 - Math.round(pUp * 0.3)],
-      [x0 + 4 + inW, yTop + 38 - pUp],
-      [x0 + 4, yTop + 38],
-    ], '#825833');
+      [x0 + 5, yTop + 5],
+      [x0 + 3 + inW, yTop + 5 + pUp],
+      [x0 + 3 + inW, yTop + 17 + Math.round(pUp * 0.4)],
+      [x0 + 5, yTop + 17],
+    ], '#96683e');
+
+    // Lower recessed carved teak panel + brass kickplate
+    poly(c, [
+      [x0 + 4, yTop + 23],
+      [x0 + 4 + inW, yTop + 23 - Math.round(pUp * 0.3)],
+      [x0 + 4 + inW, yTop + 36 - pUp],
+      [x0 + 4, yTop + 36],
+    ], '#4d321d');
+    poly(c, [
+      [x0 + 5, yTop + 24],
+      [x0 + 3 + inW, yTop + 24 - Math.round(pUp * 0.3)],
+      [x0 + 3 + inW, yTop + 35 - pUp],
+      [x0 + 5, yTop + 35],
+    ], '#875c36');
+    R(c, x0 + 3, yTop + h - persp - 3, Math.max(3, leafW - 5), 2, '#bd944c');
 
     if (leafW >= 16) {
       const cx = x0 + Math.round(leafW * 0.52), cy = yTop + 11 + Math.round(pUp * 0.35);
-      poly(c, [[cx, cy - 4], [cx + 4, cy], [cx, cy + 4], [cx - 4, cy]], '#ebd084');
-      R(c, cx - 1, cy - 1, 3, 3, '#b54632');
+      poly(c, [[cx, cy - 4], [cx + 4, cy], [cx, cy + 4], [cx - 4, cy]], '#f2d688');
+      R(c, cx - 1, cy - 1, 3, 3, '#bd4834');
+      R(c, cx, cy, 1, 1, '#fff8d4');
     }
 
-    // Brass ring handle & keyhole escutcheon
-    const hx = x0 + leafW - 5, hy = yTop + 20;
-    R(c, hx, hy, 3, 6, '#f5d782');
-    R(c, hx + 1, hy + 2, 2, 2, '#5c3c22');
+    // Depressing brass lever handle & keyhole escutcheon
+    const drop = sp.vel > 0.14 ? 1 : 0;
+    const hx = x0 + leafW - 5, hy = yTop + 19;
+    R(c, hx, hy, 3, 6, '#9c7436');
+    R(c, hx - 1, hy + 1 + drop, 4, 2, sp.latchFlash > 0.3 ? '#ffffff' : '#fff0ad');
   }
 
-  // Wrought-iron strap hinges on left jamb
-  R(c, x0 - 1, yTop + 6, 4, 3, '#3b3530');
-  R(c, x0 - 1, yTop + 32, 4, 3, '#3b3530');
+  // Wrought-iron strap hinges with brass pivot pins on left jamb
+  R(c, x0 - 1, yTop + 6, 4, 3, '#332b26'); R(c, x0, yTop + 7, 2, 1, '#e8c468');
+  R(c, x0 - 1, yTop + 31, 4, 3, '#332b26'); R(c, x0, yTop + 32, 2, 1, '#e8c468');
 }

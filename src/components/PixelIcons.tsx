@@ -59,3 +59,87 @@ export function RupiahCoinIcon({ size = 24 }: { size?: number }) {
 export function FireFlameIcon({ size = 24 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true"><path d="M12 1H15V6H17V10H20V8H22V17H20V20H17V23H6V21H3V18H2V12H5V8H8V4H12Z" fill="#cd6b43" /><path d="M12 7H14V13H17V11H18V18H16V21H8V20H5V15H8V11H10V9H12Z" fill="#ecb365" /><path d="M11 14H14V17H16V20H13V22H9V19H10V17H11Z" fill="#f7df9e" /></svg>;
 }
+
+/** Custom 24x24 pixel-art HUD trigger icon: cheerful pixel expression + radial star spark. */
+export function EmoteWheelTriggerIcon({ size = 22 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+    <path d="M7 3H17V5H19V7H21V17H19V19H17V21H7V19H5V17H3V7H5V5H7Z" fill="#231a14" />
+    <path d="M7 4H17V6H19V8H20V16H19V18H17V20H7V18H5V16H4V8H5V6H7Z" fill="#e8ba5a" />
+    <path d="M8 5H16V7H8Z" fill="#fff0b8" />
+    <path d="M8 9H10V11H8ZM14 9H16V11H14Z" fill="#261c15" />
+    <path d="M8 14H10V15H14V14H16V16H14V17H10V16H8Z" fill="#261c15" />
+    <path d="M6 12H8V13H6ZM16 12H18V13H16Z" fill="#e06b58" />
+    <path d="M19 1H21V3H23V5H21V7H19V5H17V3H19Z" fill="#6ef5dc" />
+    <path d="M19 3H21V5H19Z" fill="#ffffff" />
+  </svg>;
+}
+
+/** Custom 24x24 pixel-art '67!' Emote icon: seesaw palms + bold gold '6', cyan '7' & '!' spark. */
+export function Emote67PixelIcon({ size = 32 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+    {/* Dark pixel backing silhouette */}
+    <path d="M2 4H10V16H2ZM10 2H19V14H10ZM19 3H23V14H19Z" fill="#171421" />
+    {/* Bold Pixel '6' (solar gold + cream top shine) */}
+    <path d="M4 5H9V7H5V9H9V15H3V6H4ZM5 11V13H7V11Z" fill="#ffbe3b" />
+    <path d="M4 5H9V6H4Z" fill="#fff5bf" />
+    {/* Bold Pixel '7' (elevated seesaw step, electric cyan-mint + white shine) */}
+    <path d="M11 3H18V6H17V8H16V10H15V13H13V9H14V7H15V5H11Z" fill="#5ef5d8" />
+    <path d="M11 3H18V4H11Z" fill="#ebfffb" />
+    {/* Exclamation '!' */}
+    <path d="M20 4H22V10H20ZM20 12H22V14H20Z" fill="#ff6b7a" />
+    {/* Seesaw weighing palms underneath (left low, right high) */}
+    <path d="M2 18H9V21H2Z" fill="#261911" />
+    <path d="M3 19H8V20H3Z" fill="#f2c18d" />
+    <path d="M2 17H9V18H2Z" fill="#ffbe3b" />
+    <path d="M12 16H19V19H12Z" fill="#261911" />
+    <path d="M13 17H18V18H13Z" fill="#f2c18d" />
+    <path d="M12 15H19V16H12Z" fill="#5ef5d8" />
+    {/* Tiny star glint */}
+    <path d="M10 16H11V17H10ZM21 16H22V18H21ZM20 17H23V18H20Z" fill="#fff6cc" />
+  </svg>;
+}
+
+/** Custom 24x24 pixel-art 'SMPN 7 Mataram Fireworks' icon: starburst fireworks + proud '7' crest! */
+export function EmoteSmpn7FireworksPixelIcon({ size = 32 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+    {/* Multi-color pixel firework starburst in upper sky */}
+    <path d="M11 1H13V4H11ZM11 8H13V11H11ZM6 5H9V7H6ZM15 5H18V7H15Z" fill="#ffe066" />
+    <path d="M7 2H9V4H7ZM15 2H17V4H15ZM7 8H9V10H7ZM15 8H17V10H15Z" fill="#ff6b9d" />
+    <path d="M3 3H5V5H3ZM19 3H21V5H19ZM2 9H4V11H2ZM20 9H22V11H20Z" fill="#5ed8ff" />
+    <path d="M10 5H14V7H10ZM11 4H13V8H11Z" fill="#ffffff" />
+    <path d="M4 12H6V14H4ZM18 12H20V14H18Z" fill="#5ef59b" />
+    {/* Proud SMPN 7 Mataram shield badge at bottom */}
+    <path d="M6 12H18V21H15V23H9V21H6Z" fill="#121826" />
+    <path d="M7 13H17V20H14V22H10V20H7Z" fill="#214873" />
+    <path d="M7 13H17V14H7Z" fill="#ffe066" />
+    {/* Crisp pixel '7' inside shield */}
+    <path d="M9 15H15V17H14V18H13V20H11V18H12V17H13V16H9Z" fill="#fff9d6" />
+  </svg>;
+}
+
+/** Custom 24x24 pixel-art Kalimantan Wave ('Salam Rimba!') icon. */
+export function EmoteWavePixelIcon({ size = 32 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+    <path d="M6 4H14V6H16V13H18V17H15V20H6V17H4V9H6Z" fill="#241811" />
+    <path d="M7 5H9V11H7ZM10 4H12V11H10ZM13 6H15V12H13ZM5 9H7V15H5Z" fill="#f2c28d" />
+    <path d="M7 11H15V18H7Z" fill="#eab37b" />
+    <path d="M15 13H17V16H15Z" fill="#f2c28d" />
+    {/* Motion wave arcs + Kalimantan emerald leaf */}
+    <path d="M2 5H4V7H3V9H2ZM17 3H19V5H18V7H17Z" fill="#ffe082" />
+    <path d="M16 14H22V19H20V21H15V16H16Z" fill="#2b5734" />
+    <path d="M17 15H21V18H19V20H16V16H17Z" fill="#63bf6a" />
+    <path d="M18 16H20V17H18Z" fill="#a8f09c" />
+  </svg>;
+}
+
+/** Custom 24x24 pixel-art Spirit Cheer ('Semangat!') icon: golden star + water splash. */
+export function EmoteSpiritPixelIcon({ size = 32 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+    <path d="M10 2H14V7H19V11H16V16H18V20H13V18H11V20H6V16H8V11H5V7H10Z" fill="#261b12" />
+    <path d="M11 3H13V8H18V10H15V15H16V18H13V16H11V18H8V15H9V10H6V8H11Z" fill="#ffd24c" />
+    <path d="M11 5H13V10H15V12H9V10H11Z" fill="#fff6bf" />
+    {/* Water-droplet accents */}
+    <path d="M3 14H5V16H6V19H2V16H3ZM19 14H21V16H22V19H18V16H19Z" fill="#5ed8ff" />
+    <path d="M3 16H4V18H3ZM19 16H20V18H19Z" fill="#e0fbff" />
+  </svg>;
+}
