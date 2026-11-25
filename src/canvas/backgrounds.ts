@@ -1,4 +1,5 @@
 import type { SceneType } from '../types/gameTypes';
+import { INITIAL_FIRE_HOTSPOTS } from './worldData';
 import { drawTree } from './trees';
 
 const cache = new Map<SceneType, HTMLCanvasElement>();
@@ -999,6 +1000,24 @@ function forestBackdrop(c: CanvasRenderingContext2D) {
     drawPixelBlob(c, tx, ty, tw * 0.44, 6, '#876e47');
     drawPixelBlob(c, tx, ty - 1, Math.max(3, tw * 0.28), 3, '#a4885a');
   }
+
+  // 5b. Natural dry-peat depressions & sun-cracked kindling beds beneath every Karhutla hotspot
+  INITIAL_FIRE_HOTSPOTS.forEach((fh, idx) => {
+    const hx = fh.x, hy = fh.y;
+    // Outer dry mineral-peat transition ring (scalloped pixel ellipse, zero rectangles!)
+    drawPixelBlob(c, hx, hy + 1, 38, 17, '#4d3e29');
+    drawPixelBlob(c, hx - 6, hy + 2, 28, 13, '#3b2e1e');
+    drawPixelBlob(c, hx + 5, hy, 29, 13, '#382b1c');
+    drawPixelBlob(c, hx, hy + 1, 24, 11, '#2f2317');
+    // Sun-baked dry peat cracks & scattered dry kindling twigs around the hollow rim
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + idx * 0.7;
+      const rx = Math.round(hx + Math.cos(a) * (22 + (k % 3) * 5));
+      const ry = Math.round(hy + Math.sin(a) * (9 + (k % 2) * 3));
+      R(c, rx - 2, ry, 5 + (k % 3), 1, k % 2 === 0 ? '#695336' : '#241a11');
+      if (k % 3 === 0) R(c, rx, ry - 1, 3, 2, '#7d6340');
+    }
+  });
 
   // 6. Tannin-rich peat swamp pools (rawa gambut) with lily pads & reeds
   for (const [wx, wy, ww, wh] of [[1074, 248, 32, 14], [1188, 382, 36, 15], [1062, 636, 34, 14], [1292, 528, 30, 13]] as [number, number, number, number][]) {

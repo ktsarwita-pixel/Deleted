@@ -12,7 +12,7 @@ import { FxSystem } from './fx';
 import { canStand, INITIAL_FIRE_HOTSPOTS } from './worldData';
 import { DropletField, Pendulum, RippleField, Spring, windAt, type Wind } from './physics';
 import { drawPierFoam, drawPierReflections, fishJumpStaysInWater, isWater, onPier, pierRippleSpots, PIER } from './water';
-import { drawFirePit, fireLightRadius } from './fire';
+import { drawFireGround, drawFirePit, fireLightRadius } from './fire';
 import { drawScreenAtmosphere, drawWorldCanopySmoke, drawWorldGroundFog } from './fog';
 import { bumpSign, drawSign, type SignStyle } from './signs';
 
@@ -339,31 +339,6 @@ function drawFire(c: CanvasRenderingContext2D, f: FireHotspot, t: number, idx: n
     if (since <= 0.75) k = Math.max(k, since < 0.3 ? 1 : 1 - (since - 0.3) / 0.45);
   }
   drawFirePit(c, { x: f.x, y: f.y, t, level: k, seed: idx, wind, reduced });
-}
-
-function drawRegrowth(c: CanvasRenderingContext2D, f: FireHotspot, now: number, t: number, wind: Wind) {
-  const since = f.extinguishedAt === undefined ? 99 : now - f.extinguishedAt;
-  R(c, f.x - 22, f.y - 4, 44, 12, '#3b4830'); R(c, f.x - 16, f.y - 6, 32, 2, '#3b4830');
-  const char = clamp01(1 - since / 7);
-  if (char > 0) {
-    c.globalAlpha = char; R(c, f.x - 24, f.y - 6, 48, 14, '#2a2622');
-    for (let i = 0; i < 6; i++) if (since < 3 && (Math.floor(t * 4 + i) % 3)) R(c, f.x - 18 + i * 7, f.y - 2 + (i % 2) * 4, 2, 2, '#e07a3a');
-    c.globalAlpha = 1;
-  }
-  const grow = clamp01((since - 1.4) / 5);
-  if (grow <= 0) return;
-  const bend = wind.dir * (1 + wind.gust * 2.4) * grow;
-  ([[-10, 6], [0, 11], [10, 7]] as [number, number][]).forEach(([dx, hmax], i) => {
-    const hh = snap(grow * hmax);
-    if (!hh) return;
-    const sw = Math.round(Math.sin(t * 1.7 + i * 1.3 + f.x * 0.1) * 1 + bend) * 2;
-    R(c, f.x + dx, f.y - hh, 2, hh, '#5f8a45');
-    if (hh >= 4) { R(c, f.x + dx - 2 + sw, f.y - hh, 2, 2, '#8ab65a'); R(c, f.x + dx + 2 + sw, f.y - hh + 2, 2, 2, '#8ab65a'); }
-    if (i === 1 && since > 7) {
-      const fy = f.y - hh - 4;
-      R(c, f.x + sw - 2, fy, 6, 2, '#f3f0e4'); R(c, f.x + sw, fy - 2, 2, 6, '#f3f0e4'); R(c, f.x + sw, fy, 2, 2, '#f1d36e');
-    }
-  });
 }
 
 function drawPropAlpha(c: CanvasRenderingContext2D, kind: 'fern' | 'sapling' | 'banana' | 'bush', x: number, y: number, burnt: boolean, sway: number, scale: number, alpha: number) {
@@ -1037,7 +1012,11 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     }
   }
   const now = w.time;
-  w.fires.forEach(f => { if (f.intensity === 0) drawRegrowth(c, f, now, t, wind); });
+  w.fires.forEach((f, idx) => {
+    const lvl = mem?.fireVisual.get(f.id) ?? (f.intensity / f.maxIntensity);
+    const since = f.extinguishedAt === undefined ? 99 : now - f.extinguishedAt;
+    drawFireGround(c, { x: f.x, y: f.y, t, level: lvl, extinguished: f.intensity === 0, sinceExtinguished: since, seed: idx, wind, reduced: w.reducedMotion });
+  });
   drawWorldGroundFog(c, w.fires, view, t, wind, w.reducedMotion);
 }
 

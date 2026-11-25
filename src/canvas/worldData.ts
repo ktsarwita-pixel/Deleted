@@ -10,8 +10,8 @@ export const INITIAL_COLLECTIBLES: CollectibleItem[] = [
   { id: 'aid', scene: 'village', x: 770, y: 295, name: 'Bantuan posko', rupiahValue: 12000, collected: false, description: 'Bantuan perlengkapan', iconType: 'bantuan' },
 ];
 export const INITIAL_FIRE_HOTSPOTS: FireHotspot[] = [
-  [1015, 240], [1000, 350], [1010, 465], [1025, 585], [1120, 205],
-  [1125, 330], [1130, 455], [1140, 590], [1245, 290], [1250, 480],
+  [1028, 212], [1006, 366], [1018, 540], [1126, 198], [1122, 324],
+  [1128, 446], [1144, 594], [1232, 228], [1254, 348], [1242, 488],
 ].map(([x, y], i) => ({ id: `fire_${i + 1}`, x, y, intensity: 10, maxIntensity: 10, label: `Titik api ${i + 1}` }));
 
 export const HOUSE_INTERACTIONS: Interaction[] = [
