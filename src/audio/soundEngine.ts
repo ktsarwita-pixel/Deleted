@@ -574,171 +574,210 @@ class SoundEngine {
   }
 
   /**
-   * Builds a single seamless, stutter-free 1.28s PCM AudioBuffer of a warm human voice
-   * casually saying "Siiix... Se-ven" using a soft Rosenberg glottal flow model +
-   * continuous 4-formant Klatt cascade vocal tract (wide flesh-damped bandwidths,
-   * smooth cosine coarticulation, zero sawtooth buzz, zero choppy amplitude cuts).
+   * Builds a crystal-clear, studio-articulated 1.24s PCM AudioBuffer of a human voice
+   * saying "Six... Se-ven" (/s ɪ k s ... s ɛ v ə n/) using a Fant LF glottal flow derivative
+   * (with organic cycle-to-cycle jitter & shimmer), Klatt (1980) alternating-sign parallel
+   * formant tract (exact unity-peak-calibrated F1..F4 + 270 Hz nasal murmur pole),
+   * velar-pinch + /k/ release burst + dual-band alveolar /s/ + glottal-pulsed /v/ friction.
    */
   private getSixSevenBuffer(ctx: AudioContext): AudioBuffer {
     if (this.sixSevenBuf && this.sixSevenBuf.sampleRate === ctx.sampleRate) {
       return this.sixSevenBuf;
     }
     const sr = ctx.sampleRate;
-    const dur = 1.28;
+    const dur = 1.24;
     const len = Math.floor(sr * dur);
     const buf = ctx.createBuffer(1, len, sr);
     const out = buf.getChannelData(0);
 
-    // Keyframes: [timeSec, f0Hz, voiceAmp, F1, B1, F2, B2, F3, B3, fricAmp, fricFreq]
-    const KF: [number, number, number, number, number, number, number, number, number, number, number][] = [
-      // Gentle alveolar "Sss-" onset
-      [0.00, 146, 0.00, 380, 110, 1920, 140, 2560, 190, 0.00, 5100],
-      [0.04, 148, 0.05, 395, 100, 1930, 135, 2560, 185, 0.22, 5200],
-      // Smooth crossfade into warm "/ɪ/" vowel ("-iii-")
-      [0.09, 154, 0.88, 415,  90, 1940, 125, 2550, 175, 0.03, 5000],
-      [0.21, 166, 0.94, 420,  88, 1910, 125, 2530, 175, 0.00, 4800],
-      [0.31, 158, 0.82, 395,  95, 1980, 130, 2460, 180, 0.00, 4800],
-      // Smooth velar-alveolar "-ks-" legato bridge into "se-" (zero dead-air chop!)
-      [0.38, 154, 0.16, 330, 120, 2040, 150, 2420, 200, 0.08, 3600],
-      [0.44, 160, 0.06, 360, 120, 1900, 150, 2500, 200, 0.24, 5400],
-      [0.51, 172, 0.14, 460, 110, 1820, 140, 2500, 190, 0.22, 5100],
-      // Upbeat accented "Se-" ("/ɛ/")
-      [0.57, 186, 0.96, 555,  92, 1760, 128, 2480, 178, 0.02, 4800],
-      [0.68, 194, 0.95, 560,  92, 1730, 128, 2470, 178, 0.00, 4500],
-      [0.75, 180, 0.84, 485, 100, 1560, 135, 2410, 185, 0.00, 3400],
-      // Continuous voiced "-v-" glide (keeps warm vocal cord vibration — zero stutter dip!)
-      [0.82, 168, 0.66, 365, 115, 1330, 145, 2330, 195, 0.05, 2900],
-      // Relaxed "-en" ("/ə/" -> warm alveolar nasal "/n/")
-      [0.90, 158, 0.86, 480,  95, 1470, 130, 2410, 180, 0.00, 2900],
-      [1.01, 144, 0.76, 325, 105, 1410, 155, 2360, 200, 0.00, 2800],
-      [1.14, 133, 0.45, 295, 115, 1380, 170, 2340, 210, 0.00, 2800],
-      [1.27, 126, 0.00, 285, 125, 1370, 180, 2330, 220, 0.00, 2800],
+    // [t, f0, vAmp, oq, F1, B1, A1, F2, B2, A2, F3, B3, A3, nasalAmp, sAmp, kAmp, vFricAmp, aspAmp]
+    const KF: number[][] = [
+      // Word 1: "SIX" (/s ɪ k s/) — crisp alveolar "/s/" onset
+      [0.000, 148, 0.00, 0.58, 400,  90, 1.00, 1980, 115, 0.62, 2630, 160, 0.42, 0.00, 0.00, 0.00, 0.00, 0.00],
+      [0.020, 148, 0.00, 0.58, 400,  90, 1.00, 1990, 115, 0.62, 2630, 160, 0.42, 0.00, 0.48, 0.00, 0.00, 0.00],
+      [0.078, 150, 0.00, 0.58, 405,  88, 1.00, 2000, 110, 0.65, 2640, 155, 0.44, 0.00, 0.42, 0.00, 0.00, 0.16],
+      // Bright, unmistakable front-high lax "/ɪ/" ("-IH-")
+      [0.100, 155, 0.95, 0.53, 410,  78, 1.00, 2010, 105, 0.70, 2650, 148, 0.46, 0.00, 0.02, 0.00, 0.00, 0.05],
+      [0.182, 168, 1.00, 0.51, 415,  76, 1.00, 1995, 102, 0.70, 2635, 145, 0.46, 0.00, 0.00, 0.00, 0.00, 0.00],
+      // Classic Klatt velar pinch into "/k/" (F2 rises to 2270 Hz, F3 drops to 2360 Hz)
+      [0.246, 160, 0.86, 0.54, 340,  88, 0.90, 2250, 115, 0.74, 2370, 155, 0.48, 0.00, 0.00, 0.00, 0.00, 0.00],
+      [0.274, 156, 0.03, 0.60, 290, 110, 0.50, 2290, 130, 0.40, 2340, 170, 0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
+      // Clean 30ms "/k/" oral stop closure
+      [0.304, 154, 0.00, 0.60, 300, 110, 0.50, 2300, 140, 0.40, 2350, 180, 0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
+      // Crisp "/k/" velar plosive release burst -> immediate "/s/" coda ("-ks")
+      [0.313, 154, 0.00, 0.60, 340, 110, 0.50, 2260, 140, 0.50, 2460, 180, 0.30, 0.00, 0.08, 0.65, 0.00, 0.20],
+      [0.330, 154, 0.00, 0.60, 360, 110, 0.50, 2050, 140, 0.50, 2580, 180, 0.30, 0.00, 0.52, 0.04, 0.00, 0.05],
+      [0.404, 154, 0.00, 0.60, 380, 110, 0.50, 1920, 140, 0.50, 2600, 180, 0.30, 0.00, 0.42, 0.00, 0.00, 0.00],
+      // Clean 50ms inter-word breath boundary so "Six" and "Seven" are two distinct words
+      [0.436, 160, 0.00, 0.60, 420, 110, 0.50, 1850, 140, 0.50, 2560, 180, 0.30, 0.00, 0.01, 0.00, 0.00, 0.00],
+      [0.484, 166, 0.00, 0.60, 460, 110, 0.60, 1820, 130, 0.55, 2550, 175, 0.34, 0.00, 0.02, 0.00, 0.00, 0.00],
+      // Word 2: "SEVEN" (/s ɛ v ə n/) — crisp "/s/" onset + natural aspiration
+      [0.508, 170, 0.00, 0.58, 510, 100, 0.80, 1810, 120, 0.62, 2540, 165, 0.40, 0.00, 0.54, 0.00, 0.00, 0.00],
+      [0.562, 174, 0.00, 0.56, 555,  92, 0.90, 1805, 115, 0.68, 2540, 160, 0.44, 0.00, 0.42, 0.00, 0.00, 0.18],
+      // Expressive, wide-open stressed "/ɛ/" ("SEH-") with playful upward pitch scoop
+      [0.588, 184, 0.98, 0.50, 590,  80, 1.05, 1805, 102, 0.80, 2540, 148, 0.50, 0.00, 0.02, 0.00, 0.00, 0.04],
+      [0.672, 202, 1.00, 0.49, 600,  78, 1.05, 1785, 100, 0.80, 2530, 146, 0.50, 0.00, 0.00, 0.00, 0.00, 0.00],
+      [0.742, 182, 0.88, 0.53, 515,  88, 0.96, 1560, 112, 0.66, 2440, 158, 0.40, 0.00, 0.00, 0.00, 0.06, 0.00],
+      // Crisp voiced labiodental "/v/" (labial F1/F2 dip + glottal-modulated lip friction)
+      [0.798, 168, 0.54, 0.60, 325, 105, 0.74, 1230, 130, 0.46, 2340, 175, 0.28, 0.00, 0.00, 0.00, 0.52, 0.00],
+      // Clear unstressed "/ə/" -> alveolar tongue-tip transition into nasal "/n/" ("-vuhn")
+      [0.858, 158, 0.90, 0.53, 500,  84, 0.96, 1475, 108, 0.66, 2460, 155, 0.40, 0.04, 0.00, 0.00, 0.02, 0.00],
+      [0.938, 146, 0.84, 0.56, 430,  92, 0.84, 1615, 118, 0.58, 2490, 165, 0.36, 0.24, 0.00, 0.00, 0.00, 0.00],
+      [1.008, 138, 0.74, 0.60, 285,  95, 0.38, 1640, 155, 0.32, 2460, 190, 0.20, 0.74, 0.00, 0.00, 0.00, 0.00],
+      [1.125, 131, 0.46, 0.63, 275, 105, 0.30, 1600, 175, 0.22, 2440, 205, 0.15, 0.66, 0.00, 0.00, 0.00, 0.00],
+      [1.235, 126, 0.00, 0.66, 270, 120, 0.25, 1580, 195, 0.16, 2420, 215, 0.10, 0.00, 0.00, 0.00, 0.00, 0.00],
     ];
 
+    const nCols = KF[0].length;
+    const cur = new Float64Array(nCols);
     const interp = (t: number) => {
-      if (t <= KF[0][0]) return KF[0];
-      if (t >= KF[KF.length - 1][0]) return KF[KF.length - 1];
+      if (t <= KF[0][0]) {
+        for (let j = 0; j < nCols; j++) cur[j] = KF[0][j];
+        return;
+      }
+      if (t >= KF[KF.length - 1][0]) {
+        const last = KF[KF.length - 1];
+        for (let j = 0; j < nCols; j++) cur[j] = last[j];
+        return;
+      }
       let k = 0;
       while (k < KF.length - 2 && t > KF[k + 1][0]) k++;
       const a = KF[k], b = KF[k + 1];
-      const u = (t - a[0]) / Math.max(0.0001, b[0] - a[0]);
-      // Smooth raised-cosine S-curve coarticulation (zero robotic linear corners!)
+      const u = (t - a[0]) / Math.max(0.00001, b[0] - a[0]);
       const s = 0.5 - 0.5 * Math.cos(Math.PI * u);
-      const res = new Array<number>(11);
-      for (let j = 0; j < 11; j++) res[j] = a[j] + (b[j] - a[j]) * s;
-      return res;
+      for (let j = 0; j < nCols; j++) cur[j] = a[j] + (b[j] - a[j]) * s;
     };
 
-    // Cascade Klatt 2-pole resonator states (R1..R4) + fricative bandpass state
-    let y1_1 = 0, y1_2 = 0;
-    let y2_1 = 0, y2_2 = 0;
-    let y3_1 = 0, y3_2 = 0;
-    let y4_1 = 0, y4_2 = 0;
-    let yf_1 = 0, yf_2 = 0;
-    let glotLp = 0;
-    let prevTract = 0;
-    let phase = 0;
+    // Exact unity-peak-normalized 2-pole resonator (0 dB gain at center frequency)
+    const calcBp = (freq: number, bw: number): [number, number, number] => {
+      const w0 = (2 * Math.PI * Math.min(sr * 0.45, freq)) / sr;
+      const r = Math.exp((-Math.PI * bw) / sr);
+      const c = -r * r;
+      const b = 2 * r * Math.cos(w0);
+      const re = 1 - b * Math.cos(w0) - c * Math.cos(2 * w0);
+      const im = b * Math.sin(w0) + c * Math.sin(2 * w0);
+      return [Math.hypot(re, im), b, c];
+    };
+
+    let y1_1 = 0, y1_2 = 0, y2_1 = 0, y2_2 = 0, y3_1 = 0, y3_2 = 0, y4_1 = 0, y4_2 = 0, yn_1 = 0, yn_2 = 0;
+    let ys1_1 = 0, ys1_2 = 0, ys2_1 = 0, ys2_2 = 0, yk1_1 = 0, yk1_2 = 0, yk2_1 = 0, yk2_2 = 0, yv_1 = 0, yv_2 = 0;
+    let prevN = 0, prevSrc = 0, hpX1 = 0, hpY1 = 0;
+
+    const [a4, b4, c4] = calcBp(3420, 220);
+    const [an, bn, cn] = calcBp(270, 95);
+    const [as1, bs1, cs1] = calcBp(5650, 950);
+    const [as2, bs2, cs2] = calcBp(7650, 1300);
+    const [ak1, bk1, ck1] = calcBp(2320, 420);
+    const [ak2, bk2, ck2] = calcBp(4200, 900);
+    const [av, bv, cv] = calcBp(3750, 1100);
+
+    let a1 = 0, b1 = 0, c1 = 0, A1 = 1;
+    let a2 = 0, b2 = 0, c2 = 0, A2 = 0.6;
+    let a3 = 0, b3 = 0, c3 = 0, A3 = 0.4;
+    let f0 = 150, vAmp = 0, oq = 0.55;
+    let nasalAmp = 0, sAmp = 0, kAmp = 0, vFricAmp = 0, aspAmp = 0;
+
+    let phase = 0, jitter = 1, shimmer = 1;
     let rng = 2463534242;
     const nextNoise = () => {
       rng ^= rng << 13; rng ^= rng >>> 17; rng ^= rng << 5;
       return ((rng >>> 0) / 4294967295) * 2 - 1;
     };
-
-    // Resonator coefficients updated smoothly every 24 samples (~0.5ms)
-    let a1 = 0, b1 = 0, c1 = 0;
-    let a2 = 0, b2 = 0, c2 = 0;
-    let a3 = 0, b3 = 0, c3 = 0;
-    let a4 = 0, b4 = 0, c4 = 0;
-    let af = 0, bf = 0, cf = 0;
-    let f0 = 150, vAmp = 0, frAmp = 0;
-
-    const calcRes = (freq: number, bw: number): [number, number, number] => {
-      const r = Math.exp((-Math.PI * bw) / sr);
-      const c = -r * r;
-      const b = 2 * r * Math.cos((2 * Math.PI * Math.min(sr * 0.44, freq)) / sr);
-      return [1 - b - c, b, c];
-    };
-
-    // Fixed natural 4th formant for warm adult vocal tract length (~17cm -> F4 = 3350 Hz, B4 = 260 Hz)
-    [a4, b4, c4] = calcRes(3350, 260);
-    const glotTiltAlpha = Math.exp((-2 * Math.PI * 1350) / sr);
+    const diffScale = sr / 6200;
 
     for (let i = 0; i < len; i++) {
       if ((i & 15) === 0) {
         const t = i / sr;
-        const p = interp(t);
-        // Subtle organic human micro-flutter (non-periodic, < 0.7% — sounds alive, never vibrato-robotic)
-        const drift = 1 + 0.0045 * Math.sin(t * 11.3) + 0.003 * Math.sin(t * 23.7 + 1.1);
-        f0 = p[1] * drift;
-        vAmp = p[2];
-        [a1, b1, c1] = calcRes(p[3], p[4]);
-        [a2, b2, c2] = calcRes(p[5], p[6]);
-        [a3, b3, c3] = calcRes(p[7], p[8]);
-        frAmp = p[9];
-        [af, bf, cf] = calcRes(p[10], 950);
+        interp(t);
+        const drift = 1 + 0.0032 * Math.sin(t * 10.7) + 0.0022 * Math.sin(t * 21.3 + 0.9);
+        f0 = cur[1] * drift * jitter;
+        vAmp = cur[2] * shimmer;
+        oq = cur[3];
+        [a1, b1, c1] = calcBp(cur[4], cur[5]); A1 = cur[6];
+        [a2, b2, c2] = calcBp(cur[7], cur[8]); A2 = cur[9];
+        [a3, b3, c3] = calcBp(cur[10], cur[11]); A3 = cur[12];
+        nasalAmp = cur[13]; sAmp = cur[14]; kAmp = cur[15]; vFricAmp = cur[16]; aspAmp = cur[17];
       }
 
-      // Soft Rosenberg glottal pulse (open quotient Oq = 0.62, rounded closing — zero sawtooth buzz!)
       phase += f0 / sr;
-      if (phase >= 1) phase -= 1;
-      const oq = 0.62;
-      let glot = 0;
-      if (phase < oq) {
-        const u = phase / oq;
-        glot = Math.sin(Math.PI * u) * (1 - 0.28 * u);
-      } else {
-        const u = (phase - oq) / (1 - oq);
-        glot = -0.38 * Math.sin(Math.PI * u);
+      if (phase >= 1) {
+        phase -= 1;
+        jitter = 1 + nextNoise() * 0.0028;
+        shimmer = 1 + nextNoise() * 0.018;
       }
-      // Natural phase-locked glottal breathiness + warm vocal-fold spectral tilt
+
+      // Fant LF glottal flow derivative e_LF(t) with smooth return phase Ta = 0.028
+      const tp = oq * 0.74;
+      const te = oq;
+      let glot: number;
+      if (phase < tp) {
+        glot = 0.62 * Math.sin(Math.PI * (phase / tp));
+      } else if (phase < te) {
+        glot = -Math.sin(Math.PI * 0.5 * ((phase - tp) / (te - tp)));
+      } else {
+        glot = -Math.exp(-(phase - te) / 0.028);
+      }
+      glot += 0.038;
+
       const n = nextNoise();
-      const openMask = phase < oq ? 0.055 : 0.015;
-      const rawGlot = (glot + n * openMask) * vAmp;
-      glotLp = (1 - glotTiltAlpha) * rawGlot + glotTiltAlpha * glotLp;
+      const hpN = n - 0.86 * prevN;
+      prevN = n;
 
-      // Cascade 4-formant vocal tract: Pharynx (F1) -> Tongue Body (F2) -> Blade (F3) -> Oral (F4)
-      const r1 = a1 * glotLp + b1 * y1_1 + c1 * y1_2; y1_2 = y1_1; y1_1 = r1;
-      const r2 = a2 * r1     + b2 * y2_1 + c2 * y2_2; y2_2 = y2_1; y2_1 = r2;
-      const r3 = a3 * r2     + b3 * y3_1 + c3 * y3_2; y3_2 = y3_1; y3_1 = r3;
-      const r4 = a4 * r3     + b4 * y4_1 + c4 * y4_2; y4_2 = y4_1; y4_1 = r4;
+      const openEnv = phase < te ? 1.0 : 0.22;
+      const src = glot * vAmp + n * (aspAmp * 0.20 + vAmp * 0.022 * openEnv);
+      const srcHi = (src - prevSrc) * diffScale;
+      prevSrc = src;
 
-      // Acoustic lip-radiation high-frequency lift + warm chest body
-      const voiced = (r4 - 0.82 * prevTract) * 2.1 + glotLp * 0.28;
-      prevTract = r4;
+      // Klatt (1980) alternating-sign parallel vocal tract (+R1 - R2 + R3 - R4) + nasal murmur
+      const r1 = a1 * src   + b1 * y1_1 + c1 * y1_2; y1_2 = y1_1; y1_1 = r1;
+      const r2 = a2 * srcHi + b2 * y2_1 + c2 * y2_2; y2_2 = y2_1; y2_1 = r2;
+      const r3 = a3 * srcHi + b3 * y3_1 + c3 * y3_2; y3_2 = y3_1; y3_1 = r3;
+      const r4 = a4 * srcHi + b4 * y4_1 + c4 * y4_2; y4_2 = y4_1; y4_1 = r4;
+      const rn = an * (src * nasalAmp) + bn * yn_1 + cn * yn_2; yn_2 = yn_1; yn_1 = rn;
 
-      // Soft wide-band oral fricative ("/s/", "/v/") shaped at the lips
-      const frIn = (n - 0.65 * yf_1) * frAmp;
-      const rf = af * frIn + bf * yf_1 + cf * yf_2; yf_2 = yf_1; yf_1 = rf;
+      const voiced = A1 * r1 * 1.40
+                   - A2 * r2 * 1.55
+                   + A3 * r3 * 1.45
+                   - 0.24 * r4 * 1.25
+                   + rn * 0.52;
 
-      out[i] = voiced + rf * 0.55;
+      // Crisp studio consonants: dual-band /s/, velar /k/ burst, glottal-pulsed labiodental /v/
+      const rs1 = as1 * (hpN * sAmp) + bs1 * ys1_1 + cs1 * ys1_2; ys1_2 = ys1_1; ys1_1 = rs1;
+      const rs2 = as2 * (hpN * sAmp) + bs2 * ys2_1 + cs2 * ys2_2; ys2_2 = ys2_1; ys2_1 = rs2;
+      const rk1 = ak1 * (hpN * kAmp) + bk1 * yk1_1 + ck1 * yk1_2; yk1_2 = yk1_1; yk1_1 = rk1;
+      const rk2 = ak2 * (hpN * kAmp) + bk2 * yk2_1 + ck2 * yk2_2; yk2_2 = yk2_1; yk2_1 = rk2;
+      const rv  = av  * (hpN * vFricAmp * (0.40 + 0.60 * openEnv)) + bv * yv_1 + cv * yv_2; yv_2 = yv_1; yv_1 = rv;
+
+      const consonants = (rs1 * 1.05 + rs2 * 0.78) + (rk1 * 1.80 + rk2 * 1.10) + rv * 0.90;
+
+      // 85 Hz studio high-pass filter (strips low-end mud, keeps consonants dry & razor-sharp)
+      const raw = voiced + consonants;
+      const hpOut = 0.989 * (hpY1 + raw - hpX1);
+      hpX1 = raw; hpY1 = hpOut;
+      out[i] = hpOut;
     }
 
-    // Add subtle 19ms + 33ms outdoor early reflections + normalize cleanly to 0.78 peak
-    const delay1 = Math.floor(sr * 0.019);
-    const delay2 = Math.floor(sr * 0.033);
+    // Broadcast-grade soft saturation & clean peak normalization (zero comb-filter echo!)
     let peak = 0.001;
-    for (let i = len - 1; i >= 0; i--) {
-      let s = out[i];
-      if (i >= delay1) s += out[i - delay1] * 0.14;
-      if (i >= delay2) s += out[i - delay2] * 0.07;
-      out[i] = s;
-      const a = Math.abs(s);
+    for (let i = 0; i < len; i++) {
+      const a = Math.abs(out[i]);
       if (a > peak) peak = a;
     }
-    const norm = 0.78 / peak;
-    for (let i = 0; i < len; i++) out[i] = Math.tanh(out[i] * norm * 1.15) * 0.78;
+    const norm = 1.0 / peak;
+    for (let i = 0; i < len; i++) {
+      out[i] = Math.tanh(out[i] * norm * 1.38) * 0.90;
+    }
 
     this.sixSevenBuf = buf;
     return buf;
   }
 
-  /** Plays the seamless human-voiced "Six... Se-ven" phrase with anti-overlap protection (zero stutter!). */
+  /** Plays the crystal-clear human-voiced "Six... Se-ven" phrase with anti-overlap protection. */
   public playEmote67() {
     const ctx = this.getContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    // Smoothly fade out any previous overlapping 67 voice in 25ms so rapid presses NEVER stutter!
     if (this.active67Gain) {
       try {
         this.active67Gain.gain.cancelScheduledValues(now);
@@ -750,11 +789,10 @@ class SoundEngine {
 
     const src = ctx.createBufferSource();
     src.buffer = this.getSixSevenBuffer(ctx);
-    // Tiny ±2% natural pitch variation per emote trigger so repeated presses feel human and alive!
-    src.playbackRate.setValueAtTime(0.99 + Math.random() * 0.03, now);
+    src.playbackRate.setValueAtTime(0.99 + Math.random() * 0.025, now);
 
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.88, now);
+    g.gain.setValueAtTime(0.95, now);
     src.connect(g);
     g.connect(ctx.destination);
     this.active67Gain = g;
