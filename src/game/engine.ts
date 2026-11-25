@@ -395,7 +395,10 @@ export class GameEngine {
     const {muted,reducedMotion}=this.world;
     this.world=freshWorld();this.world.muted=muted;this.world.reducedMotion=reducedMotion;
     this.world.notice=null;this.clearKeys();this.queued=null;if(this.noticeTimer){clearTimeout(this.noticeTimer);this.noticeTimer=null;}
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+    this.saved=false;
     this.updateCamera(1,true);this.publish(true);
+    this.notify('Permainan berhasil direset ke awal.', 'info');
   };
   face(direction: Direction) { this.world.player.dir=direction; }
   triggerEmote = (id: EmoteId) => {

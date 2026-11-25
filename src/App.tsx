@@ -124,6 +124,7 @@ export default function App() {
   const consoleRef=useRef<HTMLElement>(null);
   const [isFullscreen,setFullscreen]=useState(false);
   const [emoteWheelOpen,setEmoteWheelOpen]=useState(false);
+  const [resetConfirmOpen,setResetConfirmOpen]=useState(false);
 
   useEffect(()=>{
     if(state.panel||state.dialogue||state.cutscene>=0) setEmoteWheelOpen(false);
@@ -139,7 +140,8 @@ export default function App() {
       if(e.repeat) return;
       if(key==='escape') {
         e.preventDefault();
-        if(emoteWheelOpen)setEmoteWheelOpen(false);
+        if(resetConfirmOpen)setResetConfirmOpen(false);
+        else if(emoteWheelOpen)setEmoteWheelOpen(false);
         else if(engine.world.panel)engine.setPanel(null);else if(engine.world.dialogue)engine.skipCutscene();else engine.setPanel('pause');
       } else if(key==='g') {
         if(!engine.world.panel&&!engine.world.dialogue&&engine.world.cutscene<0) {
@@ -157,7 +159,7 @@ export default function App() {
     const onFullscreen=()=>setFullscreen(!!document.fullscreenElement);
     window.addEventListener('keydown',down);window.addEventListener('keyup',up);document.addEventListener('fullscreenchange',onFullscreen);
     return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);document.removeEventListener('fullscreenchange',onFullscreen);};
-  },[engine,emoteWheelOpen]);
+  },[engine,emoteWheelOpen,resetConfirmOpen]);
 
   const toggleFullscreen=async()=>{
     try { if(document.fullscreenElement)await document.exitFullscreen();else if(consoleRef.current?.requestFullscreen)await consoleRef.current.requestFullscreen();else engine.notify('Layar penuh tidak tersedia di peramban ini.'); }
@@ -175,14 +177,14 @@ export default function App() {
         <button className={state.panel==='map'?'nav-link active':'nav-link'} onClick={()=>engine.setPanel('map')} aria-label="Peta desa"><Icon name="map" size={17}/><span>Peta desa</span></button>
         <button className={state.panel==='help'?'nav-link active':'nav-link'} onClick={()=>engine.setPanel('help')} aria-label="Panduan"><Icon name="help" size={17}/><span>Panduan</span></button>
       </nav>
-      <div className="header-actions"><span className="sound-label">{state.muted?'Suara mati':'Suara aktif'}</span><button className="icon-button" onClick={engine.toggleMute} aria-label={state.muted?'Aktifkan suara':'Matikan suara'} aria-pressed={!state.muted}><Icon name={state.muted?'muted':'sound'} size={19}/></button><span className="header-separator"/><button className="icon-button" onClick={()=>engine.setPanel('pause')} aria-label="Jeda permainan"><Icon name="pause" size={18}/></button></div>
+      <div className="header-actions"><span className="sound-label">{state.muted?'Suara mati':'Suara aktif'}</span><button className="icon-button" onClick={engine.toggleMute} aria-label={state.muted?'Aktifkan suara':'Matikan suara'} aria-pressed={!state.muted}><Icon name={state.muted?'muted':'sound'} size={19}/></button><span className="header-separator"/><button className="header-reset-button" onClick={()=>{setEmoteWheelOpen(false);setResetConfirmOpen(true);}} aria-label="Reset permainan" title="Ulang permainan dari awal"><Icon name="reset" size={15}/><span>Reset</span></button><button className="icon-button" onClick={()=>engine.setPanel('pause')} aria-label="Jeda permainan"><Icon name="pause" size={18}/></button></div>
     </header>
 
     <main id="permainan" className="main-content">
       <div className="page-intro"><div><div className="eyebrow intro-eyebrow"><span/>SEBUAH PETUALANGAN PIXEL</div><h1>Petualangan Wira<span>.</span></h1><p>Rumah adalah awal. Hutan adalah tujuan.</p></div><div className="season"><Icon name="sun" size={29}/><div><span>Musim kemarau</span><small>Hari 01 di Kalimantan</small></div></div></div>
       <div className="workspace">
         <section className="game-console" ref={consoleRef} aria-label="Permainan Karhutla">
-          <div className="console-header"><div className="location"><Icon name={state.scene==='house'?'home':'pin'} size={17}/><strong>{state.scene==='house'?'Rumah Wira':'Desa Rantau'}</strong><span className="location-divider"/><span className="location-caption">{state.scene==='house'?'Awal sebuah perjalanan':'Kalimantan, Indonesia'}</span></div><div className="console-tools"><span className="chapter">BAB {state.discovered?'02':'01'}</span><button className="icon-button" onClick={toggleFullscreen} aria-label={isFullscreen?'Keluar layar penuh':'Layar penuh'}><Icon name="expand" size={17}/></button></div></div>
+          <div className="console-header"><div className="location"><Icon name={state.scene==='house'?'home':'pin'} size={17}/><strong>{state.scene==='house'?'Rumah Wira':'Desa Rantau'}</strong><span className="location-divider"/><span className="location-caption">{state.scene==='house'?'Awal sebuah perjalanan':'Kalimantan, Indonesia'}</span></div><div className="console-tools"><span className="chapter">BAB {state.discovered?'02':'01'}</span><button className="console-reset-button" onClick={()=>{setEmoteWheelOpen(false);setResetConfirmOpen(true);}} aria-label="Reset permainan" title="Ulang permainan dari awal"><Icon name="reset" size={13}/><span>Reset</span></button><button className="icon-button" onClick={toggleFullscreen} aria-label={isFullscreen?'Keluar layar penuh':'Layar penuh'}><Icon name="expand" size={17}/></button></div></div>
           <div className="mobile-wallet"><span><RupiahCoinIcon size={19}/>Uang Wira</span><strong>{formatRupiah(state.player.rupiah)}</strong>{state.player.bucketType!=='none'&&<span className="mobile-water"><Icon name="drop" size={15}/>{state.player.waterUnits}/{state.player.maxWaterUnits}</span>}</div>
           <div className={`canvas-stage ${state.cutscene>=0?'is-cinematic':''}`}>
             <GameCanvas engine={engine}/>
@@ -223,6 +225,15 @@ export default function App() {
       {state.panel==='help'&&<Help/>}
       {state.panel==='pause'&&<PauseSettings engine={engine} state={state}/>}
       {state.panel==='victory'&&<div className="victory-content"><div className="victory-art"><Icon name="leaf" size={46}/></div><p>Sepuluh titik api padam. Kabut mulai menghilang.<br/>Terima kasih sudah menjaga Kalimantan, Wira.</p><div className="victory-summary"><span>Pemadaman<strong>100%</strong></span><span>Uang Wira<strong>{formatRupiah(state.player.rupiah)}</strong></span></div><button className="button button-primary" onClick={closePanel}>Jelajahi desa kembali<Icon name="arrow" size={17}/></button><button className="text-button" onClick={engine.reset}>Mulai petualangan baru</button></div>}
+    </Modal>,consoleRef.current??document.body)}
+    {resetConfirmOpen&&!state.panel&&createPortal(<Modal title="Mulai ulang permainan?" eyebrow="KONFIRMASI RESET" onClose={()=>setResetConfirmOpen(false)}>
+      <div className="reset-modal-body">
+        <p className="modal-description">Semua progres saat ini akan dihapus, api hutan kembali menyala, dan Wira akan mulai kembali dari dalam rumah.</p>
+        <div className="reset-modal-actions">
+          <button className="button button-secondary" onClick={()=>setResetConfirmOpen(false)}>Batal</button>
+          <button className="button button-danger" onClick={()=>{setResetConfirmOpen(false);setEmoteWheelOpen(false);engine.reset();}}><Icon name="reset" size={15}/>Ya, reset permainan</button>
+        </div>
+      </div>
     </Modal>,consoleRef.current??document.body)}
   </div>;
 }

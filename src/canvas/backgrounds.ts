@@ -1368,91 +1368,131 @@ function villageBackground(c: CanvasRenderingContext2D) {
     if (n > .66) { R(c, x, y, 4, 4, n > .89 ? '#869654' : '#536d40'); R(c, x + 3, y + 3, 3, 2, '#75884c'); }
   }
   forestBackdrop(c);
-  // Handcrafted Kalimantan Village Dirt & River-Cobble Road Network (organic scalloped verges, T-junction fillets, cart ruts & cobble aprons)
-  // A) Forecourt River-Stone & Compacted-Earth Aprons leading to Rumah Wira, Warung Budi & Posko Siaga
-  for (const [ax, ay, aw, ah] of [
-    [168, 255, 88, 30],
-    [512, 245, 108, 40],
-    [780, 247, 88, 38],
-  ] as [number, number, number, number][]) {
-    for (let ry = ay; ry < ay + ah; ry += 3) {
-      const wob = Math.round(Math.sin(ry * 0.23 + ax) * 2);
-      R(c, ax - 3 + wob, ry, aw + 6 - wob * 2, 4, '#56693e');
-      R(c, ax + wob, ry, aw - wob * 2, 4, '#7d6945');
-      R(c, ax + 4 + wob, ry, aw - 8 - wob * 2, 3, '#a98f5f');
-      R(c, ax + 9 + wob, ry, aw - 18 - wob * 2, 3, '#c2a874');
+  // Unified Concentric 5-Pass Kalimantan Road Network — ZERO internal cuts at 3-way T-junction, forecourts, or forest trail!
+  const roadLayers: [number, string][] = [
+    [-3, '#52683b'], // Pass 0: lush mossy grass-verge collar (outermost perimeter only)
+    [0,  '#75613e'], // Pass 1: damp earth shoulder
+    [4,  '#a38858'], // Pass 2: compacted sandy laterite
+    [9,  '#c4aa73'], // Pass 3: warm sun-baked roadbed
+    [16, '#d1b882'], // Pass 4: sunlit central road crown (merges seamlessly across all junctions!)
+  ];
+  const forecourts: [number, number, number, number][] = [
+    [168, 255, 88, 62],  // Rumah Wira apron -> merges straight into Main Road center (y=317)
+    [512, 245, 108, 72], // Warung Budi apron -> merges straight into Main Road center (y=317)
+    [780, 247, 88, 70],  // Posko Siaga apron -> merges straight into Main Road center (y=317)
+  ];
+  const eastTrailJoin: [number, number, number][] = [
+    [976, 315, 38], [994, 312, 31], [1014, 307, 25], [1034, 302, 21], [1054, 299, 18],
+  ];
+
+  for (const [ins, col] of roadLayers) {
+    // 1. Forecourt entrance aprons (extending deep into Main Road center so top border never cuts them)
+    for (const [ax, ay, aw, ah] of forecourts) {
+      const yStart = ay + Math.max(0, ins);
+      const wSpan = aw - ins * 2;
+      if (wSpan <= 6) continue;
+      for (let ry = yStart; ry < ay + ah; ry += 3) {
+        const wob = Math.round(Math.sin(ry * 0.22 + ax) * 1.8);
+        R(c, ax + ins + wob, ry, wSpan - wob * 2, 4, col);
+      }
     }
-    // Hand-laid rounded cobblestones across each building entrance apron
-    for (let cy = ay + 4; cy < ay + ah - 4; cy += 7) {
+
+    // 2. East-West Main Village Road (x=162..986, y=279..352) flowing smoothly into Eastern Ranger Trail
+    const xStart = 162 + Math.max(0, ins);
+    for (let rx = xStart; rx < 986; rx += 3) {
+      const topWob = Math.round(Math.sin(rx * 0.052) * 2.2 + (hash(rx, 3) - 0.5) * 2.2);
+      const botWob = Math.round(Math.cos(rx * 0.046 + 1.2) * 2.2 + (hash(rx, 7) - 0.5) * 2.2);
+      const westRound = rx < 180 ? Math.round(Math.pow((180 - rx) / 18, 1.6) * 14) : 0;
+      // Gentle eastern transition to match the ranger trail width instead of pinching closed
+      const eastBlend = rx > 948 ? Math.round(((rx - 948) / 38) * 14) : 0;
+      const y0 = 279 + topWob + westRound + eastBlend + ins;
+      const y1 = 352 + botWob - westRound - eastBlend - ins;
+      if (y1 > y0 + 2) R(c, rx, y0, 4, y1 - y0, col);
+    }
+
+    // 3. Seamless Eastern Ranger Trail Mouth (bridges village road into forest trail with zero seam)
+    for (const [tx, ty, tw] of eastTrailJoin) {
+      const rx = Math.max(0, tw * 0.56 - ins * 0.85);
+      const ry = Math.max(0, 11 - ins * 0.58);
+      if (rx > 2 && ry > 1.5) drawPixelBlob(c, tx, ty, rx, ry, col);
+    }
+
+    // 4. South Lake Road (x=409..478, y=314..506) + True Circular 3-Way T-Junction Fillets!
+    // Starts at y=314 (center of Main Road) so every inner roadbed/crown pass overwrites earlier outer passes cleanly!
+    const yEnd = 506 - Math.max(0, Math.min(2, ins));
+    for (let ry = 314; ry < yEnd; ry += 3) {
+      const lWob = ry > 360 ? Math.round(Math.sin(ry * 0.068) * 2 + (hash(ry, 13) - 0.5) * 2) : 0;
+      const rWob = ry > 360 ? Math.round(Math.cos(ry * 0.062) * 2 + (hash(ry, 19) - 0.5) * 2) : 0;
+      // Smooth quarter-circle fillet (radius 30px) curving from Main Road bottom edge (y=350) into South Road (y=380)
+      let fillet = 0;
+      if (ry < 380) {
+        const u = Math.max(0, Math.min(1, (380 - ry) / 30));
+        fillet = Math.round((1 - Math.sqrt(Math.max(0, 1 - u * u))) * 30);
+      }
+      const x0 = 409 + lWob - fillet + ins;
+      const x1 = 478 + rWob + fillet - ins;
+      if (x1 > x0 + 2) R(c, x0, ry, x1 - x0, 4, col);
+    }
+  }
+
+  // Hand-laid rounded river cobblestones on each building entrance apron (above roadbed, zero grass seams)
+  for (const [ax, ay, aw] of [
+    [168, 255, 88],
+    [512, 245, 108],
+    [780, 247, 88],
+  ] as [number, number, number][]) {
+    for (let cy = ay + 4; cy < ay + 25; cy += 7) {
       for (let cx = ax + 8 + ((cy % 14 === 0) ? 0 : 5); cx < ax + aw - 12; cx += 11) {
         const jx = Math.floor(hash(cx, cy) * 3) - 1;
-        R(c, cx + jx, cy + 1, 8, 5, '#5e5038');
-        R(c, cx + jx, cy, 8, 4, (cx + cy) % 2 ? '#b3a384' : '#a39274');
-        R(c, cx + jx + 1, cy, 5, 2, '#cfc2a6');
+        R(c, cx + jx, cy + 1, 8, 5, '#6b5a3e');
+        R(c, cx + jx, cy, 8, 4, (cx + cy) % 2 ? '#bda982' : '#ad9974');
+        R(c, cx + jx + 1, cy, 5, 2, '#d8c9a8');
       }
     }
   }
 
-  // B) East-West Main Village Road (x=162..992, y=279..352) with scalloped mossy grass verge
-  for (let rx = 162; rx < 992; rx += 4) {
-    const topWob = Math.round(Math.sin(rx * 0.055) * 2.4 + (hash(rx, 3) - 0.5) * 3);
-    const botWob = Math.round(Math.cos(rx * 0.048 + 1.2) * 2.4 + (hash(rx, 7) - 0.5) * 3);
-    const taper = rx < 182 ? Math.round((182 - rx) * 0.65) : rx > 968 ? Math.round((rx - 968) * 0.75) : 0;
-    const y0 = 279 + topWob + taper;
-    const y1 = 352 + botWob - taper;
-    if (y1 <= y0 + 8) continue;
-    R(c, rx, y0 - 3, 5, y1 - y0 + 6, '#52683b');     // lush verge shadow collar
-    R(c, rx, y0, 5, y1 - y0, '#75613e');             // damp earth shoulder
-    R(c, rx, y0 + 4, 5, y1 - y0 - 8, '#a38858');     // compacted sandy laterite
-    R(c, rx, y0 + 9, 5, y1 - y0 - 18, '#c4aa73');    // warm roadbed
-    R(c, rx, y0 + 17, 5, Math.max(4, y1 - y0 - 34), '#d1b882'); // sunlit center crown
-  }
-
-  // C) South Lake Road (x=408..478, y=336..506) + Rounded T-Junction Fillets (zero blocky 90-degree corners!)
-  for (let ry = 336; ry < 506; ry += 4) {
-    const lWob = Math.round(Math.sin(ry * 0.07) * 2.2 + (hash(ry, 13) - 0.5) * 2);
-    const rWob = Math.round(Math.cos(ry * 0.065) * 2.2 + (hash(ry, 19) - 0.5) * 2);
-    // Smooth flared trumpet curve where South Lake Road meets Main Road (ry = 342..374)
-    const flare = ry < 374 ? Math.round(Math.pow((374 - ry) / 38, 1.8) * 26) : 0;
-    const x0 = 409 + lWob - flare;
-    const x1 = 478 + rWob + flare;
-    if (ry >= 348) R(c, x0 - 3, ry, x1 - x0 + 6, 5, '#52683b');
-    R(c, x0, ry, x1 - x0, 5, '#75613e');
-    R(c, x0 + 4, ry, x1 - x0 - 8, 5, '#a38858');
-    R(c, x0 + 9, ry, x1 - x0 - 18, 5, '#c4aa73');
-    R(c, x0 + 16, ry, Math.max(6, x1 - x0 - 32), 5, '#d1b882');
-  }
-
-  // D) Continuous Parallel Cart/Bicycle Wheel Ruts & Sunlit Ridges
-  for (let rx = 186; rx < 966; rx += 6) {
+  // D) Continuous Wheel Ruts + Smooth Curved 3-Way Turn Tracks into South Lake Road!
+  for (let rx = 186; rx < 972; rx += 6) {
     if (hash(rx, 41) > 0.14) {
       const wy = Math.round(Math.sin(rx * 0.03) * 1.5);
-      // Upper wheel rut & sunlit lip
-      R(c, rx, 297 + wy, 5, 3, '#94794d');
-      R(c, rx, 300 + wy, 5, 1, '#dcc58e');
-      // Lower wheel rut (pauses across T-junction turn)
-      if (rx < 414 || rx > 472) {
-        R(c, rx, 331 + wy, 5, 3, '#94794d');
-        R(c, rx, 330 + wy, 5, 1, '#dcc58e');
+      // Upper wheel track runs unbroken east-west
+      R(c, rx, 298 + wy, 5, 3, '#a58958');
+      R(c, rx, 301 + wy, 5, 1, '#dec894');
+      // Lower wheel track curves smoothly south at the 3-way junction (rx=396..490)
+      if (rx < 396 || rx > 490) {
+        R(c, rx, 331 + wy, 5, 3, '#a58958');
+        R(c, rx, 330 + wy, 5, 1, '#dec894');
       }
     }
   }
-  for (let ry = 346; ry < 466; ry += 6) {
+  // Curved wheel-rut arcs turning cleanly from West & East Main Road into South Lake Road
+  for (let step = 0; step <= 8; step++) {
+    const a = (step / 8) * (Math.PI * 0.5);
+    // West -> South turn arc: (396, 331) -> (427, 362)
+    const lx = Math.round(396 + Math.sin(a) * 31);
+    const ly = Math.round(362 - Math.cos(a) * 31);
+    R(c, lx, ly, 4, 3, '#a58958'); R(c, lx + 1, ly - 1, 3, 1, '#dec894');
+    // East -> South turn arc: (490, 331) -> (459, 362)
+    const rx = Math.round(490 - Math.sin(a) * 31);
+    const ry = Math.round(362 - Math.cos(a) * 31);
+    R(c, rx, ry, 4, 3, '#a58958'); R(c, rx, ry - 1, 3, 1, '#dec894');
+  }
+  for (let ry = 364; ry < 466; ry += 6) {
     if (hash(ry, 47) > 0.15) {
       const wx = Math.round(Math.sin(ry * 0.05) * 1.2);
-      R(c, 426 + wx, ry, 3, 5, '#94794d'); R(c, 429 + wx, ry, 1, 5, '#dcc58e');
-      R(c, 456 + wx, ry, 3, 5, '#94794d'); R(c, 455 + wx, ry, 1, 5, '#dcc58e');
+      R(c, 427 + wx, ry, 3, 5, '#a58958'); R(c, 430 + wx, ry, 1, 5, '#dec894');
+      R(c, 458 + wx, ry, 3, 5, '#a58958'); R(c, 457 + wx, ry, 1, 5, '#dec894');
     }
   }
 
-  // E) T-Junction Stepping Cobblestones & Timber Corduroy Lake-Approach Sleepers (y=468..501)
+  // E) Subtle Scattered 3-Way Plaza Pebbles & Timber Corduroy Lake-Approach Sleepers (y=470..498)
   for (const [cx, cy, cw] of [
-    [418, 344, 9], [431, 346, 10], [446, 345, 9], [459, 343, 8],
-    [424, 355, 9], [439, 356, 10], [453, 354, 9],
+    [422, 320, 7], [442, 316, 8], [461, 322, 7],
+    [433, 344, 8], [451, 346, 7], [440, 362, 8],
   ] as [number, number, number][]) {
-    R(c, cx, cy + 1, cw, 5, '#665438');
-    R(c, cx, cy, cw, 4, '#b8a888');
-    R(c, cx + 1, cy, cw - 3, 2, '#d8ccb0');
+    R(c, cx, cy + 1, cw, 4, '#9c8356');
+    R(c, cx, cy, cw, 3, '#cbb68c');
+    R(c, cx + 1, cy, cw - 3, 1, '#e3d5b5');
   }
   for (let py = 470; py <= 498; py += 7) {
     const pw = 46 + ((py % 14 === 0) ? 2 : -2);
@@ -1483,7 +1523,7 @@ function villageBackground(c: CanvasRenderingContext2D) {
     if (rx % 57 === 0) R(c, rx + 3, 276, 2, 2, '#f2d879');
   }
   for (let rx = 184; rx < 960; rx += 21) {
-    if (rx > 392 && rx < 496) continue;
+    if (rx > 372 && rx < 514) continue;
     R(c, rx, 350, 5, 4, '#56723c'); R(c, rx + 1, 349, 2, 3, '#7a9c52');
     if (rx % 63 === 0) R(c, rx - 2, 351, 2, 2, '#f5efe0');
   }

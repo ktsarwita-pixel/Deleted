@@ -71,13 +71,14 @@ let fireGlowSprite: HTMLCanvasElement | null = null;
 
 function getFireGlowSprite(): HTMLCanvasElement {
   if (fireGlowSprite) return fireGlowSprite;
-  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const c = document.createElement('canvas'); c.width = 96; c.height = 96;
   const ctx = c.getContext('2d')!;
-  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
-  g.addColorStop(0, 'rgba(255,155,62,0.38)');
-  g.addColorStop(0.55, 'rgba(255,130,45,0.14)');
-  g.addColorStop(1, 'rgba(255,115,35,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  const g = ctx.createRadialGradient(48, 48, 2, 48, 48, 48);
+  g.addColorStop(0, 'rgba(255,220,125,0.46)');
+  g.addColorStop(0.28, 'rgba(255,152,54,0.28)');
+  g.addColorStop(0.65, 'rgba(235,96,32,0.11)');
+  g.addColorStop(1, 'rgba(210,70,24,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 96, 96);
   fireGlowSprite = c;
   return c;
 }
