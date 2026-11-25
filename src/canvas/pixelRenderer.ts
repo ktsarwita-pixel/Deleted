@@ -37,16 +37,16 @@ interface SignDef { id: string; x: number; y: number; depth: number; style: Sign
 
 /** Layered wooden signage, mounted on posts or hung from chains. */
 const VILLAGE_SIGNS: SignDef[] = [
-  { id: 'shop-board', x: 565, y: 112, depth: 144, style: { label: 'WARUNG BUDI', kind: 'board', w: 80, h: 18, paint: '#623b2b', ink: '#f8e9c4', scale: 1.5 } },
-  { id: 'shop-open', x: 490, y: 151, depth: 206, style: { label: 'BUKA', kind: 'hanging', w: 36, h: 17, paint: '#2e634c', ink: '#f8e9c4', lantern: true, scale: 1.35 } },
-  { id: 'posko', x: 825, y: 132, depth: 193, style: { label: 'POSKO', kind: 'board', w: 42, h: 17, paint: '#3b5740', ink: '#f8e9c4', scale: 1.5 } },
-  { id: 'home', x: 210, y: 144, depth: 174, style: { label: 'RUMAH WIRA', kind: 'board', w: 74, h: 17, paint: '#754b30', ink: '#f8e9c4', scale: 1.4 } },
-  { id: 'lake', x: 522, y: 500, depth: 500, style: { label: 'DANAU', sub: 'ISI AIR', kind: 'post', posts: 2, w: 50, h: 27, paint: '#315b60', ink: '#eef9eb', scale: 1.4 } },
-  { id: 'forest', x: 884, y: 410, depth: 410, style: { label: 'HUTAN', sub: 'AWAS API', kind: 'post', posts: 1, w: 59, h: 27, paint: '#57432c', ink: '#fff0c3', scale: 1.5 } },
+  { id: 'shop-board', x: 565, y: 112, depth: 144, style: { label: 'WARUNG BUDI', kind: 'board', icon: 'shop', w: 88, h: 19, paint: '#5c3626', ink: '#fff1cf', scale: 1.45 } },
+  { id: 'shop-open', x: 490, y: 151, depth: 206, style: { label: 'BUKA', kind: 'hanging', w: 38, h: 18, paint: '#275943', ink: '#fff4d4', lantern: true, scale: 1.35 } },
+  { id: 'posko', x: 825, y: 132, depth: 193, style: { label: 'POSKO', kind: 'board', icon: 'shield', w: 52, h: 19, paint: '#34523b', ink: '#fff3d1', scale: 1.45 } },
+  { id: 'home', x: 210, y: 144, depth: 174, style: { label: 'RUMAH WIRA', kind: 'board', icon: 'home', w: 82, h: 19, paint: '#6e4429', ink: '#fff2cf', scale: 1.38 } },
+  { id: 'lake', x: 522, y: 500, depth: 500, style: { label: 'DANAU', sub: 'ISI AIR', kind: 'post', posts: 2, icon: 'drop', dirArrow: 'down', w: 68, h: 29, paint: '#274f57', ink: '#effcf5', scale: 1.38 } },
+  { id: 'forest', x: 884, y: 410, depth: 410, style: { label: 'HUTAN', sub: 'AWAS API', kind: 'post', posts: 1, icon: 'flame', dirArrow: 'right', warn: true, w: 78, h: 29, paint: '#523822', ink: '#fff2c7', scale: 1.42 } },
 ];
 const HOUSE_SIGNS: SignDef[] = [
-  { id: 'exit', x: 351, y: 511, depth: 534, style: { label: 'KELUAR', kind: 'board', w: 48, h: 17, paint: '#6a5030', ink: '#fff0c3', scale: 1.35 } },
-  { id: 'radio-tag', x: 640, y: 250, depth: 263, style: { label: 'RADIO', kind: 'board', w: 39, h: 17, paint: '#3d514c', ink: '#eef9eb', scale: 1.3 } },
+  { id: 'exit', x: 351, y: 511, depth: 534, style: { label: 'KELUAR', kind: 'board', icon: 'exit', w: 56, h: 19, paint: '#634729', ink: '#fff2c9', scale: 1.32 } },
+  { id: 'radio-tag', x: 640, y: 250, depth: 263, style: { label: 'RADIO', kind: 'board', icon: 'radio', w: 48, h: 19, paint: '#344944', ink: '#eefcf2', scale: 1.28 } },
 ];
 
 interface Hen { x: number; y: number; tx: number; ty: number; wait: number; face: 1 | -1; dist: number }

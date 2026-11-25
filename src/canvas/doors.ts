@@ -238,25 +238,34 @@ function drawLemariLeaf(
   // Sunlit top 3D thickness bevel
   poly(c, [[lx, ly], [rx, ry], [rx, ry + 2], [lx, ly + 2]], '#d8ab6e');
 
-  // Recessed upper louvered panel & lower raised-field panel
-  if (projW >= 12) {
-    const pad = 4;
+  // Recessed upper louvered panel & lower raised-field panel (foreshortens continuously across all angles)
+  {
+    const kW = projW / Math.max(1, fullW);
+    const pad = Math.max(1, Math.round(4 * kW));
     const pLx = lx + pad;
-    const pRx = rx - pad;
+    const pRx = Math.max(pLx + 1, rx - pad);
     const pLy = ly + Math.round((ry - ly) * (pad / Math.max(1, projW)));
     const pRy = ry - Math.round((ry - ly) * (pad / Math.max(1, projW)));
 
     // Upper louvered vent box
     poly(c, [[pLx, pLy + 5], [pRx, pRy + 5], [pRx, pRy + 26], [pLx, pLy + 26]], '#4f331d');
     for (let s = 7; s <= 23; s += 4) {
-      poly(c, [[pLx + 1, pLy + s], [pRx - 1, pRy + s], [pRx - 1, pRy + s + 2], [pLx + 1, pLy + s + 2]], '#a67749');
-      poly(c, [[pLx + 1, pLy + s], [pRx - 1, pRy + s], [pRx - 1, pRy + s + 1], [pLx + 1, pLy + s + 1]], '#c99762');
+      poly(c, [[pLx, pLy + s], [pRx, pRy + s], [pRx, pRy + s + 2], [pLx, pLy + s + 2]], '#a67749');
+      poly(c, [[pLx, pLy + s], [pRx, pRy + s], [pRx, pRy + s + 1], [pLx, pLy + s + 1]], '#c99762');
     }
 
-    // Lower raised-field carved panel
+    // Lower raised-field carved panel + foreshortened center Dayak diamond emblem
     poly(c, [[pLx, pLy + 30], [pRx, pRy + 30], [pRx, pRy + 47], [pLx, pLy + 47]], '#5c3b22');
-    poly(c, [[pLx + 2, pLy + 32], [pRx - 2, pRy + 32], [pRx - 2, pRy + 45], [pLx + 2, pLy + 45]], '#a17346');
-    poly(c, [[pLx + 2, pLy + 32], [pRx - 2, pRy + 32], [pRx - 2, pRy + 33], [pLx + 2, pLy + 33]], '#cfa068');
+    if (pRx - pLx >= 3) {
+      poly(c, [[pLx + 1, pLy + 32], [pRx - 1, pRy + 32], [pRx - 1, pRy + 45], [pLx + 1, pLy + 45]], '#a17346');
+      poly(c, [[pLx + 1, pLy + 32], [pRx - 1, pRy + 32], [pRx - 1, pRy + 33], [pLx + 1, pLy + 33]], '#cfa068');
+    }
+    const mx = Math.round((lx + rx) * 0.5);
+    const my = Math.round((ly + ry) * 0.5) + 38;
+    const rxD = Math.max(1, Math.round(4 * kW));
+    const skewD = Math.round((ry - ly) * 0.16);
+    poly(c, [[mx, my - 4], [mx + rxD, my + skewD], [mx, my + 4], [mx - rxD, my - skewD]], '#f0d488');
+    if (rxD >= 2) R(c, mx - 1, my - 1, 2, 2, '#bd4834');
   }
 
   // Solid 2px meeting-stile thickness face & spring latch bolt when open
@@ -445,30 +454,40 @@ function drawUprightFrontLeaf(
   // Upright carved ironwood door face
   poly(c, [[lx, lyTop], [rx, ryTop], [rx, ryBot], [lx, lyBot]], faceCol);
 
-  // Vertical tongue-and-groove ironwood plank grain lines
-  const span = Math.hypot(dx, dy);
-  if (span >= 14) {
-    for (const f of [0.33, 0.66]) {
-      const gx = Math.round(hx + dx * f);
-      const gyB = Math.round(hyBot + dy * f);
-      R(c, gx, gyB - doorH + 2, 1, doorH - 5, '#4c311c');
+  // Vertical plank grain, recessed panels & 3D-foreshortened Dayak Sun-Shield Medallion (continuous across ALL swing angles!)
+  {
+    const absDx = Math.abs(dx);
+    if (absDx >= 9) {
+      for (const f of [0.33, 0.66]) {
+        const gx = Math.round(hx + dx * f);
+        const gyB = Math.round(hyBot + dy * f);
+        R(c, gx, gyB - doorH + 2, 1, doorH - 5, '#4c311c');
+      }
     }
 
     const p0x = Math.round(hx + dx * 0.15), p0y = Math.round(hyBot + dy * 0.15);
     const p1x = Math.round(hx + dx * 0.85), p1y = Math.round(hyBot + dy * 0.85);
     // Upper recessed carved panel + inner gold-ochre bevel
     poly(c, [[p0x, p0y - 31], [p1x, p1y - 31], [p1x, p1y - 18], [p0x, p0y - 18]], '#4d321d');
-    poly(c, [[p0x + side, p0y - 30], [p1x - side, p1y - 30], [p1x - side, p1y - 19], [p0x + side, p0y - 19]], '#9e6f43');
+    if (absDx >= 6) {
+      poly(c, [[p0x + side, p0y - 30], [p1x - side, p1y - 30], [p1x - side, p1y - 19], [p0x + side, p0y - 19]], '#9e6f43');
+    }
 
-    // Carved Kalimantan Dayak Sun-Shield Medallion in upper panel center
-    const mx = Math.round((p0x + p1x) * 0.5), my = Math.round((p0y + p1y) * 0.5) - 24;
-    poly(c, [[mx, my - 5], [mx + 5, my], [mx, my + 5], [mx - 5, my]], '#f0d488');
-    poly(c, [[mx, my - 3], [mx + 3, my], [mx, my + 3], [mx - 3, my]], '#bd4834');
-    R(c, mx - 1, my - 1, 2, 2, '#fff6cc');
+    // 3D-foreshortened Kalimantan Dayak Sun-Shield Medallion pinned to the angled leaf tangent (0.34..0.66) so it NEVER disappears!
+    const mLx = Math.round(hx + dx * 0.35), mLy = Math.round(hyBot + dy * 0.35) - 24;
+    const mCx = Math.round(hx + dx * 0.50), mCy = Math.round(hyBot + dy * 0.50) - 24;
+    const mRx = Math.round(hx + dx * 0.65), mRy = Math.round(hyBot + dy * 0.65) - 24;
+    poly(c, [[mCx, mCy - 5], [mRx, mRy], [mCx, mCy + 5], [mLx, mLy]], '#f0d488');
+    const iLx = Math.round(hx + dx * 0.41), iLy = Math.round(hyBot + dy * 0.41) - 24;
+    const iRx = Math.round(hx + dx * 0.59), iRy = Math.round(hyBot + dy * 0.59) - 24;
+    poly(c, [[mCx, mCy - 3], [iRx, iRy], [mCx, mCy + 3], [iLx, iLy]], '#bd4834');
+    R(c, mCx - (absDx >= 12 ? 1 : 0), mCy - 1, absDx >= 12 ? 2 : 1, 2, '#fff6cc');
 
     // Lower recessed carved panel
     poly(c, [[p0x, p0y - 14], [p1x, p1y - 14], [p1x, p1y - 5], [p0x, p0y - 5]], '#4d321d');
-    poly(c, [[p0x + side, p0y - 13], [p1x - side, p1y - 13], [p1x - side, p1y - 6], [p0x + side, p0y - 6]], '#8c6039');
+    if (absDx >= 6) {
+      poly(c, [[p0x + side, p0y - 13], [p1x - side, p1y - 13], [p1x - side, p1y - 6], [p0x + side, p0y - 6]], '#8c6039');
+    }
 
     // Protective weathered brass kickplate along bottom rail!
     poly(c, [[p0x, p0y - 3], [p1x, p1y - 3], [p1x, p1y - 1], [p0x, p0y - 1]], '#c49b50');
@@ -623,50 +642,72 @@ export function drawVillageDoors(c: CanvasRenderingContext2D, rig: DoorRig) {
     R(c, x0 + leafW + 2, yTop + persp + 1, 1, h - persp * 2 - 2, OUTLINE);
   }
 
-  if (leafW >= 10) {
-    const inW = Math.max(3, leafW - 7);
+  // Recessed carved teak panels, foreshortened Dayak center emblem & brass handle across ALL swing angles!
+  {
+    const kW = leafW / fullW;
+    const padX = Math.max(1, Math.round(4 * kW));
+    const inW = Math.max(2, leafW - padX * 2 + 1);
     const pUp = Math.round(persp * 0.75);
+
     // Upper recessed carved teak panel
     poly(c, [
-      [x0 + 4, yTop + 4],
-      [x0 + 4 + inW, yTop + 4 + pUp],
-      [x0 + 4 + inW, yTop + 18 + Math.round(pUp * 0.4)],
-      [x0 + 4, yTop + 18],
+      [x0 + padX, yTop + 4],
+      [x0 + padX + inW, yTop + 4 + pUp],
+      [x0 + padX + inW, yTop + 18 + Math.round(pUp * 0.4)],
+      [x0 + padX, yTop + 18],
     ], '#4d321d');
-    poly(c, [
-      [x0 + 5, yTop + 5],
-      [x0 + 3 + inW, yTop + 5 + pUp],
-      [x0 + 3 + inW, yTop + 17 + Math.round(pUp * 0.4)],
-      [x0 + 5, yTop + 17],
-    ], '#96683e');
+    if (inW >= 4) {
+      poly(c, [
+        [x0 + padX + 1, yTop + 5],
+        [x0 + padX + inW - 1, yTop + 5 + pUp],
+        [x0 + padX + inW - 1, yTop + 17 + Math.round(pUp * 0.4)],
+        [x0 + padX + 1, yTop + 17],
+      ], '#96683e');
+    }
 
     // Lower recessed carved teak panel + brass kickplate
     poly(c, [
-      [x0 + 4, yTop + 23],
-      [x0 + 4 + inW, yTop + 23 - Math.round(pUp * 0.3)],
-      [x0 + 4 + inW, yTop + 36 - pUp],
-      [x0 + 4, yTop + 36],
+      [x0 + padX, yTop + 23],
+      [x0 + padX + inW, yTop + 23 - Math.round(pUp * 0.3)],
+      [x0 + padX + inW, yTop + 36 - pUp],
+      [x0 + padX, yTop + 36],
     ], '#4d321d');
-    poly(c, [
-      [x0 + 5, yTop + 24],
-      [x0 + 3 + inW, yTop + 24 - Math.round(pUp * 0.3)],
-      [x0 + 3 + inW, yTop + 35 - pUp],
-      [x0 + 5, yTop + 35],
-    ], '#875c36');
-    R(c, x0 + 3, yTop + h - persp - 3, Math.max(3, leafW - 5), 2, '#bd944c');
-
-    if (leafW >= 16) {
-      const cx = x0 + Math.round(leafW * 0.52), cy = yTop + 11 + Math.round(pUp * 0.35);
-      poly(c, [[cx, cy - 4], [cx + 4, cy], [cx, cy + 4], [cx - 4, cy]], '#f2d688');
-      R(c, cx - 1, cy - 1, 3, 3, '#bd4834');
-      R(c, cx, cy, 1, 1, '#fff8d4');
+    if (inW >= 4) {
+      poly(c, [
+        [x0 + padX + 1, yTop + 24],
+        [x0 + padX + inW - 1, yTop + 24 - Math.round(pUp * 0.3)],
+        [x0 + padX + inW - 1, yTop + 35 - pUp],
+        [x0 + padX + 1, yTop + 35],
+      ], '#875c36');
     }
+    R(c, x0 + Math.max(1, padX - 1), yTop + h - persp - 3, Math.max(2, leafW - padX * 2 + 2), 2, '#bd944c');
+
+    // Foreshortened Dayak sun-diamond middle icon — scales smoothly with leafW/fullW so it NEVER disappears mid-swing!
+    const cx = x0 + Math.max(2, Math.round(leafW * 0.52));
+    const cy = yTop + 11 + Math.round(pUp * 0.42);
+    const rxOuter = Math.max(1, Math.round(5 * kW));
+    const rxInner = Math.max(1, Math.round(3 * kW));
+    const dSkew = Math.round(pUp * 0.25);
+    poly(c, [
+      [cx, cy - 4],
+      [cx + rxOuter, cy + dSkew],
+      [cx, cy + 4],
+      [cx - rxOuter, cy - dSkew],
+    ], '#f2d688');
+    poly(c, [
+      [cx, cy - 2],
+      [cx + rxInner, cy + Math.round(dSkew * 0.6)],
+      [cx, cy + 2],
+      [cx - rxInner, cy - Math.round(dSkew * 0.6)],
+    ], '#bd4834');
+    R(c, cx, cy, Math.max(1, Math.round(2 * kW)), 1, '#fff8d4');
 
     // Depressing brass lever handle & keyhole escutcheon
     const drop = sp.vel > 0.14 ? 1 : 0;
-    const hx = x0 + leafW - 5, hy = yTop + 19;
-    R(c, hx, hy, 3, 6, '#9c7436');
-    R(c, hx - 1, hy + 1 + drop, 4, 2, sp.latchFlash > 0.3 ? '#ffffff' : '#fff0ad');
+    const hx = x0 + Math.max(2, leafW - Math.max(2, Math.round(5 * kW)));
+    const hy = yTop + 19 + Math.round(persp * 0.15);
+    R(c, hx, hy, Math.max(2, Math.round(3 * kW)), 6, '#9c7436');
+    R(c, Math.max(x0 + 1, hx - 1), hy + 1 + drop, Math.max(2, Math.round(4 * kW)), 2, sp.latchFlash > 0.3 ? '#ffffff' : '#fff0ad');
   }
 
   // Wrought-iron strap hinges with brass pivot pins on left jamb
