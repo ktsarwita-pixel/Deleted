@@ -401,22 +401,27 @@ function playerSpec(w: GameWorld, m: Mem | null, t: number): FrameSpec {
   if (a?.type === 'pour') { pose = 'pour'; dir = a.target.x >= p.x ? 'right' : 'left'; }
   else if (a?.type === 'fill') pose = 'fill';
   else if (w.cutscene === 0 && w.scene === 'village' && (w.time % 2.6) < 0.8) pose = 'cough';
-  else if (w.emote && !p.isMoving) { pose = 'wave'; dir = 'down'; }
+  else if (w.emote && !p.isMoving) {
+    dir = 'down';
+    pose = w.emote.id === 'six_seven' ? 'juggle67' : w.emote.id === 'wave' ? 'wave' : 'celebrate';
+  }
+  const emoteFps = w.emote?.id === 'six_seven' ? 7 : 6;
   const frame = (w.emote && !p.isMoving)
-    ? Math.floor(t * 8) % 4
+    ? Math.floor(w.emote.age * emoteFps) % 4
     : Math.floor(p.animFrame / (GAIT_DISTANCE / 4)) % 4;
   const gait = (p.animFrame % GAIT_DISTANCE) / GAIT_DISTANCE;
   const still = m ? w.time - m.stillSince : 0;
   const g = Math.floor(still / 1.6) % 4;
   const talking = w.dialogue?.portrait === 'wira';
+  const twoHandEmote = pose === 'juggle67' || pose === 'celebrate';
   return {
     who: 'wira', dir, pose, frame,
-    blink: pose === 'cough' || t % 4.3 > 4.16,
-    holding: p.bucketType !== 'none' && pose !== 'pour',
+    blink: pose === 'cough' || (!twoHandEmote && t % 4.3 > 4.16),
+    holding: p.bucketType !== 'none' && pose !== 'pour' && !twoHandEmote,
     newShoes: p.hasNewShoes,
     flutter: Math.floor(t * (p.isMoving ? 9 : 3)) % 3,
     breath: Math.floor(t / 0.9) % 2,
-    mouth: pose === 'cough' || (!!w.emote && Math.floor(t * 6) % 2 === 0) || (talking && Math.floor(t * 7) % 2 === 0),
+    mouth: pose === 'cough' || (!!w.emote && (pose === 'celebrate' ? (frame === 1 || frame === 2) : frame % 2 === 0)) || (talking && Math.floor(t * 7) % 2 === 0),
     glance: pose === 'stand' && dir === 'down' && still > 3 ? (g === 1 ? -1 : g === 3 ? 1 : 0) : 0,
     sway: p.isMoving ? (frame === 1 || frame === 2 ? 1 : 0) : Math.floor(t * 1.2) % 2,
     gait,
@@ -436,7 +441,12 @@ function bucketPose(w: GameWorld, spec: FrameSpec, m: Mem | null) {
   let rope: { x: number; y: number; taut: number } | null = null;
   let waterY = y + 999;
 
-  if (a?.type === 'pour') {
+  if (spec.pose === 'juggle67' || spec.pose === 'celebrate') {
+    // Wira sets the bucket neatly on the ground beside his right boot while emoting with both hands
+    x = p.x + 20;
+    y = p.y - 6;
+    pourAngle = 0;
+  } else if (a?.type === 'pour') {
     const k = clamp01(a.age / 0.65);
     const tilt = k < 0.18 ? (k / 0.18) * 0.45 : k < 0.55 ? 0.45 + ((k - 0.18) / 0.37) * 1.05 : 1.5 * (1 - (k - 0.55) / 0.45);
     pourAngle = side * tilt;

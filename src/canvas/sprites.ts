@@ -8,7 +8,7 @@ import { type Wind } from './physics';
  * keep swinging after Wira stops or turns.
  */
 export type Who = 'wira' | 'budi' | 'pak_rt';
-export type Pose = 'stand' | 'walk' | 'pour' | 'fill' | 'wave' | 'point' | 'cough';
+export type Pose = 'stand' | 'walk' | 'pour' | 'fill' | 'wave' | 'point' | 'cough' | 'juggle67' | 'celebrate';
 export const SCALE = 2;
 const W = 32, H = 44;
 
@@ -85,6 +85,8 @@ function mirror(src: HTMLCanvasElement) {
 
 export function upperOffset(s: Pick<FrameSpec, 'pose' | 'frame' | 'breath'>) {
   const f = s.frame & 3;
+  if (s.pose === 'juggle67') return (f === 1 || f === 3) ? 1 : 0;
+  if (s.pose === 'celebrate') return [1, -1, -1, 0][f];
   const bob = s.pose === 'walk' && (f === 1 || f === 3) ? -1 : 0;
   const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : 0;
   return bob + crouch - (s.pose === 'stand' ? s.breath : 0);
@@ -97,7 +99,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   const back = s.dir === 'up';
   const f = s.frame & 3;
   const walking = s.pose === 'walk';
-  const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : 0;
+  const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : s.pose === 'celebrate' ? (f === 0 ? 1 : 0) : s.pose === 'juggle67' ? ((f & 1) ? 1 : 0) : 0;
   const bob = walking && (f === 1 || f === 3) ? -1 : 0;
   const Ub = upperOffset(s);
   const legTop = 31 + bob + crouch;
@@ -160,7 +162,13 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   if (!side) {
     let lb = 40, rb = 40, ll = 0, rl = 0;
     if (walking) { const g = [[41, 40, 0, 2], [40, 38, 2, 0], [40, 41, 0, 2], [38, 40, 2, 0]][f]; lb = g[0]; rb = g[1]; ll = g[2]; rl = g[3]; }
-    const spread = crouch >= 3 ? 1 : 0;
+    else if (s.pose === 'juggle67') {
+      if (f === 0) { rl = 1; rb = 39; }
+      else if (f === 2) { ll = 1; lb = 39; }
+    } else if (s.pose === 'celebrate' && (f === 1 || f === 2)) {
+      lb = 39; rb = 39; ll = 1; rl = 1;
+    }
+    const spread = (crouch >= 2 || s.pose === 'juggle67') ? 1 : 0;
     legFront(12 - spread, lb, ll); legFront(17 + spread, rb, rl);
   } else {
     let bk = { off: -1, b: 40, l: 0 }, nr = { off: 1, b: 40, l: 0 };
@@ -230,12 +238,43 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
       P(11, ty + 1, 2, 3, sleeve); P(19, ty + 1, 2, 3, sleeve);
       P(12, ty + 4, 2, 4, L.skin); P(18, ty + 4, 2, 4, L.skin);
       P(14, ty + 7, 4, 2, L.skinShade); P(14, ty + 7, 3, 1, L.skinLight);
+    } else if (s.pose === 'juggle67') {
+      // Real two-handed '6-7' alternating palm weigh-in seamlessly connected to Wira's shoulders!
+      const lY = ty + 4 + [2, 0, -2, 0][f];
+      const rY = ty + 4 + [-2, 0, 2, 0][f];
+      // Left shoulder sleeve -> continuous forearm -> upturned open palm
+      P(9, ty + 1, 2, 3, sleeve); P(10, ty + 1, 1, 3, sleeveShade);
+      const lTop = Math.min(ty + 3, lY), lBot = Math.max(ty + 4, lY + 1);
+      P(8, lTop, 2, lBot - lTop + 1, L.skin); P(9, lTop, 1, lBot - lTop + 1, L.skinShade);
+      P(5, lY, 4, 2, L.skin); P(5, lY, 3, 1, L.skinLight); P(5, lY + 1, 4, 1, L.skinShade);
+      // Right shoulder sleeve -> continuous forearm -> upturned open palm
+      P(21, ty + 1, 2, 3, sleeve); P(22, ty + 1, 1, 3, sleeveShade);
+      const rTop = Math.min(ty + 3, rY), rBot = Math.max(ty + 4, rY + 1);
+      P(22, rTop, 2, rBot - rTop + 1, L.skin); P(23, rTop, 1, rBot - rTop + 1, L.skinShade);
+      P(23, rY, 4, 2, L.skin); P(24, rY, 3, 1, L.skinLight); P(23, rY + 1, 4, 1, L.skinShade);
+    } else if (s.pose === 'celebrate') {
+      if (f === 0) {
+        // Grounded knee-bend anticipation: elbows out, hands gathered near chest
+        P(9, ty + 1, 2, 3, sleeve); P(21, ty + 1, 2, 3, sleeve);
+        P(8, ty + 3, 3, 2, L.skin); P(21, ty + 3, 3, 2, L.skin);
+        P(8, ty + 3, 2, 1, L.skinLight); P(22, ty + 3, 2, 1, L.skinLight);
+      } else if (f === 1 || f === 2) {
+        // Clear wide V-arms silhouette outside head contour so both raised hands read cleanly!
+        const lPump = f === 1 ? -1 : 0, rPump = f === 2 ? -1 : 0;
+        P(9, ty, 2, 2, sleeve); P(7, ty - 3, 2, 4, L.skin); P(6, ty - 6 + lPump, 2, 4, L.skin); P(6, ty - 6 + lPump, 2, 1, L.skinLight); P(8, ty - 2, 1, 2, L.skinShade);
+        P(21, ty, 2, 2, sleeve); P(23, ty - 3, 2, 4, L.skin); P(24, ty - 6 + rPump, 2, 4, L.skin); P(24, ty - 6 + rPump, 2, 1, L.skinLight); P(23, ty - 2, 1, 2, L.skinShade);
+      } else {
+        // Smooth follow-through lowering arms through shoulder level
+        P(9, ty, 2, 3, sleeve); P(7, ty - 1, 2, 3, L.skin); P(7, ty - 1, 2, 1, L.skinLight);
+        P(21, ty, 2, 3, sleeve); P(23, ty - 1, 2, 3, L.skin); P(23, ty - 1, 2, 1, L.skinLight);
+      }
     } else {
       if (s.pose === 'cough') { P(10, ty, 2, 2, sleeve); P(12, ty - 3, 3, 3, L.skin); P(14, ty - 2, 1, 1, L.skinShade); }
       else arm(9, ty + 1 + (holdLeft ? 0 : swing));
       if (s.pose === 'wave') {
-        const wv = f & 1;
-        P(21, ty, 2, 2, sleeve); P(22, ty - 3, 2, 3, L.skin); P(22 + wv, ty - 6, 2, 3, L.skin); P(22 + wv, ty - 6, 2, 1, L.skinLight);
+        const wv = [-1, 0, 1, 0][f];
+        P(21, ty, 2, 2, sleeve); P(22, ty - 3, 2, 3, L.skin);
+        P(22 + wv, ty - 6, 3, 3, L.skin); P(22 + wv, ty - 6, 2, 1, L.skinLight); P(24 + wv, ty - 5, 1, 2, L.skinShade);
       } else if (s.pose === 'point') {
         P(21, ty + 1, 3, 2, sleeve); P(24, ty + 1, 4, 2, L.skin); P(28, ty + 1, 1, 1, L.skin); P(24, ty + 2, 4, 1, L.skinShade);
       } else arm(21, ty + 1 - (holdRight ? 0 : swing));
@@ -268,7 +307,9 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
     P(13, hy + 12, 6, 2, L.skinShade);
     P(9, hy + 5, 2, 6, L.hair); P(21, hy + 5, 2, 5, L.hair);
   } else if (!side) {
-    const ex1 = 12 + s.glance, ex2 = 18 + s.glance, ey = hy + 7;
+    const poseGlance = s.pose === 'juggle67' ? (f === 0 ? 1 : f === 2 ? -1 : 0) : s.glance;
+    const lookUp = s.pose === 'celebrate' && (f === 1 || f === 2) ? -1 : 0;
+    const ex1 = 12 + poseGlance, ex2 = 18 + poseGlance, ey = hy + 7 + lookUp;
     if (L.head === 'peci') { P(9, hy + 4, 1, 4, L.hair); P(22, hy + 4, 1, 4, L.hair); }
     else {
       for (let r = 2; r <= 4; r++) row(r, 9, 22, L.hair);
@@ -350,7 +391,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   P(rimX, ty - 1, 2, 1, '#ffffff24');
 
   // ---------- headwear & tucked ponytail (crisp outlined pixel art, zero glitchy detached chains) ----------
-  const fl = (s.pose === 'walk' ? (s.frame & 1) : (s.flutter & 1));
+  const fl = (s.pose === 'walk' || s.pose === 'juggle67' || s.pose === 'celebrate' ? (s.frame & 1) : (s.flutter & 1));
   if (L.ponytail) {
     if (side) {
       P(7, hy + 5, 2, 4, L.hair); P(6, hy + 7 + fl, 2, 3, L.hair); P(7, hy + 5, 1, 2, L.hairLight);
@@ -614,7 +655,7 @@ export function warmupSprites() {
   if (warmed || typeof document === 'undefined') return;
   warmed = true;
   for (const dir of ['down', 'up', 'left', 'right'] as Direction[]) {
-    for (const pose of ['stand', 'walk', 'fill', 'pour'] as Pose[]) {
+    for (const pose of ['stand', 'walk', 'fill', 'pour', 'wave', 'juggle67', 'celebrate'] as Pose[]) {
       for (const holding of [false, true]) {
         for (const newShoes of [false, true]) {
           for (const frame of [0, 1, 2, 3]) {
