@@ -405,4 +405,9 @@ export class GameEngine {
     w.emote = createActiveEmote(id, p.x, p.y);
     this.publish();
   };
+  cancelEmote = () => {
+    if (!this.world.emote) return;
+    this.world.emote = null;
+    this.publish();
+  };
 }
