@@ -1212,7 +1212,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       const since = st ? world.time - st.since : 99;
       // canopy sway comes from the shared wind field, with a per-tree phase
       const w2 = windAt(tx, ty, t);
-      const sway = (w2.dir * (2.2 + w2.gust * 5.4) + Math.sin(t * 0.9 + tx * 0.07) * 1.1) * (0.6 + s * 0.5);
+      const sway = motion ? (w2.dir * (1.2 + w2.gust * 2.1) + Math.sin(t * 1.15 + tx * 0.07 + ty * 0.03) * 0.85) * (0.65 + s * 0.3) : 0;
       items.push({ y: ty, draw: () => {
         if (burnt) {
           drawTree(c, tx, ty, s, true, sway * 0.55);
@@ -1247,7 +1247,7 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       const pw = windAt(pr.x, pr.y, t);
       const d = Math.hypot(pr.x - pp.x, pr.y - pp.y);
       const parted = d < 30 ? (pr.x - pp.x) / 30 * 5 : 0;
-      const sway = Math.round(pw.dir * (1.5 + pw.gust * 3.4) + Math.sin(t * 1.5 + pr.x * 0.05) * 0.8 + parted) * 2;
+      const sway = motion ? (pw.dir * (1.3 + pw.gust * 2.4) + Math.sin(t * 1.6 + pr.x * 0.05) * 0.75 + parted) : parted;
       // cross-fade between the scorched and living sprite while it recovers
       items.push({ y: pr.y, draw: () => {
         if (eased > 0.02 && eased < 0.98) {
