@@ -2,46 +2,88 @@ import type { Direction, PortraitId } from '../types/gameTypes';
 import { type Wind } from './physics';
 
 /*
- * Pixel sprite factory with physical secondary motion.
- * Bodies are painted once per frame and cached with an automatic outline;
- * hair, scarves and the carried bucket are simulated every frame so they
- * keep swinging after Wira stops or turns.
+ * High-craft Kalimantan pixel character & creature sprite factory (36x48 canvas @ 2x scale).
+ * Includes 5 distinct characters (Wira, Pak Budi, Pak RT Daman, Ibu Sari, Manggala Agni Ranger),
+ * true 8-frame articulated walk cycles, expressive facial animation, work/idle poses,
+ * and detailed calico cat + kampung hens & rooster sprites.
  */
-export type Who = 'wira' | 'budi' | 'pak_rt';
-export type Pose = 'stand' | 'walk' | 'pour' | 'fill' | 'wave' | 'point' | 'cough' | 'juggle67' | 'celebrate';
+export type Who = 'wira' | 'budi' | 'pak_rt' | 'bu_sari' | 'manggala';
+export type Pose =
+  | 'stand'
+  | 'walk'
+  | 'pour'
+  | 'fill'
+  | 'wave'
+  | 'point'
+  | 'cough'
+  | 'juggle67'
+  | 'celebrate'
+  | 'wipe'
+  | 'radio_check';
+
 export const SCALE = 2;
-const W = 32, H = 44;
+const W = 36, H = 48;
 
 interface Look {
   skin: string; skinShade: string; skinLight: string;
   hair: string; hairLight: string;
   top: string; topShade: string; topLight: string;
   inner: string; innerShade: string; trim: string;
-  pants: string; pantsShade: string;
+  pants: string; pantsShade: string; pantsLight: string;
   sarong?: string; sarongShade?: string; sarongLight?: string;
-  head: 'kerchief' | 'peci' | 'short';
+  head: 'kerchief' | 'peci' | 'short' | 'bun' | 'cap';
   accent?: string; accentLight?: string;
-  ponytail?: boolean; vest?: boolean; apron?: boolean; batik?: boolean; glasses?: boolean; mustache?: string;
-  strap?: boolean;
+  ponytail?: boolean; vest?: boolean; apron?: boolean; batik?: boolean;
+  glasses?: boolean; mustache?: string; strap?: boolean;
+  hiVis?: boolean; kebaya?: boolean; eyeTone: string;
 }
 
 const LOOKS: Record<Who, Look> = {
   wira: {
-    skin: '#e3a877', skinShade: '#bd7d55', skinLight: '#f6d3a6', hair: '#2e2320', hairLight: '#5c4337',
-    top: '#b8432f', topShade: '#862f20', topLight: '#da674b', inner: '#f0e2bf', innerShade: '#cbb88f', trim: '#e9ba5c',
-    pants: '#3f4d3a', pantsShade: '#2b3829', sarong: '#7d3f52', sarongShade: '#5a2b3b', sarongLight: '#a35c6c',
-    head: 'kerchief', accent: '#c7432d', accentLight: '#ea7550', ponytail: true, vest: true, strap: true,
+    skin: '#e5aa78', skinShade: '#be7d53', skinLight: '#f8d7ad',
+    hair: '#291f1c', hairLight: '#614538',
+    top: '#bc432e', topShade: '#872c1d', topLight: '#df6b4e',
+    inner: '#f3e5c3', innerShade: '#cbb990', trim: '#f0c05a',
+    pants: '#3d4c38', pantsShade: '#283526', pantsLight: '#55694e',
+    sarong: '#7e3e52', sarongShade: '#582939', sarongLight: '#aa6072',
+    head: 'kerchief', accent: '#cc422b', accentLight: '#f07952',
+    ponytail: true, vest: true, strap: true, eyeTone: '#3c2b24',
   },
   budi: {
-    skin: '#c98d5e', skinShade: '#a06a43', skinLight: '#dfa979', hair: '#221c19', hairLight: '#3d332d',
-    top: '#4f7d55', topShade: '#375a3c', topLight: '#72a06c', inner: '#ece1c4', innerShade: '#c8b995', trim: '#d9b45c',
-    pants: '#4a3b30', pantsShade: '#342a22', head: 'peci', apron: true, mustache: '#2a211d',
+    skin: '#cc8f5f', skinShade: '#a26b43', skinLight: '#e4af80',
+    hair: '#221c19', hairLight: '#433730',
+    top: '#4c7e53', topShade: '#345a3a', topLight: '#73a46e',
+    inner: '#efe4c8', innerShade: '#c8ba96', trim: '#deb85c',
+    pants: '#4c3c30', pantsShade: '#342921', pantsLight: '#665243',
+    head: 'peci', apron: true, mustache: '#271e1a', eyeTone: '#34261f',
   },
   pak_rt: {
-    skin: '#bd8055', skinShade: '#965d3a', skinLight: '#d59d6e', hair: '#a9a597', hairLight: '#d2cebf',
-    top: '#a5683a', topShade: '#794927', topLight: '#c98d52', inner: '#e9dab2', innerShade: '#c4b389', trim: '#efc96d',
-    pants: '#3a3631', pantsShade: '#28251f', sarong: '#3f5a4a', sarongShade: '#2b4034', sarongLight: '#5d7d63',
-    head: 'short', batik: true, glasses: true, mustache: '#ede7d4',
+    skin: '#bf8256', skinShade: '#965d39', skinLight: '#daa274',
+    hair: '#aba799', hairLight: '#dad6c7',
+    top: '#a86939', topShade: '#794825', topLight: '#ce9155',
+    inner: '#ecdeb6', innerShade: '#c4b388', trim: '#f2cc6e',
+    pants: '#393530', pantsShade: '#26231e', pantsLight: '#504b44',
+    sarong: '#3d5b4a', sarongShade: '#294033', sarongLight: '#608468',
+    head: 'short', batik: true, glasses: true, mustache: '#efe9d6', eyeTone: '#2f2520',
+  },
+  bu_sari: {
+    skin: '#dea172', skinShade: '#b5764d', skinLight: '#f4cea4',
+    hair: '#241b19', hairLight: '#4f3a31',
+    top: '#c45b4a', topShade: '#913c30', topLight: '#e0806c',
+    inner: '#f5e7c9', innerShade: '#d2c09c', trim: '#f0ca6d',
+    pants: '#325358', pantsShade: '#223a3e', pantsLight: '#4b7379',
+    sarong: '#2f6268', sarongShade: '#1e4348', sarongLight: '#589196',
+    head: 'bun', accent: '#fff4d2', accentLight: '#f4b942',
+    kebaya: true, eyeTone: '#382721',
+  },
+  manggala: {
+    skin: '#cf9162', skinShade: '#a46b43', skinLight: '#e8b384',
+    hair: '#251e1b', hairLight: '#473932',
+    top: '#4c5b3b', topShade: '#344028', topLight: '#697c52',
+    inner: '#e86a2c', innerShade: '#b84b18', trim: '#e9eef0',
+    pants: '#38432e', pantsShade: '#252e1e', pantsLight: '#4f5d42',
+    head: 'cap', accent: '#d95b26', accentLight: '#f58b44',
+    hiVis: true, strap: true, eyeTone: '#30241e',
   },
 };
 
@@ -63,7 +105,7 @@ const blank = (w: number, h: number) => {
   return { c, ctx };
 };
 
-function outline(canvas: HTMLCanvasElement, rgb: [number, number, number] = [27, 22, 18]) {
+function outline(canvas: HTMLCanvasElement, rgb: [number, number, number] = [25, 20, 16]) {
   const ctx = canvas.getContext('2d')!;
   const { width: w, height: h } = canvas;
   const img = ctx.getImageData(0, 0, w, h); const d = img.data; const out = new Uint8ClampedArray(d);
@@ -71,7 +113,9 @@ function outline(canvas: HTMLCanvasElement, rgb: [number, number, number] = [27,
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * 4;
     if (d[i + 3] !== 0) continue;
-    if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) { out[i] = rgb[0]; out[i + 1] = rgb[1]; out[i + 2] = rgb[2]; out[i + 3] = 255; }
+    if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) {
+      out[i] = rgb[0]; out[i + 1] = rgb[1]; out[i + 2] = rgb[2]; out[i + 3] = 255;
+    }
   }
   img.data.set(out); ctx.putImageData(img, 0, 0);
   return canvas;
@@ -83,346 +127,628 @@ function mirror(src: HTMLCanvasElement) {
   return c;
 }
 
+// 8-frame walk cycle bob: contact(0), down/recoil(1), passing(2), high-point(3), contact(4), down(5), passing(6), high(7)
+const WALK_BOB_8 = [0, 1, 0, -1, 0, 1, 0, -1];
+
 export function upperOffset(s: Pick<FrameSpec, 'pose' | 'frame' | 'breath'>) {
-  const f = s.frame & 3;
-  if (s.pose === 'juggle67') return (f === 1 || f === 3) ? 1 : 0;
-  if (s.pose === 'celebrate') return [1, -1, -1, 0][f];
-  const bob = s.pose === 'walk' && (f === 1 || f === 3) ? -1 : 0;
-  const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : 0;
-  return bob + crouch - (s.pose === 'stand' ? s.breath : 0);
+  const f4 = s.frame & 3;
+  const f8 = s.frame & 7;
+  if (s.pose === 'juggle67') return (f4 === 1 || f4 === 3) ? 1 : 0;
+  if (s.pose === 'celebrate') return [1, -1, -1, 0][f4];
+  if (s.pose === 'walk') return WALK_BOB_8[f8];
+  const crouch = s.pose === 'fill' ? 3 : s.pose === 'pour' ? 1 : s.pose === 'cough' ? 1 : 0;
+  return crouch - (s.pose === 'stand' || s.pose === 'wipe' || s.pose === 'radio_check' ? s.breath : 0);
 }
 
 function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   const L = LOOKS[s.who];
-  const P = (x: number, y: number, w: number, h: number, c: string) => { if (w > 0 && h > 0) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); } };
+  const P = (x: number, y: number, w: number, h: number, c: string) => {
+    if (w > 0 && h > 0) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+  };
   const side = s.dir === 'left' || s.dir === 'right';
   const back = s.dir === 'up';
-  const f = s.frame & 3;
+  const f4 = s.frame & 3;
+  const f8 = s.frame & 7;
   const walking = s.pose === 'walk';
-  const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : s.pose === 'celebrate' ? (f === 0 ? 1 : 0) : s.pose === 'juggle67' ? ((f & 1) ? 1 : 0) : 0;
-  const bob = walking && (f === 1 || f === 3) ? -1 : 0;
   const Ub = upperOffset(s);
-  const legTop = 31 + bob + crouch;
+  const crouch = s.pose === 'fill' ? 3 : s.pose === 'cough' ? 1 : s.pose === 'pour' ? 1 : 0;
+  const legTop = 33 + (walking ? WALK_BOB_8[f8] : crouch);
+
   const shoe = s.newShoes
-    ? { a: '#c9412d', b: '#f07b50', sole: '#f3ead4', stripe: '#f5c650', lace: '#ffffff' }
-    : s.who === 'wira' ? { a: '#6b4a32', b: '#8f6742', sole: '#3a2a20', stripe: '#6b4a32', lace: '#c9b48d' }
-      : { a: '#3b302a', b: '#5a4a42', sole: '#211b17', stripe: '#3b302a', lace: '#8d7f70' };
-  const sleeve = L.vest ? L.inner : L.top, sleeveShade = L.vest ? L.innerShade : L.topShade;
+    ? { a: '#cc3f2b', b: '#f47e52', sole: '#f5ecd6', stripe: '#f7ca52', lace: '#ffffff' }
+    : s.who === 'wira' ? { a: '#6e4c33', b: '#946b45', sole: '#38281e', stripe: '#6e4c33', lace: '#d1bc94' }
+    : s.who === 'manggala' ? { a: '#2e2924', b: '#4d453d', sole: '#1a1714', stripe: '#3b352f', lace: '#8a8275' }
+    : s.who === 'bu_sari' ? { a: '#6b3b2e', b: '#945745', sole: '#2e1d17', stripe: '#e6c26e', lace: '#e6c26e' }
+    : { a: '#3d312a', b: '#5e4d44', sole: '#211b17', stripe: '#3d312a', lace: '#918272' };
 
-  // ---------- legs with a lifted-foot arc ----------
-  const legFront = (x: number, bottom: number, lift: number) => {
-    const knee = bottom - lift;
-    P(x, legTop, 3, knee - 2 - legTop, L.pants);
-    P(x + 2, legTop, 1, knee - 2 - legTop, L.pantsShade);
-    P(x, legTop, 3, 1, L.sarong ? L.sarongShade! : L.pantsShade);
-    P(x, knee - 3, 3, 3, shoe.a); P(x, knee - 3, 2, 1, shoe.b);
-    P(x, knee - 4, 3, 1, L.pantsShade);                       // ankle cuff
+  const sleeve = L.vest ? L.inner : L.top;
+  const sleeveShade = L.vest ? L.innerShade : L.topShade;
+  const sleeveLight = L.vest ? '#fff7df' : L.topLight;
+
+  // ---------- Articulated Front/Back Leg with Knee Highlight & Boot Tread ----------
+  const legFront = (x: number, bottom: number, lift: number, kneeShift = 0) => {
+    const footY = bottom - lift;
+    const thighH = Math.max(2, Math.floor((footY - 3 - legTop) * 0.55));
+    const shinY = legTop + thighH;
+    const shinH = Math.max(2, footY - 3 - shinY);
+    // Thigh
+    P(x, legTop, 4, thighH, L.pants);
+    P(x, legTop, 1, thighH, L.pantsLight);
+    P(x + 3, legTop, 1, thighH, L.pantsShade);
+    // Knee + Shin
+    const sx = x + kneeShift;
+    P(sx, shinY, 4, shinH, L.pants);
+    P(sx + 1, shinY, 2, 1, L.pantsLight); // knee cap catchlight
+    P(sx + 3, shinY, 1, shinH, L.pantsShade);
+    P(sx, footY - 4, 4, 1, L.pantsShade); // trouser cuff
+    // Boot / Sneaker
+    P(sx, footY - 3, 4, 3, shoe.a);
+    P(sx, footY - 3, 3, 1, shoe.b);
     if (s.newShoes) {
-      P(x + 1, knee - 2, 1, 1, shoe.stripe);
-      P(x, knee - 4, 3, 1, shoe.lace);
-      P(x + 1, knee - 3, 1, 1, shoe.lace);
+      P(sx + 1, footY - 2, 2, 1, shoe.stripe);
+      P(sx + 1, footY - 4, 2, 1, shoe.lace);
+    } else if (s.who === 'bu_sari') {
+      P(sx + 1, footY - 2, 2, 1, shoe.stripe);
     }
-    P(x, knee, 3, 1, shoe.sole);
-    P(x, knee, 1, 1, '#00000055'); P(x + 2, knee, 1, 1, '#00000055'); // tread notches
-    if (lift > 0) P(x, knee + 1, 3, 1, 'rgba(20,24,18,.18)');
+    P(sx, footY, 4, 1, shoe.sole);
+    P(sx, footY, 1, 1, '#00000050'); P(sx + 3, footY, 1, 1, '#00000050');
   };
-  const legSide = (hip: number, off: number, bottom: number, near: boolean, lift: number) => {
-    const mid = Math.floor((legTop + bottom - 2) / 2);
+
+  // ---------- Articulated Side-View Two-Segment Leg (Thigh -> Knee -> Calf -> angled Foot) ----------
+  const legSide = (hipX: number, thighOff: number, footOff: number, bottom: number, near: boolean, lift: number, toeUp = 0) => {
+    const footY = bottom - lift;
+    const midY = Math.floor((legTop + footY - 3) * 0.52);
     const col = near ? L.pants : L.pantsShade;
-    P(hip + Math.round(off / 2), legTop, 3, mid - legTop, col);
-    P(hip + off, mid, 3, bottom - 2 - mid - lift, col);
-    const sx = hip + off, by = bottom - lift;
-    P(sx, by - 3, 4, 3, shoe.a); P(sx + 1, by - 3, 3, 1, shoe.b);
-    P(sx, by - 4, 3, 1, L.pantsShade);
-    if (s.newShoes) { P(sx + 1, by - 2, 2, 1, shoe.stripe); P(sx, by - 4, 3, 1, shoe.lace); P(sx + 3, by - 2, 1, 2, shoe.lace); }
-    P(sx, by, 4, 1, shoe.sole);
-    P(sx + 1, by, 1, 1, '#00000055'); P(sx + 3, by, 1, 1, '#00000055');
-    if (near) P(sx + 3, by - 2, 1, 2, shoe.b);               // toe cap catches light
-  };
-
-  const arm = (x: number, y: number) => {
-    P(x, y, 2, 3, sleeve); P(x + 1, y, 1, 3, sleeveShade);
-    P(x, y + 1, 1, 1, L.vest ? '#ffffff33' : L.topLight);      // shoulder catchlight
-    P(x, y + 3, 2, 3, L.skin); P(x + 1, y + 3, 1, 3, L.skinShade);
-    P(x, y + 3, 1, 1, L.skinLight);                           // wrist
-    P(x, y + 6, 2, 1, L.skinShade);
-    P(x, y + 7, 1, 1, L.skin);                                // thumb / finger split
-  };
-
-  const ty = 22 + Ub;
-  const swing = walking ? (f === 0 ? 1 : f === 2 ? -1 : 0) : 0;
-
-  // far arm behind the torso (side view)
-  if (side && s.pose !== 'pour' && s.pose !== 'point') {
-    const off = -swing * 2;
-    P(14 + Math.round(off / 2), ty + 1, 2, 3, sleeveShade);
-    P(14 + off, ty + 4, 2, 3, L.skinShade);
-  }
-
-  if (!side) {
-    let lb = 40, rb = 40, ll = 0, rl = 0;
-    if (walking) { const g = [[41, 40, 0, 2], [40, 38, 2, 0], [40, 41, 0, 2], [38, 40, 2, 0]][f]; lb = g[0]; rb = g[1]; ll = g[2]; rl = g[3]; }
-    else if (s.pose === 'juggle67') {
-      if (f === 0) { rl = 1; rb = 39; }
-      else if (f === 2) { ll = 1; lb = 39; }
-    } else if (s.pose === 'celebrate' && (f === 1 || f === 2)) {
-      lb = 39; rb = 39; ll = 1; rl = 1;
+    const hi = near ? L.pantsLight : L.pants;
+    // Thigh segment
+    P(hipX + thighOff, legTop, 4, Math.max(2, midY - legTop), col);
+    if (near) P(hipX + thighOff, legTop + 1, 1, Math.max(1, midY - legTop - 1), hi);
+    // Shin segment
+    P(hipX + footOff, midY, 4, Math.max(2, footY - 3 - midY), col);
+    if (near) P(hipX + footOff + 1, midY, 2, 1, hi); // knee highlight
+    // Boot / Sneaker with toe box facing right (mirrored automatically for left)
+    const sx = hipX + footOff;
+    P(sx, footY - 3, 5, 3, shoe.a);
+    P(sx + 1, footY - 3, 3, 1, shoe.b);
+    if (near) P(sx + 3, footY - 2 - toeUp, 2, 2, shoe.b);
+    if (s.newShoes) {
+      P(sx + 1, footY - 2, 2, 1, shoe.stripe);
+      P(sx + 1, footY - 4, 2, 1, shoe.lace);
+      P(sx + 3, footY - 3, 1, 1, shoe.lace);
     }
-    const spread = (crouch >= 2 || s.pose === 'juggle67') ? 1 : 0;
-    legFront(12 - spread, lb, ll); legFront(17 + spread, rb, rl);
-  } else {
-    let bk = { off: -1, b: 40, l: 0 }, nr = { off: 1, b: 40, l: 0 };
-    if (walking) {
-      bk = [{ off: -3, b: 40, l: 0 }, { off: 1, b: 38, l: 2 }, { off: 3, b: 40, l: 0 }, { off: 0, b: 40, l: 1 }][f];
-      nr = [{ off: 3, b: 40, l: 2 }, { off: 0, b: 40, l: 0 }, { off: -3, b: 40, l: 0 }, { off: 1, b: 38, l: 2 }][f];
-    } else if (crouch >= 3) { bk = { off: -2, b: 40, l: 0 }; nr = { off: 3, b: 40, l: 0 }; }
-    legSide(14, bk.off, bk.b, false, bk.l); legSide(14, nr.off, nr.b, true, nr.l);
+    P(sx, footY - toeUp, 5, 1, shoe.sole);
+  };
+
+  const ty = 23 + Ub;
+  // Smooth 8-frame sinusoidal arm swing (-3..+3)
+  const swing8 = walking ? [3, 2, 0, -2, -3, -2, 0, 2][f8] : 0;
+  const shoulderTwist = walking && !side ? [1, 1, 0, -1, -1, -1, 0, 1][f8] : 0;
+
+  // Far arm behind torso in side view (with elbow bend!)
+  if (side && s.pose !== 'pour' && s.pose !== 'point') {
+    const aOff = -swing8;
+    const elbowX = 16 + Math.round(aOff * 0.45);
+    const handX = 16 + aOff + (aOff > 0 ? 1 : 0);
+    P(16, ty + 1, 3, 3, sleeveShade);
+    P(elbowX, ty + 4, 3, 3, L.skinShade);
+    P(handX, ty + 6 - (Math.abs(aOff) > 1 ? 1 : 0), 3, 2, L.skinShade);
   }
 
-  // ---------- torso ----------
+  // ---------- Legs (8-Frame Fluid Walk + Action Stances) ----------
   if (!side) {
-    P(11, ty, 10, 9, L.top);
+    if (walking) {
+      // 8-frame front/back stride: [leftBot, rightBot, leftLift, rightLift, lKneeShift, rKneeShift]
+      const g = [
+        [44, 43, 0, 2,  0,  0], // 0: L plant, R toe-off
+        [44, 42, 0, 3,  0,  0], // 1: L recoil, R swing start
+        [44, 41, 0, 3,  0,  0], // 2: R passing high
+        [43, 43, 1, 0,  0,  0], // 3: R reach forward
+        [43, 44, 2, 0,  0,  0], // 4: R plant, L toe-off
+        [42, 44, 3, 0,  0,  0], // 5: R recoil, L swing start
+        [41, 44, 3, 0,  0,  0], // 6: L passing high
+        [43, 43, 0, 1,  0,  0], // 7: L reach forward
+      ][f8];
+      // Draw higher/back leg first so passing knee overlaps naturally
+      if (g[2] > g[3]) {
+        legFront(13, g[0], g[2], g[4]); legFront(19, g[1], g[3], g[5]);
+      } else {
+        legFront(19, g[1], g[3], g[5]); legFront(13, g[0], g[2], g[4]);
+      }
+    } else {
+      let lb = 44, rb = 44, ll = 0, rl = 0;
+      if (s.pose === 'juggle67') {
+        if (f4 === 0) { rl = 1; rb = 43; }
+        else if (f4 === 2) { ll = 1; lb = 43; }
+      } else if (s.pose === 'celebrate' && (f4 === 1 || f4 === 2)) {
+        lb = 42; rb = 42; ll = 2; rl = 2;
+      }
+      const spread = (crouch >= 2 || s.pose === 'juggle67' || s.pose === 'pour') ? 1 : 0;
+      legFront(13 - spread, lb, ll);
+      legFront(19 + spread, rb, rl);
+    }
+  } else {
+    if (walking) {
+      // 8-frame side stride: [thighOff, footOff, lift, toeUp]
+      const cycle: [number, number, number, number][] = [
+        [ 2,  4, 0, 1], // 0: heel strike forward
+        [ 1,  2, 0, 0], // 1: flat-foot weight acceptance
+        [ 0,  0, 0, 0], // 2: mid-stance
+        [-1, -3, 0, 0], // 3: heel-off push
+        [-2, -4, 2, 0], // 4: toe-off behind
+        [-1, -2, 3, 0], // 5: knee-bend swing
+        [ 1,  1, 3, 0], // 6: high knee passing
+        [ 2,  3, 1, 1], // 7: terminal swing reach
+      ];
+      const nr = cycle[f8];
+      const bk = cycle[(f8 + 4) & 7];
+      legSide(16, bk[0], bk[1], 44, false, bk[2], bk[3]);
+      legSide(16, nr[0], nr[1], 44, true,  nr[2], nr[3]);
+    } else if (s.pose === 'pour') {
+      // Dynamic forward lunge when heaving water onto fire!
+      legSide(15, -2, -4, 44, false, 0, 0);
+      legSide(17,  2,  4, 44, true,  0, 0);
+    } else if (crouch >= 3) {
+      legSide(16, -2, -3, 44, false, 0, 0);
+      legSide(16,  2,  3, 44, true,  0, 0);
+    } else {
+      legSide(16, -1, -1, 44, false, 0, 0);
+      legSide(16,  1,  1, 44, true,  0, 0);
+    }
+  }
+
+  // ---------- Detailed Torso, Traditional Motifs & Gear ----------
+  if (!side) {
+    const tx0 = 12;
+    P(tx0, ty, 12, 10, L.top);
+    // Subtle shoulder roundness
+    P(tx0 + 1, ty - 1, 10, 1, L.top);
+    P(tx0, ty + 1, 1, 5, L.topLight);
+    P(tx0 + 11, ty + 1, 1, 8, L.topShade);
+
     if (L.vest) {
       if (!back) {
-        P(14, ty, 4, 8, L.inner); P(14, ty + 7, 4, 1, L.innerShade);
-        P(13, ty + 1, 1, 7, L.trim); P(18, ty + 1, 1, 7, L.trim);
-        for (const yy of [3, 5]) { P(12, ty + yy, 1, 1, L.trim); P(19, ty + yy, 1, 1, L.trim); }
-        // woven shoulder strap
-        P(12, ty + 1, 2, 1, '#8a6a3c'); P(14, ty + 2, 2, 1, '#8a6a3c'); P(16, ty + 3, 2, 1, '#a5814a'); P(18, ty + 4, 2, 1, '#8a6a3c');
+        // Cream inner shirt + Kalimantan Dayak embroidered vest panels
+        P(16 + shoulderTwist, ty, 4, 9, L.inner);
+        P(16 + shoulderTwist, ty + 8, 4, 1, L.innerShade);
+        P(15 + shoulderTwist, ty + 1, 1, 8, L.trim);
+        P(20 + shoulderTwist, ty + 1, 1, 8, L.trim);
+        for (const yy of [2, 5, 7]) {
+          P(13, ty + yy, 2, 1, L.trim);
+          P(21, ty + yy, 2, 1, L.trim);
+        }
+        // Woven rattan satchel strap + brass buckle
+        if (L.strap) {
+          P(13, ty + 1, 2, 1, '#8a6839');
+          P(15, ty + 2, 2, 2, '#9e7944');
+          P(17, ty + 4, 2, 2, '#efc86b'); // brass buckle glint!
+          P(19, ty + 6, 3, 1, '#8a6839');
+        }
       } else {
-        P(15, ty + 2, 2, 1, L.trim); P(14, ty + 3, 4, 1, L.trim); P(15, ty + 4, 2, 1, L.trim);
-        P(15, ty + 3, 2, 1, L.top); P(15, ty + 6, 2, 1, L.trim);
+        // Dayak shield diamond motif on back of Wira's vest
+        P(17, ty + 2, 2, 1, L.trim);
+        P(15, ty + 3, 6, 1, L.trim);
+        P(16, ty + 4, 4, 2, L.accent ?? L.trim);
+        P(17, ty + 4, 2, 2, L.trim);
+        P(15, ty + 6, 6, 1, L.trim);
+        P(17, ty + 7, 2, 1, L.trim);
       }
     }
+
+    if (L.hiVis) {
+      // Manggala Agni Karhutla high-vis orange ranger safety vest + silver reflective bands!
+      P(13, ty + 1, 4, 8, L.inner);
+      P(19, ty + 1, 4, 8, L.inner);
+      if (!back) P(17, ty, 2, 9, L.top); // olive shirt center zip
+      else P(13, ty + 1, 10, 8, L.inner);
+      // Reflective silver safety stripes
+      P(13, ty + 4, 10, 1, L.trim);
+      P(13, ty + 7, 10, 1, L.trim);
+      if (!back) P(17, ty + 4, 2, 4, L.topShade);
+    }
+
+    if (L.kebaya && !back) {
+      // Ibu Sari's embroidered V-neck kebaya lapel & gold brooch (peniti emas)
+      P(16, ty, 4, 3, L.skin);
+      P(15, ty + 1, 1, 7, L.trim);
+      P(20, ty + 1, 1, 7, L.trim);
+      P(17, ty + 3, 2, 2, '#f5d274'); // gold kebaya brooch
+      P(16, ty + 5, 4, 5, L.topShade);
+    }
+
     if (L.batik) {
-      for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 10; xx++) if ((xx + yy * 2) % 4 === 0) P(11 + xx, ty + yy, 1, 1, L.trim);
-      if (!back) { P(14, ty, 4, 1, L.inner); P(15, ty + 1, 2, 1, L.inner); }
+      for (let yy = 1; yy < 9; yy++) {
+        for (let xx = 0; xx < 12; xx++) {
+          if ((xx + yy * 2) % 4 === 0) P(tx0 + xx, ty + yy, 1, 1, L.trim);
+          else if ((xx + yy) % 5 === 0) P(tx0 + xx, ty + yy, 1, 1, L.topLight);
+        }
+      }
+      if (!back) {
+        P(16, ty, 4, 1, L.inner);
+        P(17, ty + 1, 2, 2, L.inner);
+        // Posko RT green armband on left sleeve + clipped VHF radio at hip
+        P(11, ty + 2, 2, 2, '#4ea865');
+        P(21, ty + 7, 2, 3, '#222629'); P(22, ty + 5, 1, 2, '#222629');
+      }
     }
+
     if (L.apron && !back) {
-      P(13, ty + 2, 6, 8, L.inner); P(13, ty, 1, 2, L.inner); P(18, ty, 1, 2, L.inner);
-      P(13, ty + 9, 6, 1, L.innerShade); P(14, ty + 5, 4, 3, '#ded0ab'); P(14, ty + 5, 4, 1, '#bfae88');
+      // Pak Budi's crisp warung apron with striped weave, pocket notepad & side cloth
+      P(14, ty + 2, 8, 9, L.inner);
+      P(14, ty, 1, 2, L.inner); P(21, ty, 1, 2, L.inner);
+      P(14, ty + 10, 8, 1, L.innerShade);
+      P(15, ty + 5, 6, 3, '#dfd0aa'); P(15, ty + 5, 6, 1, '#bfa97c');
+      P(16, ty + 4, 2, 1, '#589c64'); // Rupiah note / pencil peeking from pocket!
+      P(21, ty + 6, 2, 4, '#e89b6c'); // striped kitchen towel tucked at hip!
     }
-    P(20, ty, 1, 9, L.topShade); P(11, ty + 1, 1, 4, L.topLight);
-    // sarong wrapped over the hips (batik parang motif)
+
+    // Wrapped sarong / hip sash
     if (L.sarong) {
       const sl = L.sarongLight ?? '#ffffff', sd = L.sarongShade ?? '#000000';
-      P(10, ty + 6, 12, 6, L.sarong);
-      P(10, ty + 6, 12, 1, sl); P(10, ty + 11, 12, 1, sd);
-      for (let xx = 0; xx < 12; xx += 3) P(10 + xx, ty + 8 + (xx % 6 === 0 ? 0 : 1), 2, 1, sl);
-      P(10, ty + 6, 1, 6, sl); P(21, ty + 6, 1, 6, sd);
+      const sarH = L.kebaya ? 7 : 6;
+      P(11, ty + 6, 14, sarH, L.sarong);
+      P(11, ty + 6, 14, 1, sl);
+      P(11, ty + 5 + sarH, 14, 1, sd);
+      for (let xx = 0; xx < 14; xx += 3) {
+        P(11 + xx, ty + 8 + (xx % 6 === 0 ? 0 : 1), 2, 1, sl);
+      }
+      P(11, ty + 6, 1, sarH, sl);
+      P(24, ty + 6, 1, sarH, sd);
+    } else {
+      P(tx0, ty + 9, 12, 1, '#2b241d'); // belt
+      P(17, ty + 9, 2, 1, '#d9b55b');   // belt buckle
     }
-    P(11, ty + (L.sarong ? 5 : 8), 10, 1, L.vest && !L.sarong ? L.trim : L.topShade);
-    if (L.vest && !L.sarong) for (let xx = 11; xx < 21; xx += 2) P(xx, ty + 8, 1, 1, '#9c6a2c');
   } else {
-    P(13, ty, 6, 9, L.top);
-    if (L.vest) { P(18, ty + 1, 1, 6, L.inner); P(17, ty + 1, 1, 7, L.trim); P(14, ty + 3, 1, 1, L.trim); P(14, ty + 5, 1, 1, L.trim); }
-    if (L.batik) for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 6; xx++) if ((xx + yy * 2) % 4 === 0) P(13 + xx, ty + yy, 1, 1, L.trim);
-    if (L.apron) { P(17, ty + 2, 2, 8, L.inner); P(17, ty + 5, 2, 2, '#ded0ab'); }
-    P(13, ty, 1, 9, L.topShade); P(18, ty, 1, 1, L.topLight);
+    // Side-view sculpted torso (chest volume + back curve)
+    P(14, ty, 8, 10, L.top);
+    P(15, ty - 1, 6, 1, L.top);
+    P(14, ty, 1, 10, L.topShade);
+    P(21, ty + 1, 1, 7, L.topLight);
+    if (L.vest) {
+      P(20, ty + 1, 2, 7, L.inner);
+      P(19, ty + 1, 1, 8, L.trim);
+      P(15, ty + 3, 2, 1, L.trim); P(15, ty + 6, 2, 1, L.trim);
+      if (L.strap) { P(16, ty + 2, 2, 2, '#8a6839'); P(18, ty + 4, 2, 2, '#efc86b'); }
+    }
+    if (L.hiVis) {
+      P(14, ty + 1, 8, 8, L.inner);
+      P(14, ty + 4, 8, 1, L.trim); P(14, ty + 7, 8, 1, L.trim);
+    }
+    if (L.batik) {
+      for (let yy = 1; yy < 9; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy * 2) % 4 === 0) P(14 + xx, ty + yy, 1, 1, L.trim);
+    }
+    if (L.apron) {
+      P(19, ty + 2, 3, 9, L.inner);
+      P(19, ty + 5, 3, 2, '#dfd0aa');
+    }
     if (L.sarong) {
       const sl = L.sarongLight ?? '#ffffff', sd = L.sarongShade ?? '#000000';
-      P(12, ty + 6, 8, 6, L.sarong); P(12, ty + 6, 8, 1, sl); P(12, ty + 11, 8, 1, sd);
-      for (let xx = 0; xx < 8; xx += 3) P(12 + xx, ty + 8 + (xx % 6 === 0 ? 0 : 1), 2, 1, sl);
-      P(12, ty + 6, 1, 6, sl);
+      P(13, ty + 6, 10, 6, L.sarong);
+      P(13, ty + 6, 10, 1, sl); P(13, ty + 11, 10, 1, sd);
+      for (let xx = 0; xx < 10; xx += 3) P(13 + xx, ty + 8 + (xx % 6 === 0 ? 0 : 1), 2, 1, sl);
+    } else {
+      P(14, ty + 9, 8, 1, '#2b241d');
     }
-    P(13, ty + (L.sarong ? 5 : 8), 6, 1, L.topShade);
   }
 
-  // ---------- arms ----------
+  // ---------- Articulated Arms & Expressive Hand Poses ----------
+  const drawFrontArm = (ax: number, ay: number, isLeft: boolean, swingVal: number) => {
+    const lift = swingVal < 0 ? -1 : 0;
+    const drop = swingVal > 0 ? 1 : 0;
+    // Rounded shoulder cap + rolled sleeve cuff
+    P(ax, ay, 3, 4, sleeve);
+    P(ax + (isLeft ? 0 : 2), ay, 1, 3, isLeft ? sleeveLight : sleeveShade);
+    P(ax, ay + 3, 3, 1, sleeveShade);
+    // Forearm + hand with thumb pixel
+    P(ax, ay + 4 + lift, 3, 4 + drop, L.skin);
+    P(ax + (isLeft ? 2 : 0), ay + 4 + lift, 1, 4 + drop, L.skinShade);
+    P(ax + (isLeft ? 0 : 2), ay + 4 + lift, 1, 2, L.skinLight);
+    P(ax + (isLeft ? 2 : 0), ay + 7 + lift + drop, 1, 1, L.skinLight); // thumb
+  };
+
   if (!side) {
     const holdLeft = s.holding && back, holdRight = s.holding && !back;
     if (s.pose === 'pour') {
-      for (const x of [10, 20]) { P(x, ty, 2, 2, sleeve); P(x, ty - 4, 2, 4, L.skin); P(x, ty - 5, 2, 1, L.skinShade); }
-    } else if (s.pose === 'fill') {
-      // Both hands reaching forward together to lower/haul the bucket rope over the pier
-      P(11, ty + 1, 2, 3, sleeve); P(19, ty + 1, 2, 3, sleeve);
-      P(12, ty + 4, 2, 4, L.skin); P(18, ty + 4, 2, 4, L.skin);
-      P(14, ty + 7, 4, 2, L.skinShade); P(14, ty + 7, 3, 1, L.skinLight);
-    } else if (s.pose === 'juggle67') {
-      // Real two-handed '6-7' alternating palm weigh-in seamlessly connected to Wira's shoulders!
-      const lY = ty + 4 + [2, 0, -2, 0][f];
-      const rY = ty + 4 + [-2, 0, 2, 0][f];
-      // Left shoulder sleeve -> continuous forearm -> upturned open palm
-      P(9, ty + 1, 2, 3, sleeve); P(10, ty + 1, 1, 3, sleeveShade);
-      const lTop = Math.min(ty + 3, lY), lBot = Math.max(ty + 4, lY + 1);
-      P(8, lTop, 2, lBot - lTop + 1, L.skin); P(9, lTop, 1, lBot - lTop + 1, L.skinShade);
-      P(5, lY, 4, 2, L.skin); P(5, lY, 3, 1, L.skinLight); P(5, lY + 1, 4, 1, L.skinShade);
-      // Right shoulder sleeve -> continuous forearm -> upturned open palm
-      P(21, ty + 1, 2, 3, sleeve); P(22, ty + 1, 1, 3, sleeveShade);
-      const rTop = Math.min(ty + 3, rY), rBot = Math.max(ty + 4, rY + 1);
-      P(22, rTop, 2, rBot - rTop + 1, L.skin); P(23, rTop, 1, rBot - rTop + 1, L.skinShade);
-      P(23, rY, 4, 2, L.skin); P(24, rY, 3, 1, L.skinLight); P(23, rY + 1, 4, 1, L.skinShade);
-    } else if (s.pose === 'celebrate') {
-      if (f === 0) {
-        // Grounded knee-bend anticipation: elbows out, hands gathered near chest
-        P(9, ty + 1, 2, 3, sleeve); P(21, ty + 1, 2, 3, sleeve);
-        P(8, ty + 3, 3, 2, L.skin); P(21, ty + 3, 3, 2, L.skin);
-        P(8, ty + 3, 2, 1, L.skinLight); P(22, ty + 3, 2, 1, L.skinLight);
-      } else if (f === 1 || f === 2) {
-        // Clear wide V-arms silhouette outside head contour so both raised hands read cleanly!
-        const lPump = f === 1 ? -1 : 0, rPump = f === 2 ? -1 : 0;
-        P(9, ty, 2, 2, sleeve); P(7, ty - 3, 2, 4, L.skin); P(6, ty - 6 + lPump, 2, 4, L.skin); P(6, ty - 6 + lPump, 2, 1, L.skinLight); P(8, ty - 2, 1, 2, L.skinShade);
-        P(21, ty, 2, 2, sleeve); P(23, ty - 3, 2, 4, L.skin); P(24, ty - 6 + rPump, 2, 4, L.skin); P(24, ty - 6 + rPump, 2, 1, L.skinLight); P(23, ty - 2, 1, 2, L.skinShade);
-      } else {
-        // Smooth follow-through lowering arms through shoulder level
-        P(9, ty, 2, 3, sleeve); P(7, ty - 1, 2, 3, L.skin); P(7, ty - 1, 2, 1, L.skinLight);
-        P(21, ty, 2, 3, sleeve); P(23, ty - 1, 2, 3, L.skin); P(23, ty - 1, 2, 1, L.skinLight);
+      for (const ax of [10, 23]) {
+        P(ax, ty, 3, 3, sleeve);
+        P(ax, ty - 5, 3, 5, L.skin);
+        P(ax + 1, ty - 6, 2, 1, L.skinLight);
       }
+    } else if (s.pose === 'fill') {
+      P(10, ty + 1, 3, 3, sleeve); P(23, ty + 1, 3, 3, sleeve);
+      P(12, ty + 4, 3, 4, L.skin); P(21, ty + 4, 3, 4, L.skin);
+      P(15, ty + 7, 6, 3, L.skin); P(15, ty + 7, 5, 1, L.skinLight);
+    } else if (s.pose === 'juggle67') {
+      const lY = ty + 4 + [2, 0, -2, 0][f4];
+      const rY = ty + 4 + [-2, 0, 2, 0][f4];
+      P(9, ty + 1, 3, 3, sleeve); P(11, ty + 1, 1, 3, sleeveShade);
+      const lTop = Math.min(ty + 3, lY), lBot = Math.max(ty + 5, lY + 1);
+      P(8, lTop, 3, lBot - lTop + 1, L.skin); P(10, lTop, 1, lBot - lTop + 1, L.skinShade);
+      P(5, lY, 5, 2, L.skin); P(5, lY, 4, 1, L.skinLight); P(5, lY + 1, 5, 1, L.skinShade);
+
+      P(24, ty + 1, 3, 3, sleeve); P(26, ty + 1, 1, 3, sleeveShade);
+      const rTop = Math.min(ty + 3, rY), rBot = Math.max(ty + 5, rY + 1);
+      P(25, rTop, 3, rBot - rTop + 1, L.skin); P(27, rTop, 1, rBot - rTop + 1, L.skinShade);
+      P(26, rY, 5, 2, L.skin); P(27, rY, 4, 1, L.skinLight); P(26, rY + 1, 5, 1, L.skinShade);
+    } else if (s.pose === 'celebrate') {
+      if (f4 === 0) {
+        P(9, ty + 1, 3, 3, sleeve); P(24, ty + 1, 3, 3, sleeve);
+        P(8, ty + 3, 4, 3, L.skin); P(24, ty + 3, 4, 3, L.skin);
+      } else if (f4 === 1 || f4 === 2) {
+        const lPump = f4 === 1 ? -1 : 0, rPump = f4 === 2 ? -1 : 0;
+        P(9, ty, 3, 3, sleeve); P(7, ty - 4, 3, 5, L.skin); P(6, ty - 7 + lPump, 3, 4, L.skin); P(6, ty - 7 + lPump, 2, 1, L.skinLight);
+        P(24, ty, 3, 3, sleeve); P(26, ty - 4, 3, 5, L.skin); P(27, ty - 7 + rPump, 3, 4, L.skin); P(27, ty - 7 + rPump, 2, 1, L.skinLight);
+      } else {
+        P(9, ty, 3, 3, sleeve); P(7, ty - 1, 3, 3, L.skin);
+        P(24, ty, 3, 3, sleeve); P(26, ty - 1, 3, 3, L.skin);
+      }
+    } else if (s.pose === 'wipe') {
+      // Pak Budi wiping / tending with a cloth in front
+      const wx = [-1, 0, 1, 0][f4];
+      drawFrontArm(9, ty + 1, true, 0);
+      P(24, ty + 1, 3, 3, sleeve);
+      P(21 + wx, ty + 4, 4, 3, L.skin);
+      P(19 + wx, ty + 6, 5, 2, '#f5ebd2'); P(20 + wx, ty + 7, 3, 1, '#d8c59c');
+    } else if (s.pose === 'radio_check') {
+      // Pak RT / Ranger holding VHF handy-talkie near shoulder with blinking green RX/TX LED!
+      drawFrontArm(9, ty + 1, true, 0);
+      P(24, ty + 1, 3, 3, sleeve);
+      P(23, ty - 1, 3, 4, L.skin);
+      P(22, ty - 3, 3, 4, '#23282b'); // VHF walkie-talkie body
+      P(23, ty - 6, 1, 3, '#171a1c'); // antenna
+      P(23, ty - 2, 1, 1, (f4 & 1) ? '#5ff57a' : '#2c6b38'); // blinking LED!
     } else {
-      if (s.pose === 'cough') { P(10, ty, 2, 2, sleeve); P(12, ty - 3, 3, 3, L.skin); P(14, ty - 2, 1, 1, L.skinShade); }
-      else arm(9, ty + 1 + (holdLeft ? 0 : swing));
+      if (s.pose === 'cough') {
+        P(10, ty, 3, 3, sleeve); P(13, ty - 3, 3, 4, L.skin); P(15, ty - 2, 1, 2, L.skinShade);
+      } else {
+        drawFrontArm(9, ty + 1, true, holdLeft ? 0 : swing8);
+      }
       if (s.pose === 'wave') {
-        const wv = [-1, 0, 1, 0][f];
-        P(21, ty, 2, 2, sleeve); P(22, ty - 3, 2, 3, L.skin);
-        P(22 + wv, ty - 6, 3, 3, L.skin); P(22 + wv, ty - 6, 2, 1, L.skinLight); P(24 + wv, ty - 5, 1, 2, L.skinShade);
+        const wv = [-1, 0, 1, 0][f4];
+        P(24, ty, 3, 3, sleeve); P(25, ty - 3, 3, 4, L.skin);
+        P(25 + wv, ty - 7, 4, 4, L.skin); P(25 + wv, ty - 7, 3, 1, L.skinLight); P(28 + wv, ty - 6, 1, 3, L.skinShade);
       } else if (s.pose === 'point') {
-        P(21, ty + 1, 3, 2, sleeve); P(24, ty + 1, 4, 2, L.skin); P(28, ty + 1, 1, 1, L.skin); P(24, ty + 2, 4, 1, L.skinShade);
-      } else arm(21, ty + 1 - (holdRight ? 0 : swing));
+        P(24, ty + 1, 3, 3, sleeve); P(27, ty + 1, 5, 3, L.skin); P(32, ty + 1, 2, 1, L.skinLight); P(27, ty + 3, 5, 1, L.skinShade);
+      } else {
+        drawFrontArm(24, ty + 1, false, holdRight ? 0 : -swing8);
+      }
     }
   } else {
-    if (s.pose === 'pour') { P(16, ty, 2, 2, sleeve); P(18, ty - 1, 3, 2, L.skin); P(21, ty - 2, 2, 2, L.skin); }
-    else if (s.pose === 'fill') { P(16, ty + 1, 3, 2, sleeve); P(18, ty + 3, 4, 2, L.skin); P(21, ty + 4, 2, 2, L.skinShade); }
-    else if (s.pose === 'point') { P(16, ty + 1, 3, 2, sleeve); P(19, ty + 1, 5, 2, L.skin); P(19, ty + 2, 5, 1, L.skinShade); }
-    else if (s.holding) { P(16, ty, 2, 3, sleeve); P(16, ty + 3, 2, 4, L.skin); P(17, ty + 3, 1, 4, L.skinShade); P(16, ty + 7, 2, 1, L.skinShade); }
-    else {
-      const off = swing * 2;
-      P(15, ty, 2, 3, sleeve); P(16, ty, 1, 3, sleeveShade);
-      P(15 + Math.round(off / 2), ty + 3, 2, 2, L.skin); P(15 + off, ty + 5, 2, 2, L.skin); P(15 + off, ty + 6, 2, 1, L.skinShade);
+    // Side-view near arm with realistic shoulder + bent elbow + forearm swing!
+    if (s.pose === 'pour') {
+      P(17, ty, 3, 3, sleeve); P(20, ty - 2, 4, 3, L.skin); P(23, ty - 3, 3, 3, L.skinLight);
+    } else if (s.pose === 'fill') {
+      P(17, ty + 1, 3, 3, sleeve); P(20, ty + 3, 4, 3, L.skin); P(23, ty + 5, 3, 2, L.skinShade);
+    } else if (s.pose === 'point') {
+      P(17, ty + 1, 4, 3, sleeve); P(21, ty + 1, 6, 3, L.skin); P(27, ty + 1, 2, 1, L.skinLight);
+    } else if (s.holding) {
+      P(17, ty, 3, 4, sleeve); P(17, ty, 1, 3, sleeveLight);
+      P(18, ty + 4, 3, 4, L.skin); P(18, ty + 7, 3, 2, L.skinShade);
+    } else {
+      const aOff = swing8;
+      const elbowX = 16 + Math.round(aOff * 0.45);
+      const handX = 16 + aOff + (aOff > 0 ? 1 : 0);
+      const handLift = aOff > 1 ? -1 : 0;
+      P(16, ty, 4, 4, sleeve); P(16, ty, 2, 3, sleeveLight); P(16, ty + 3, 4, 1, sleeveShade);
+      P(elbowX, ty + 4, 3, 3, L.skin);
+      P(handX, ty + 6 + handLift, 3, 3, L.skin);
+      P(handX + 2, ty + 6 + handLift, 1, 2, L.skinLight);
+      P(handX, ty + 8 + handLift, 3, 1, L.skinShade);
     }
   }
 
-  // ---------- head ----------
+  // ---------- Sculpted Head, Hair Volume, Expressive Eyes & Headwear ----------
   const hy = 8 + Ub;
   const row = (r: number, x0: number, x1: number, c: string) => P(x0, hy + r, x1 - x0 + 1, 1, c);
 
-  const headColor = back ? L.hair : L.skin;
-  row(0, 11, 20, L.hair); row(1, 10, 21, L.hair);
-  for (let r = 2; r <= 11; r++) row(r, 9, 22, headColor);
-  row(12, 10, 21, headColor); row(13, 11, 20, headColor);
-  // jaw shading + rim light from the upper left
-  if (!back) { row(12, 10, 21, L.skinShade); row(13, 11, 20, L.skinShade); P(9, hy + 4, 1, 6, L.skinLight); }
+  // Neck
+  P(16, hy + 13, 4, 3, L.skinShade);
+  if (!back) P(16, hy + 13, 3, 1, L.skin);
+
+  // Rounded cranium & jawline
+  const headBase = back ? L.hair : L.skin;
+  row(0, 13, 22, L.hair);
+  row(1, 11, 24, L.hair);
+  for (let r = 2; r <= 11; r++) row(r, 10, 25, headBase);
+  row(12, 11, 24, headBase);
+  row(13, 13, 22, headBase);
+
+  if (!back) {
+    // Warm jaw contour + upper-left sunlight rim on cheek
+    row(12, 11, 24, L.skinShade);
+    row(13, 13, 22, L.skinShade);
+    row(11, 12, 23, L.skin);
+    P(10, hy + 4, 1, 7, L.skinLight);
+  }
 
   if (back) {
-    P(12, hy + 1, 4, 1, L.hairLight); P(11, hy + 2, 2, 2, L.hairLight);
-    P(13, hy + 12, 6, 2, L.skinShade);
-    P(9, hy + 5, 2, 6, L.hair); P(21, hy + 5, 2, 5, L.hair);
-  } else if (!side) {
-    const poseGlance = s.pose === 'juggle67' ? (f === 0 ? 1 : f === 2 ? -1 : 0) : s.glance;
-    const lookUp = s.pose === 'celebrate' && (f === 1 || f === 2) ? -1 : 0;
-    const ex1 = 12 + poseGlance, ex2 = 18 + poseGlance, ey = hy + 7 + lookUp;
-    if (L.head === 'peci') { P(9, hy + 4, 1, 4, L.hair); P(22, hy + 4, 1, 4, L.hair); }
-    else {
-      for (let r = 2; r <= 4; r++) row(r, 9, 22, L.hair);
-      if (L.head === 'kerchief') {
-        P(9, hy + 5, 2, 6, L.hair); P(21, hy + 5, 2, 5, L.hair);
-        for (const x of [11, 12, 14, 15, 17, 19, 20]) P(x, hy + 5, 1, 1, L.hair);
-        P(11, hy + 6, 1, 1, L.hair); P(20, hy + 6, 1, 1, L.hair);
-      } else { P(9, hy + 5, 1, 4, L.hair); P(22, hy + 5, 1, 4, L.hair); }
-      P(13, hy + 1, 3, 1, L.hairLight); P(12, hy + 2, 2, 1, L.hairLight);
+    // Rich layered back hair crown + neck hairline
+    P(11, hy + 2, 14, 10, L.hair);
+    P(13, hy + 1, 5, 2, L.hairLight);
+    P(12, hy + 3, 3, 2, L.hairLight);
+    P(14, hy + 12, 8, 2, L.skinShade);
+    if (L.head === 'bun') {
+      // Ibu Sari's back hair bun (konde) + frangipani flower!
+      P(14, hy + 6, 8, 6, L.hair);
+      P(15, hy + 7, 4, 2, L.hairLight);
+      P(21, hy + 6, 3, 3, L.accent!); P(22, hy + 7, 1, 1, L.accentLight!);
     }
-    for (const ex of [ex1, ex2]) {
-      P(ex, ey - 2, 2, 1, L.hair);                            // brow
-      if (s.blink) { P(ex, ey + 1, 2, 1, '#2a1f1b'); P(ex, ey, 2, 1, L.skinShade); }
-      else {
-        P(ex, ey, 2, 2, '#1f1a18');
-        P(ex, ey, 1, 1, '#f7f0e1');
-        P(ex + 1, ey + 1, 1, 1, '#4a3a34');                   // iris depth
+  } else if (!side) {
+    // Ears
+    P(9, hy + 7, 1, 3, L.skin); P(9, hy + 9, 1, 1, L.skinShade);
+    P(26, hy + 7, 1, 3, L.skinShade);
+
+    const poseGlance = s.pose === 'juggle67' ? (f4 === 0 ? 1 : f4 === 2 ? -1 : 0) : s.glance;
+    const lookUp = s.pose === 'celebrate' && (f4 === 1 || f4 === 2) ? -1 : 0;
+    const ex1 = 13 + poseGlance, ex2 = 20 + poseGlance, ey = hy + 7 + lookUp;
+
+    // Hair framing & bangs
+    if (L.head === 'peci' || L.head === 'cap') {
+      P(10, hy + 4, 1, 4, L.hair); P(25, hy + 4, 1, 4, L.hair);
+    } else {
+      for (let r = 2; r <= 4; r++) row(r, 10, 25, L.hair);
+      if (L.head === 'kerchief') {
+        P(10, hy + 5, 2, 6, L.hair); P(24, hy + 5, 2, 5, L.hair);
+        for (const x of [12, 13, 16, 17, 20, 22, 23]) P(x, hy + 5, 1, 1, L.hair);
+        P(12, hy + 6, 1, 1, L.hair); P(16, hy + 6, 1, 1, L.hair); P(23, hy + 6, 1, 1, L.hair);
+      } else if (L.head === 'bun') {
+        P(10, hy + 5, 2, 6, L.hair); P(24, hy + 5, 2, 6, L.hair);
+        P(12, hy + 5, 3, 1, L.hair); P(21, hy + 5, 3, 1, L.hair);
+        // Side konde flower peeking on left!
+        P(8, hy + 4, 3, 3, L.accent!); P(9, hy + 5, 1, 1, L.accentLight!);
+      } else {
+        // Pak RT neat side-parted silver hair
+        P(10, hy + 5, 1, 4, L.hair); P(25, hy + 5, 1, 4, L.hair);
+        P(12, hy + 4, 8, 1, L.hairLight);
+      }
+      P(14, hy + 1, 4, 1, L.hairLight); P(12, hy + 2, 3, 1, L.hairLight);
+    }
+
+    // Expressive eyebrows + 3-tone eyes!
+    const browRaise = (s.pose === 'celebrate' || s.pose === 'wave') ? -1 : 0;
+    const browFurrow = (s.pose === 'pour' || s.pose === 'cough') ? 1 : 0;
+    for (let idx = 0; idx < 2; idx++) {
+      const ex = idx === 0 ? ex1 : ex2;
+      P(ex, ey - 2 + browRaise + (browFurrow && idx === 0 ? 0 : 0), 3, 1, L.hair);
+      if (s.blink) {
+        P(ex, ey + 1, 3, 1, '#2a1f1b');
+        P(ex, ey, 3, 1, L.skinShade);
+      } else {
+        P(ex, ey, 3, 1, '#181311');           // crisp upper eyelash line
+        P(ex, ey + 1, 3, 1, L.eyeTone);       // warm iris lower row
+        P(ex + 2, ey + 1, 1, 1, '#f7f0e2');   // sclera corner
+        P(ex, ey, 1, 1, '#ffffff');           // bright eye catchlight!
       }
     }
-    P(16, ey + 1, 1, 2, L.skinShade);                         // nose bridge
-    P(15, ey + 3, 2, 1, L.skinShade);
-    P(10, ey + 1, 1, 3, L.skinLight); P(21, ey + 1, 1, 3, L.skinShade); // cheek contour
+
+    // Subtle nose & cheek warmth
+    P(18, ey + 1, 1, 2, L.skinShade);
     if (L.glasses) {
-      const G = '#ddd6bb';
-      for (const gx of [11, 17]) { P(gx, ey - 1, 4, 1, G); P(gx, ey + 2, 4, 1, G); P(gx, ey, 1, 2, G); P(gx + 3, ey, 1, 2, G); }
-      P(15, ey, 2, 1, G);
-    } else if (s.who === 'wira') { P(11, ey + 2, 1, 1, '#e8876a'); P(20, ey + 2, 1, 1, '#e8876a'); }
-    P(16, ey + 2, 1, 1, L.skinShade);
-    const my = hy + 10;
-    if (L.mustache) { P(13, my, 6, 1, L.mustache); P(15, my + 1, 2, 1, s.mouth ? '#5a1f1a' : '#8a3a2c'); }
-    else if (s.mouth) { P(15, my, 2, 2, '#5a1f1a'); P(15, my + 1, 2, 1, '#b84c3d'); }
-    else { P(15, my, 2, 1, '#9c3b2c'); P(14, my - 1, 1, 1, L.skinShade); P(17, my - 1, 1, 1, L.skinShade); }
-  } else {
-    P(23, hy + 8, 1, 2, L.skin); P(23, hy + 9, 1, 1, L.skinShade);
-    if (L.head !== 'peci') {
-      for (let r = 2; r <= 4; r++) row(r, 9, 22, L.hair);
-      for (let r = 5; r <= 10; r++) row(r, 9, 14, L.hair);
-      row(11, 10, 13, L.hair);
-      if (L.head === 'kerchief') { P(15, hy + 5, 1, 1, L.hair); P(17, hy + 5, 1, 1, L.hair); }
-      P(13, hy + 1, 3, 1, L.hairLight);
-    } else P(9, hy + 4, 4, 5, L.hair);
-    P(14, hy + 7, 1, 2, L.skin); P(15, hy + 8, 1, 1, L.skinShade);
-    P(19, hy + 6, 2, 1, L.hair);
-    if (s.blink) P(19, hy + 8, 2, 1, '#2a1f1b');
-    else { P(19, hy + 7, 2, 2, '#1f1a18'); P(19, hy + 7, 1, 1, '#f7f0e1'); }
-    if (L.glasses) { const G = '#ddd6bb'; P(18, hy + 6, 4, 1, G); P(18, hy + 9, 4, 1, G); P(18, hy + 7, 1, 2, G); P(21, hy + 7, 1, 2, G); P(15, hy + 7, 3, 1, G); }
-    else if (s.who === 'wira') P(18, hy + 9, 1, 1, '#e8876a');
-    if (L.mustache) P(19, hy + 10, 4, 1, L.mustache);
-    else P(20, hy + 10, 2, s.mouth ? 2 : 1, s.mouth ? '#5a1f1a' : '#9c3b2c');
-    P(22, hy + 3, 1, 7, L.skinLight);
-    P(9, hy + 5, 1, 6, L.head === 'peci' ? L.hair : L.skinLight);
-  }
-
-  // ---------- finishing pass: cloth folds, rim light, neck shadow ----------
-  if (!back) {
-    P(13, hy + 13, 6, 1, L.skinShade);                        // chin
-    P(14, hy + 14, 4, 1, '#00000033');                        // neck shadow
-  }
-  if (L.head !== 'peci' && !back) {
-    // a few strands break the hair silhouette
-    P(10, hy + 4, 1, 2, L.hairLight);
-    P(19, hy + 3, 1, 2, L.hairLight);
-    P(15, hy + 1, 2, 1, L.hairLight);
-  }
-  // vertical cloth folds so the tunic is not a flat slab
-  if (!side) {
-    for (const fx2 of [12, 19]) {
-      P(fx2, ty + 2, 1, 5, '#00000026');
-      P(fx2 + 1, ty + 3, 1, 4, '#ffffff1f');
+      const G = '#e5dcbe';
+      for (const gx of [12, 19]) {
+        P(gx, ey - 1, 5, 1, G); P(gx, ey + 2, 5, 1, G);
+        P(gx, ey, 1, 2, G); P(gx + 4, ey, 1, 2, G);
+      }
+      P(17, ey, 2, 1, G);
+    } else if (s.who === 'wira' || s.who === 'bu_sari') {
+      P(12, ey + 2, 2, 1, '#ea8d72'); P(22, ey + 2, 2, 1, '#ea8d72');
     }
-    P(11, ty + 7, 10, 1, '#00000030');                        // hem crease
-  } else {
-    P(14, ty + 2, 1, 5, '#00000026');
-    P(16, ty + 3, 1, 4, '#ffffff1f');
-  }
-  // rim light down the lit edge of the body
-  const rimX = side ? 13 : 11;
-  P(rimX, ty + 1, 1, 6, '#ffffff2e');
-  P(rimX, ty - 1, 2, 1, '#ffffff24');
 
-  // ---------- headwear & tucked ponytail (crisp outlined pixel art, zero glitchy detached chains) ----------
-  const fl = (s.pose === 'walk' || s.pose === 'juggle67' || s.pose === 'celebrate' ? (s.frame & 1) : (s.flutter & 1));
+    // Mouth & Mustache
+    const my = hy + 10;
+    if (L.mustache) {
+      P(15, my, 6, 1, L.mustache);
+      P(14, my + 1, 1, 1, L.mustache); P(21, my + 1, 1, 1, L.mustache);
+      P(17, my + 1, 2, 1, s.mouth ? '#5a1f1a' : '#8a3a2c');
+    } else if (s.mouth) {
+      P(17, my, 3, 2, '#5a1f1a'); P(17, my + 1, 3, 1, '#cc5949');
+    } else if (s.pose === 'wave' || s.pose === 'celebrate' || s.who === 'bu_sari') {
+      // Warm friendly smile!
+      P(17, my, 3, 1, '#9c3b2c'); P(16, my - 1, 1, 1, '#b55240'); P(20, my - 1, 1, 1, '#b55240');
+    } else {
+      P(17, my, 2, 1, '#9c3b2c');
+    }
+  } else {
+    // Side-view profile with sculpted nose, ear, brow, and hair volume!
+    P(26, hy + 7, 1, 2, L.skin); P(26, hy + 8, 1, 1, L.skinShade); // nose tip!
+    if (L.head !== 'peci' && L.head !== 'cap') {
+      for (let r = 2; r <= 4; r++) row(r, 10, 25, L.hair);
+      for (let r = 5; r <= 10; r++) row(r, 10, 16, L.hair);
+      row(11, 11, 15, L.hair);
+      P(14, hy + 1, 4, 1, L.hairLight); P(12, hy + 3, 3, 2, L.hairLight);
+    } else {
+      P(10, hy + 4, 5, 6, L.hair);
+    }
+    if (L.head === 'bun') {
+      P(7, hy + 5, 4, 5, L.hair); P(8, hy + 6, 2, 2, L.hairLight);
+      P(9, hy + 4, 3, 2, L.accent!); P(10, hy + 4, 1, 1, L.accentLight!);
+    }
+    // Side ear
+    P(16, hy + 7, 2, 3, L.skin); P(17, hy + 8, 1, 1, L.skinShade);
+    // Side eye + brow
+    P(21, hy + 6, 3, 1, L.hair);
+    if (s.blink) {
+      P(21, hy + 8, 3, 1, '#2a1f1b');
+    } else {
+      P(21, hy + 7, 3, 1, '#181311');
+      P(21, hy + 8, 2, 1, L.eyeTone);
+      P(22, hy + 7, 1, 1, '#ffffff');
+    }
+    if (L.glasses) {
+      const G = '#e5dcbe';
+      P(20, hy + 6, 5, 1, G); P(20, hy + 9, 5, 1, G);
+      P(20, hy + 7, 1, 2, G); P(24, hy + 7, 1, 2, G); P(17, hy + 7, 3, 1, G);
+    } else if (s.who === 'wira' || s.who === 'bu_sari') {
+      P(20, hy + 9, 2, 1, '#ea8d72');
+    }
+    if (L.mustache) P(22, hy + 10, 4, 1, L.mustache);
+    else P(22, hy + 10, 2, s.mouth ? 2 : 1, s.mouth ? '#5a1f1a' : '#9c3b2c');
+  }
+
+  // ---------- Headwear & Dynamic Hair/Ribbon Secondary Motion ----------
+  const fl = (walking ? (f8 >> 1) & 1 : (s.pose === 'juggle67' || s.pose === 'celebrate' ? (f4 & 1) : (s.flutter & 1)));
   if (L.ponytail) {
     if (side) {
-      P(7, hy + 5, 2, 4, L.hair); P(6, hy + 7 + fl, 2, 3, L.hair); P(7, hy + 5, 1, 2, L.hairLight);
+      P(7, hy + 4, 3, 4, L.hair);
+      P(5, hy + 6 + fl, 3, 4, L.hair);
+      P(7, hy + 4, 2, 2, L.hairLight);
     } else if (back) {
-      P(15, hy + 6, 2, 5, L.hair); P(15 + (fl ? 1 : 0), hy + 10, 2, 2, '#3d2f28'); P(15, hy + 6, 1, 2, L.hairLight);
+      P(16, hy + 5, 4, 5, L.hair);
+      P(16 + (fl ? 1 : 0), hy + 9, 3, 3, '#3d2f28');
+      P(17, hy + 5, 2, 2, L.hairLight);
     }
   }
+
   if (L.head === 'kerchief') {
-    row(2, 9, 22, L.accent!); row(3, 9, 22, L.accent!); row(2, 10, 21, L.accentLight!);
-    for (const x of [11, 14, 17, 20]) P(x, hy + 3, 1, 1, L.trim);
+    // Dayak woven ikat headband with gold beadwork!
+    row(2, 10, 25, L.accent!);
+    row(3, 10, 25, L.accent!);
+    row(2, 11, 24, L.accentLight!);
+    for (const x of [12, 15, 18, 21, 24]) P(x, hy + 3, 1, 1, L.trim);
     if (!side && !back) {
-      P(22, hy + 2, 2, 3, L.accent!); P(23, hy + 4 + fl, 2, 2, L.accentLight!);
+      P(25, hy + 2, 3, 3, L.accent!);
+      P(27, hy + 4 + fl, 2, 3, L.accentLight!);
     } else if (side) {
-      P(7, hy + 2, 3, 2, L.accent!); P(6, hy + 3 + fl, 2, 2, L.accentLight!);
+      P(7, hy + 2, 4, 2, L.accent!);
+      P(5, hy + 3 + fl, 3, 2, L.accentLight!);
     } else {
-      P(15, hy + 3, 2, 2, L.accent!); P(14, hy + 5, 1, 2 + fl, L.accent!); P(17, hy + 5, 1, 2 + (1 - fl), L.accentLight!);
+      P(16, hy + 3, 4, 2, L.accent!);
+      P(15, hy + 5, 2, 3 + fl, L.accent!);
+      P(19, hy + 5, 2, 3 + (1 - fl), L.accentLight!);
     }
   } else if (L.head === 'peci') {
-    P(10, hy - 1, 12, 5, '#1e1b19'); P(11, hy - 1, 10, 1, '#3b3633'); P(10, hy + 3, 12, 1, '#2b2724');
-    P(10, hy - 1, 2, 4, '#4a4441');
+    P(11, hy - 1, 14, 5, '#1d1a18');
+    P(12, hy - 2, 12, 1, '#2e2926');
+    P(12, hy - 1, 10, 1, '#433d39');
+    P(11, hy + 3, 14, 1, '#2b2724');
+    if (!back) P(21, hy + 1, 2, 1, '#e8c464'); // subtle gold peci pin!
+  } else if (L.head === 'cap') {
+    // Manggala Agni field cap with visor & badge!
+    P(10, hy - 1, 16, 5, '#414f33');
+    P(12, hy - 2, 12, 1, '#586b46');
+    P(10, hy + 3, 16, 1, '#2d3823');
+    if (side) {
+      P(24, hy + 2, 5, 2, '#2d3823'); P(24, hy + 2, 4, 1, '#586b46');
+    } else if (!back) {
+      P(11, hy + 3, 14, 2, '#2d3823');
+      P(17, hy, 2, 2, '#f2c95c'); // gold Manggala Agni cap emblem!
+    }
   }
+
+  // Subtle vertical cloth fold & sunlit rim pass
+  const rimX = side ? 14 : 12;
+  P(rimX, ty + 1, 1, 6, '#ffffff26');
 }
 
 const frameCache = new Map<string, HTMLCanvasElement>();
 export function getFrame(s: FrameSpec): HTMLCanvasElement {
-  const wira = s.who === 'wira'; const walking = s.pose === 'walk'; const key = `${s.who}|${s.dir}|${s.pose}|${s.frame & 3}|${walking ? 0 : +s.blink}|${+s.holding}|${+s.newShoes}|${!wira || walking ? 0 : s.flutter % 2}|${!wira || walking ? 0 : s.breath}|${+s.mouth}|0|0`;
+  const frameMod = s.pose === 'walk' ? (s.frame & 7) : (s.frame & 3);
+  const walking = s.pose === 'walk';
+  const key = `${s.who}|${s.dir}|${s.pose}|${frameMod}|${walking ? 0 : +s.blink}|${+s.holding}|${+s.newShoes}|${walking ? 0 : s.flutter % 2}|${walking ? 0 : s.breath}|${+s.mouth}|${walking ? 0 : s.glance}`;
   const hit = frameCache.get(key);
   if (hit) return hit;
   let canvas: HTMLCanvasElement;
   if (s.dir === 'left') canvas = mirror(getFrame({ ...s, dir: 'right' }));
-  else { const { c, ctx } = blank(W, H); paint(ctx, s); canvas = outline(c); }
+  else { const { c, ctx } = blank(W, H); paint(ctx, { ...s, frame: frameMod }); canvas = outline(c); }
   frameCache.set(key, canvas);
   return canvas;
 }
@@ -434,13 +760,13 @@ export function resetRigs() {}
 export function drawCharacter(c: CanvasRenderingContext2D, x: number, y: number, s: FrameSpec, m?: MotionInfo) {
   const reduced = !m || !!m.reduced;
   const frame = getFrame(s);
-  const phase = (s.gait ?? ((s.frame & 3) / 4)) * Math.PI * 2;
-  const bobPx = m && !reduced && s.pose === 'walk' ? Math.round((1 - Math.cos(phase)) * 0.95) : 0;
+  const phase = (s.gait ?? ((s.frame & 7) / 8)) * Math.PI * 4;
+  const bobPx = m && !reduced && s.pose === 'walk' ? Math.round((1 - Math.cos(phase)) * 0.7) : 0;
   const leanPx = m && !reduced ? Math.round(Math.max(-2, Math.min(2, m.vx / 140))) : 0;
-  c.drawImage(frame, Math.round(x) - (W / 2) * SCALE + leanPx, Math.round(y - bobPx) - 42 * SCALE, W * SCALE, H * SCALE);
+  c.drawImage(frame, Math.round(x) - (W / 2) * SCALE + leanPx, Math.round(y - bobPx) - 45 * SCALE, W * SCALE, H * SCALE);
 }
 
-export function drawShadow(c: CanvasRenderingContext2D, x: number, y: number, w = 30, alpha = 0.26) {
+export function drawShadow(c: CanvasRenderingContext2D, x: number, y: number, w = 32, alpha = 0.26) {
   const rx = Math.round(x), ry = Math.round(y);
   c.fillStyle = `rgba(20,24,18,${alpha})`;
   c.fillRect(rx - w / 2, ry - 2, w, 5);
@@ -451,20 +777,20 @@ export function drawShadow(c: CanvasRenderingContext2D, x: number, y: number, w 
 export function handPoint(s: Pick<FrameSpec, 'dir' | 'pose' | 'frame' | 'breath'>) {
   const ub = upperOffset(s);
   if (s.pose === 'pour') {
-    if (s.dir === 'right') return { x: 12, y: (ub - 22) * SCALE };
-    if (s.dir === 'left') return { x: -12, y: (ub - 22) * SCALE };
-    return { x: 0, y: (ub - 25) * SCALE };
+    if (s.dir === 'right') return { x: 14, y: (ub - 23) * SCALE };
+    if (s.dir === 'left') return { x: -14, y: (ub - 23) * SCALE };
+    return { x: 0, y: (ub - 26) * SCALE };
   }
   if (s.pose === 'fill') {
-    if (s.dir === 'right') return { x: 13, y: (ub - 13) * SCALE };
-    if (s.dir === 'left') return { x: -13, y: (ub - 13) * SCALE };
+    if (s.dir === 'right') return { x: 14, y: (ub - 13) * SCALE };
+    if (s.dir === 'left') return { x: -14, y: (ub - 13) * SCALE };
     return { x: 0, y: (ub - 11) * SCALE };
   }
   const y = (ub - 12) * SCALE;
-  if (s.dir === 'right') return { x: 2, y };
-  if (s.dir === 'left') return { x: -2, y };
-  if (s.dir === 'up') return { x: -12, y };
-  return { x: 12, y };
+  if (s.dir === 'right') return { x: 3, y };
+  if (s.dir === 'left') return { x: -3, y };
+  if (s.dir === 'up') return { x: -14, y };
+  return { x: 14, y };
 }
 
 // ---------------- buckets ----------------
@@ -477,11 +803,9 @@ function paintBucket(ctx: CanvasRenderingContext2D, big: boolean, water: number,
     ? { body: '#b5813f', light: '#e6bb78', shade: '#7c592c', deep: '#5a4128', rim: '#4b3a2a', band: '#3f3226', handle: '#e2c37f', rivet: '#f0dca6' }
     : { body: '#3f90a3', light: '#8ad0d6', shade: '#2a6476', deep: '#22485a', rim: '#1d3d4c', band: '#2b5f6f', handle: '#cfdbd2', rivet: '#e9f3ee' };
   const cx = Math.floor(w / 2);
-  // handle arc with a grip
   P(cx - 3, 0, 6, 1, col.handle); P(cx - 4, 1, 1, 2, col.handle); P(cx + 3, 1, 1, 2, col.handle);
   P(cx - 1, 0, 2, 1, col.rivet);
   P(1, 3, 1, 2, col.handle); P(w - 2, 3, 1, 2, col.handle);
-  // rim (elliptical mouth)
   P(0, 4, w, 2, col.rim); P(1, 4, w - 2, 1, col.deep);
   if (water > 0) {
     const lvl = 4 + Math.round((1 - water) * 1.5);
@@ -491,17 +815,14 @@ function paintBucket(ctx: CanvasRenderingContext2D, big: boolean, water: number,
     P(2 + (shimmer % 2) * 3, lvl, 2, 1, '#eafaf3');
     if (tilt > 0) P(w - 2, lvl + 1, 1, 1, '#3d8f9e'); else if (tilt < 0) P(1, lvl + 1, 1, 1, '#3d8f9e');
   }
-  // staved body, slightly tapered, lit from the left
   for (let y = 6; y < h - 1; y++) {
     const inset = y >= h - 4 ? 1 : y >= h - 2 ? 2 : 0;
     P(inset, y, w - inset * 2, 1, col.body);
     P(inset, y, 2, 1, col.light);
     P(w - inset - 3, y, 3, 1, col.shade);
     P(w - inset - 1, y, 1, 1, col.deep);
-    // stave seams
     for (let sx = inset + 3; sx < w - inset - 2; sx += 3) P(sx, y, 1, 1, col.shade);
   }
-  // iron bands with rivets
   const bands = big ? [6, 9, h - 3] : [7, h - 3];
   for (const by of bands) {
     P(0, by, w, 1, col.band);
@@ -529,7 +850,6 @@ export function drawBucketLive(
 ) {
   const q = fill <= 0.02 ? 0 : fill >= 0.85 ? 1 : 0.5;
   const shimmer = Math.floor(t * 4) & 1;
-  // Quantize angle into discrete pre-baked pixel-art steps (-4..+4) so runtime NEVER uses c.rotate()!
   const aStep = Math.max(-4, Math.min(4, Math.round(angle / 0.26)));
   const key = `live2|${big}|${q}|${shimmer}|${aStep}`;
   let spr = bucketCache.get(key);
@@ -569,84 +889,110 @@ export function drawBucketLive(
   }
 }
 
-// ---------------- animals ----------------
+// ---------------- upgraded animals (calico cat, kampung hens & proud rooster!) ----------------
 const animalCache = new Map<string, HTMLCanvasElement>();
 export function catSprite(awake: boolean, breath: number, tail: number) {
-  const key = `cat|${awake}|${breath}|${tail}`;
+  const key = `cat2|${awake}|${breath}|${tail}`;
   const hit = animalCache.get(key); if (hit) return hit;
-  const { c, ctx } = blank(22, 14);
+  const { c, ctx } = blank(24, 15);
   const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
-  const white = '#efe6d2', orange = '#d98a45', dark = '#7a5236', shade = '#cfc2a6', deep = '#b9ab8d';
+  const white = '#f4ecda', orange = '#de8c44', dark = '#70492e', shade = '#d5c7aa', deep = '#b8a98a';
   const top = 6 - breath;
-  // tail curled along the ground
-  P(2, 10, 10, 2, orange); P(1 - (tail === 1 ? 1 : 0), 9 - (tail === 2 ? 1 : 0), 2, 2, orange); P(4, 11, 4, 1, dark);
-  // body loaf with belly shading and tabby stripes
-  P(3, top, 13, 11 - top, white); P(4, top - 1, 11, 1, white);
-  P(5, top, 6, 3, orange); P(11, top + 1, 4, 2, dark); P(3, 9, 13, 1, shade); P(3, 10, 13, 1, deep);
-  for (let i = 0; i < 3; i++) P(6 + i * 3, top + 1, 1, 4, '#dccfb2');
-  // front paws tucked under
-  P(6, 9, 3, 2, '#f7f0e0'); P(10, 9, 3, 2, '#f7f0e0');
-  // head
+  // Expressive curled striped tail
+  const ty = 10 - (tail === 2 ? 2 : tail === 1 ? 1 : 0);
+  P(2, 10, 10, 2, orange); P(1, ty, 3, 2, orange); P(1, ty, 2, 1, dark); P(5, 10, 2, 2, dark);
+  // Loaf body with calico patches & soft belly shading
+  P(4, top, 13, 12 - top, white); P(5, top - 1, 11, 1, white);
+  P(6, top, 6, 3, orange); P(11, top + 1, 4, 3, dark);
+  P(4, 10, 13, 1, shade); P(4, 11, 13, 1, deep);
+  // Tucked paws with toe beans
+  P(7, 10, 3, 2, '#fbf5e8'); P(12, 10, 3, 2, '#fbf5e8');
+  // Sculpted feline head, pointed ears & whiskers
   const hy = awake ? 1 : 4;
-  P(13, hy + 1, 6, 5, white); P(13, hy, 2, 2, orange); P(17, hy - 1, 2, 2, white); P(18, hy, 1, 1, '#e8a59a');
-  P(13, hy + 1, 3, 2, orange); P(13, hy - 1, 1, 2, orange); P(16, hy - 2, 1, 2, white);
-  if (awake) { P(14, hy + 3, 1, 1, '#4f7f3a'); P(17, hy + 3, 1, 1, '#4f7f3a'); P(15, hy + 4, 2, 1, '#d98a8a'); P(19, hy + 3, 1, 1, '#f7f0e0'); }
-  else { P(14, hy + 3, 2, 1, dark); P(17, hy + 3, 1, 1, dark); }
+  P(14, hy + 1, 7, 5, white); P(14, hy, 3, 2, orange); P(19, hy, 2, 2, white);
+  P(14, hy - 1, 2, 2, orange); P(19, hy - 1, 2, 2, dark);
+  P(15, hy, 1, 1, '#eda89e'); P(19, hy, 1, 1, '#eda89e'); // pink inner ears
+  if (awake) {
+    P(16, hy + 3, 1, 2, '#3d7832'); P(19, hy + 3, 1, 2, '#3d7832'); // emerald eyes
+    P(16, hy + 3, 1, 1, '#eefce8');
+    P(17, hy + 4, 2, 1, '#e08b8b'); // pink nose
+    P(21, hy + 3, 2, 1, '#e8e0cf'); // whiskers
+  } else {
+    P(15, hy + 3, 2, 1, dark); P(19, hy + 3, 2, 1, dark);
+  }
   const out = outline(c, [40, 30, 24]);
   animalCache.set(key, out); return out;
 }
 
-export function chickenSprite(frame: number, peck: boolean) {
-  const key = `hen|${frame & 1}|${peck}`;
+export function chickenSprite(frame: number, peck: boolean, rooster = false) {
+  const f = frame & 3;
+  const key = `hen2|${f}|${peck}|${rooster}`;
   const hit = animalCache.get(key); if (hit) return hit;
-  const { c, ctx } = blank(14, 14);
+  const { c, ctx } = blank(16, 16);
   const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
-  const white = '#f1ebdc', shade = '#cdc3ab', deep = '#a99f89', red = '#d34a35', yellow = '#e9b44b';
-  // tail feathers
-  P(0, 3, 3, 4, white); P(0, 2, 2, 2, shade); P(0, 6, 2, 1, deep);
-  // body with wing
-  P(2, 5, 8, 5, white); P(3, 9, 6, 1, shade); P(2, 8, 8, 1, deep);
-  P(4, 6, 4, 3, shade); P(4, 6, 4, 1, '#ded5c0'); P(5, 8, 2, 1, deep);
-  // head + comb + wattle
-  if (!peck) {
-    P(8, 2, 4, 4, white); P(8, 1, 2, 1, red); P(9, 0, 1, 1, red); P(11, 3, 2, 1, yellow);
-    P(10, 5, 1, 1, red); P(9, 3, 1, 1, '#1d1a17'); P(8, 2, 1, 1, '#ffffff');
+  const body = rooster ? '#c96b32' : '#f4eee0';
+  const wing = rooster ? '#8c3c22' : '#d8ceb6';
+  const tailCol = rooster ? '#234a3c' : '#e4dcc6';
+  const tailHi = rooster ? '#3d7a62' : '#f4eee0';
+  const deep = rooster ? '#5c2b18' : '#b3a88e';
+  const red = '#d94530', yellow = '#edb847';
+
+  // Plumed tail feathers (arched emerald-teal sickle tail on rooster!)
+  if (rooster) {
+    P(0, 2, 4, 5, tailCol); P(1, 1, 3, 2, tailHi); P(0, 4, 2, 3, '#173028');
   } else {
-    P(9, 6, 4, 3, white); P(9, 5, 2, 1, red); P(13, 8, 1, 1, yellow); P(10, 7, 1, 1, '#1d1a17'); P(11, 8, 1, 1, red);
+    P(1, 4, 3, 4, tailCol); P(1, 3, 2, 2, tailHi); P(1, 7, 2, 1, deep);
   }
-  // legs alternate with a lifted foot
-  if (frame & 1) { P(4, 10, 1, 2, yellow); P(7, 10, 1, 3, yellow); P(3, 12, 2, 1, yellow); P(7, 13, 2, 1, yellow); }
-  else { P(5, 10, 1, 3, yellow); P(6, 10, 1, 2, yellow); P(4, 13, 2, 1, yellow); P(6, 12, 2, 1, yellow); }
-  const out = outline(c, [46, 38, 30]);
+  // Plump body + layered wing feather bars
+  const bob = !peck && (f === 1 || f === 3) ? -1 : 0;
+  P(3, 6 + bob, 9, 5, body); P(4, 10 + bob, 7, 1, deep);
+  P(5, 7 + bob, 5, 3, wing); P(5, 7 + bob, 4, 1, rooster ? '#e69b4c' : '#e6dec8');
+  // Head, comb, beak & wattle
+  if (!peck) {
+    P(10, 3 + bob, 4, 4, rooster ? '#e0843c' : body);
+    P(10, (rooster ? 1 : 2) + bob, 3, rooster ? 2 : 1, red);
+    P(11, (rooster ? 0 : 1) + bob, 1, 1, red);
+    P(14, 4 + bob, 2, 1, yellow);
+    P(12, 6 + bob, 1, 2, red);
+    P(11, 4 + bob, 1, 1, '#1d1a17');
+  } else {
+    P(11, 7, 4, 3, rooster ? '#e0843c' : body);
+    P(12, 6, 2, 1, red);
+    P(15, 9, 1, 1, yellow);
+    P(12, 8, 1, 1, '#1d1a17');
+    P(13, 9, 1, 1, red);
+  }
+  // 4-frame alternating kampung chicken walk
+  if (f === 0) { P(6, 11, 1, 3, yellow); P(9, 11, 1, 3, yellow); P(6, 14, 2, 1, yellow); P(9, 14, 2, 1, yellow); }
+  else if (f === 1) { P(5, 11, 1, 2, yellow); P(9, 11, 1, 3, yellow); P(4, 13, 2, 1, yellow); P(9, 14, 2, 1, yellow); }
+  else if (f === 2) { P(6, 11, 1, 3, yellow); P(8, 11, 1, 3, yellow); P(6, 14, 2, 1, yellow); P(8, 14, 2, 1, yellow); }
+  else { P(6, 11, 1, 3, yellow); P(10, 11, 1, 2, yellow); P(6, 14, 2, 1, yellow); P(10, 13, 2, 1, yellow); }
+
+  const out = outline(c, [42, 34, 26]);
   animalCache.set(key, out); return out;
 }
 
 // ---------------- portraits ----------------
 export function portraitCanvas(who: PortraitId, mouth: boolean, blink: boolean, tick = 0) {
-  const { c, ctx } = blank(24, 24);
+  const { c, ctx } = blank(26, 26);
   const bg: Record<string, [string, string]> = {
     wira: ['#35503a', '#2a4130'], budi: ['#4a4f35', '#3b402a'], pak_rt: ['#4f4334', '#3e3428'], radio: ['#283b3b', '#1f2f2f'], info: ['#35503a', '#2a4130'],
   };
   const [b1, b2] = bg[who] ?? bg.wira;
-  ctx.fillStyle = b1; ctx.fillRect(0, 0, 24, 24);
-  ctx.fillStyle = b2; for (let i = 0; i < 24; i += 4) ctx.fillRect(i, 18, 2, 6);
+  ctx.fillStyle = b1; ctx.fillRect(0, 0, 26, 26);
+  ctx.fillStyle = b2; for (let i = 0; i < 26; i += 4) ctx.fillRect(i, 20, 2, 6);
   if (who === 'radio') {
     const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
-    P(15, 2, 1, 6, '#c9c1a2'); P(14, 1, 3, 1, '#e1d8b5');
-    P(3, 8, 18, 12, '#1e1a16'); P(4, 9, 16, 10, '#8f6a3d'); P(4, 9, 16, 1, '#b48a52');
-    P(5, 11, 7, 6, '#463e31'); for (let y = 11; y < 17; y += 2) P(5, y, 7, 1, '#2e2820');
-    P(14, 11, 4, 3, '#cdbf8a'); P(15 + (tick % 3), 12, 1, 1, '#9c3b2c');
-    P(14, 15, 2, 2, '#e3b45d'); P(17, 15, 2, 2, tick % 2 ? '#a9d17a' : '#5c7b45');
-    if (tick % 2) { P(1, 10, 1, 3, '#a9d6cf'); P(22, 10, 1, 3, '#a9d6cf'); }
+    P(16, 2, 1, 6, '#c9c1a2'); P(15, 1, 3, 1, '#e1d8b5');
+    P(4, 9, 18, 12, '#1e1a16'); P(5, 10, 16, 10, '#8f6a3d'); P(5, 10, 16, 1, '#b48a52');
+    P(6, 12, 7, 6, '#463e31'); for (let y = 12; y < 18; y += 2) P(6, y, 7, 1, '#2e2820');
+    P(15, 12, 4, 3, '#cdbf8a'); P(16 + (tick % 3), 13, 1, 1, '#9c3b2c');
+    P(15, 16, 2, 2, '#e3b45d'); P(18, 16, 2, 2, tick % 2 ? '#a9d17a' : '#5c7b45');
     return c;
   }
-  const frame = getFrame({ who: who as Who, dir: 'down', pose: 'stand', frame: 0, blink, holding: false, newShoes: false, flutter: tick % 3, breath: 0, mouth, glance: 0, sway: 0 });
-  ctx.drawImage(frame, 4, 4, 24, 24, 0, 2, 24, 24);
-  // static ponytail / ribbon so the portrait still reads as Wira
-  if (who === 'wira') {
-    const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
-    P(20, 9 + (tick % 2), 3, 5, '#2e2320'); P(21, 13 + (tick % 2), 2, 3, '#2e2320'); P(20, 9, 3, 1, '#c7432d');
-  }
+  const targetWho: Who = (who in LOOKS ? who : 'wira') as Who;
+  const frame = getFrame({ who: targetWho, dir: 'down', pose: 'stand', frame: 0, blink, holding: false, newShoes: false, flutter: tick % 2, breath: 0, mouth, glance: 0, sway: 0 });
+  ctx.drawImage(frame, 5, 4, 26, 26, 0, 1, 26, 26);
   return c;
 }
 
@@ -655,32 +1001,18 @@ export function warmupSprites() {
   if (warmed || typeof document === 'undefined') return;
   warmed = true;
   for (const dir of ['down', 'up', 'left', 'right'] as Direction[]) {
-    for (const pose of ['stand', 'walk', 'fill', 'pour', 'wave', 'juggle67', 'celebrate'] as Pose[]) {
+    for (const pose of ['stand', 'walk'] as Pose[]) {
+      const nFrames = pose === 'walk' ? 8 : 2;
       for (const holding of [false, true]) {
-        for (const newShoes of [false, true]) {
-          for (const frame of [0, 1, 2, 3]) {
-            getFrame({ who: 'wira', dir, pose, frame, blink: false, holding, newShoes, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
-          }
+        for (let frame = 0; frame < nFrames; frame++) {
+          getFrame({ who: 'wira', dir, pose, frame, blink: false, holding, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
         }
       }
     }
   }
-  const dummy = document.createElement('canvas').getContext('2d')!;
-  for (const who of Object.keys(LOOKS) as Who[]) {
-    if (who === 'wira') continue;
+  for (const who of ['budi', 'pak_rt', 'bu_sari', 'manggala'] as Who[]) {
     for (const dir of ['down', 'left', 'right'] as Direction[]) {
-      for (const blink of [false, true]) {
-        getFrame({ who, dir, pose: 'stand', frame: 0, blink, holding: false, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
-      }
-    }
-  }
-  for (const big of [false, true]) {
-    for (const fill of [0, 1/3, 2/3, 1]) {
-      for (const shimmer of [0, 1]) {
-        for (let a = -4; a <= 4; a++) {
-          drawBucketLive(dummy, 0, 0, big, fill, 0, shimmer * 0.25, 2, a * 0.26, 0);
-        }
-      }
+      getFrame({ who, dir, pose: 'stand', frame: 0, blink: false, holding: false, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
     }
   }
 }

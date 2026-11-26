@@ -19,12 +19,18 @@ import { bumpSign, drawSign, type SignStyle } from './signs';
 export interface RenderOptions { preview?: boolean }
 
 const VILLAGE_TREES: [number, number, number][] = [
-  // village shade trees
-  [57, 219, 1.2], [358, 196, 1.05], [78, 427, 1.3], [106, 690, 1], [721, 540, 1.05], [842, 642, 1.15], [352, 470, 0.9],
-  // deep forest stand, layered front to back
-  [1070, 159, 1.1], [1236, 165, 1.3], [1320, 350, 1.15], [1326, 540, 1.35], [1225, 708, 1.25], [994, 727, 1.1],
-  [1140, 130, 0.95], [1290, 240, 1.05], [1356, 430, 1.2], [1180, 250, 0.9], [1064, 380, 1], [1156, 520, 1.15],
-  [1272, 620, 1.05], [1040, 640, 0.95], [986, 300, 1.05], [1348, 690, 1.3],
+  // village & southern lakeside meadow shade trees
+  [57, 219, 1.2], [358, 196, 1.05], [78, 427, 1.3], [106, 690, 1], [721, 512, 1.05], [842, 642, 1.15], [352, 470, 0.9],
+  [118, 876, 1.18], [388, 912, 1.05], [748, 898, 1.22], [866, 788, 1.12], [878, 944, 1.28],
+  // western peat forest stand
+  [1132, 142, 1.12], [1268, 154, 1.28], [986, 266, 1.05], [1142, 244, 0.96], [1312, 232, 1.1],
+  [1118, 412, 1.08], [1298, 368, 1.18], [1154, 512, 1.15], [992, 566, 1.04], [1306, 588, 1.22],
+  [1182, 678, 1.2], [992, 764, 1.12], [1148, 834, 1.25], [1288, 782, 1.15], [1048, 918, 1.3], [1246, 928, 1.22],
+  // central canal rim & eastern dipterocarp sanctuary
+  [1392, 156, 1.18], [1388, 326, 1.1], [1448, 358, 1.16], [1454, 648, 1.24], [1384, 728, 1.2], [1416, 896, 1.3],
+  [1586, 148, 1.26], [1718, 152, 1.34], [1874, 178, 1.28], [1564, 318, 1.12], [1868, 328, 1.32],
+  [1546, 518, 1.22], [1748, 488, 1.28], [1882, 496, 1.35], [1638, 648, 1.16], [1884, 686, 1.3],
+  [1594, 846, 1.26], [1738, 858, 1.32], [1872, 892, 1.36],
 ];
 const LAKE = { x0: 210, x1: 640, y0: 556, y1: 728 };
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -43,13 +49,14 @@ const VILLAGE_SIGNS: SignDef[] = [
   { id: 'home', x: 210, y: 144, depth: 174, style: { label: 'RUMAH WIRA', kind: 'board', icon: 'home', w: 82, h: 19, paint: '#6e4429', ink: '#fff2cf', scale: 1.38 } },
   { id: 'lake', x: 522, y: 500, depth: 500, style: { label: 'DANAU', sub: 'ISI AIR', kind: 'post', posts: 2, icon: 'drop', dirArrow: 'down', w: 68, h: 29, paint: '#274f57', ink: '#effcf5', scale: 1.38 } },
   { id: 'forest', x: 884, y: 410, depth: 410, style: { label: 'HUTAN', sub: 'AWAS API', kind: 'post', posts: 1, icon: 'flame', dirArrow: 'right', warn: true, w: 78, h: 29, paint: '#523822', ink: '#fff2c7', scale: 1.42 } },
+  { id: 'canal', x: 1326, y: 446, depth: 446, style: { label: 'KANAL', sub: 'ISI AIR', kind: 'post', posts: 1, icon: 'drop', dirArrow: 'right', w: 68, h: 29, paint: '#274f57', ink: '#effcf5', scale: 1.36 } },
 ];
 const HOUSE_SIGNS: SignDef[] = [
   { id: 'exit', x: 351, y: 511, depth: 534, style: { label: 'KELUAR', kind: 'board', icon: 'exit', w: 56, h: 19, paint: '#634729', ink: '#fff2c9', scale: 1.32 } },
   { id: 'radio-tag', x: 640, y: 250, depth: 263, style: { label: 'RADIO', kind: 'board', icon: 'radio', w: 48, h: 19, paint: '#344944', ink: '#eefcf2', scale: 1.28 } },
 ];
 
-interface Hen { x: number; y: number; tx: number; ty: number; wait: number; face: 1 | -1; dist: number }
+interface Hen { x: number; y: number; tx: number; ty: number; wait: number; face: 1 | -1; dist: number; rooster?: boolean }
 interface Mem {
   scene: SceneType; time: number; dt: number; collected: Set<string>; fires: Map<string, number>; fireVisual: Map<string, number>;
   water: number; step: number; progress: number; stillSince: number; cough: number;
@@ -110,11 +117,16 @@ function getTufts() {
   if (tufts) return tufts;
   tufts = [];
   const colors = ['#f1d36e', '#f3f0e4', '#eaa0b4', '#c9a6e6'];
-  for (let i = 0; tufts.length < 74 && i < 1200; i++) {
-    const x = 40 + hash(i, 1.7) * 900, y = 80 + hash(i, 9.1) * 700;
+  for (let i = 0; tufts.length < 118 && i < 1800; i++) {
+    const x = 40 + hash(i, 1.7) * 886, y = 80 + hash(i, 9.1) * 880;
     const onRoad = (x > 165 && x < 1005 && y > 244 && y < 356) || (x > 396 && x < 490 && y > 310 && y < 646);
-    const nearYard = (x > 308 && x < 434 && y > 218 && y < 258) || (x > 350 && x < 398 && y > 336 && y < 446) || (x > 168 && x < 692 && y > 510);
-    if (onRoad || nearYard || !canStand('village', x, y) || (x > 450 && x < 690 && y < 280)) continue;
+    const nearLake = x > 168 && x < 692 && y > 510 && y < 786;
+    const nearYard =
+      (x > 308 && x < 434 && y > 218 && y < 258) ||
+      (x > 350 && x < 398 && y > 336 && y < 446) ||
+      (x > 730 && x < 818 && y > 540 && y < 592) ||
+      (x > 468 && x < 696 && y > 858 && y < 902);
+    if (onRoad || nearLake || nearYard || !canStand('village', x, y) || (x > 450 && x < 690 && y < 280)) continue;
     tufts.push({ x: snap(x), y: snap(y), color: colors[i % 4], bloomAt: (i % 10) * 10 });
   }
   return tufts;
@@ -124,24 +136,30 @@ type PropKind = 'fern' | 'sapling' | 'banana' | 'bush';
 interface ForestProp { x: number; y: number; kind: PropKind; scale: number }
 let forestProps: ForestProp[] | null = null;
 
-/** Ferns, saplings and banana plants: they scorch near fire and green back after. */
+/** Ferns, saplings and banana plants across the expanded 1020x1020 Kalimantan forest. */
 function getForestProps() {
   if (forestProps) return forestProps;
   forestProps = [];
   const kinds: PropKind[] = ['fern', 'bush', 'sapling', 'fern', 'banana', 'bush'];
-  for (let i = 0; forestProps.length < 44 && i < 700; i++) {
-    const x = 954 + hash(i, 3.3) * 404, y = 112 + hash(i, 7.7) * 616;
-    // never plant a prop on top of a hotspot: the flames must stay readable
-    if (INITIAL_FIRE_HOTSPOTS.some(f => Math.hypot(f.x - x, f.y - y) < 34)) continue;
-    forestProps.push({ x: snap(x), y: snap(y), kind: kinds[i % kinds.length], scale: 0.85 + hash(i, 11) * 0.55 });
+  for (let i = 0; forestProps.length < 96 && i < 1600; i++) {
+    const x = 954 + hash(i, 3.3) * 944, y = 104 + hash(i, 7.7) * 844;
+    if (INITIAL_FIRE_HOTSPOTS.some(f => Math.hypot(f.x - x, f.y - y) < 38)) continue;
+    if (x > 1324 && x < 1438 && y > 378 && y < 636) continue; // keep Sekat Bakar canal & bridge clear
+    forestProps.push({ x: snap(x), y: snap(y), kind: kinds[i % kinds.length], scale: 0.85 + hash(i, 11) * 0.58 });
   }
-  for (const [x, y] of [[196, 596], [662, 618], [242, 764], [612, 750], [176, 686]] as [number, number][])
+  for (const [x, y] of [
+    [196, 596], [662, 618], [242, 764], [612, 750], [176, 686],
+    [438, 864], [724, 862], [834, 868],
+  ] as [number, number][])
     forestProps.push({ x, y, kind: 'fern', scale: 0.95 });
   return forestProps;
 }
 
 function fillTarget(p: PlayerState, a?: GameWorld['action']) {
   if (a?.type === 'fill' && a.target) return a.target;
+  if (p.x > 1100) {
+    return { x: 1382, y: p.y <= 500 ? 452 : 548 };
+  }
   if (p.y >= 546 && p.x >= 405 && p.x <= 479) {
     if (p.y >= 604) return { x: p.x, y: 652 };
     return { x: p.x <= 442 ? 386 : 498, y: Math.max(562, p.y + 10) };
@@ -248,7 +266,9 @@ function detectEvents(w: GameWorld, m: Mem, motion: boolean, dt: number) {
 
 // ------------------------------------------------------------------ ambient life
 function updateHens(w: GameWorld, dt: number) {
-  if (!hens.length) hens = [0, 1, 2].map(i => ({ x: 120 + i * 70, y: 400 + i * 22, tx: 140 + i * 60, ty: 420, wait: i, face: 1 as const, dist: 0 }));
+  if (!hens.length) hens = [0, 1, 2, 3, 4].map(i => ({
+    x: 96 + i * 54, y: 396 + (i % 3) * 24, tx: 120 + i * 50, ty: 420, wait: i * 0.7, face: 1 as const, dist: 0, rooster: i === 0,
+  }));
   const p = w.player;
   for (const h of hens) {
     const dp = Math.hypot(h.x - p.x, h.y - p.y);
@@ -355,18 +375,94 @@ function drawBird(c: CanvasRenderingContext2D, x: number, y: number, up: boolean
 
 function npcSpec(who: Who, x: number, y: number, w: GameWorld, t: number): FrameSpec {
   const p = w.player;
-  const seed = who === 'budi' ? 0.7 : 2.3;
+  const seed = who === 'budi' ? 0.7 : who === 'pak_rt' ? 2.3 : who === 'bu_sari' ? 1.5 : 3.1;
   const near = w.scene === 'village' && Math.hypot(p.x - x, p.y - y) < 130;
+  const allSafe = !w.fires.some(f => f.intensity > 0);
   let dir: Direction = 'down';
   if (near) { const dx = p.x - x, dy = p.y - y; dir = Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down'; }
   let pose: Pose = 'stand';
-  if (w.emote && near) { pose = 'wave'; dir = 'down'; }
-  else if (who === 'budi' && dir === 'down' && ((t + 1.3) % (near ? 3.2 : 6.5)) < 1.4) pose = 'wave';
-  else if (who === 'pak_rt' && (w.cutscene === 1 || (!near && ((t + 2) % 7.5) < 1.8))) { pose = 'point'; dir = 'down'; }
-  const talking = w.dialogue?.portrait === who;
+  if (allSafe && ((t + seed) % 6.2) < 1.8) { pose = 'celebrate'; dir = 'down'; }
+  else if (w.emote && near) { pose = 'wave'; dir = 'down'; }
+  else if (who === 'budi') {
+    const cyc = (t + 1.3) % (near ? 4.2 : 8.4);
+    if (dir === 'down' && cyc < 1.4) pose = 'wave';
+    else if (!near && cyc > 4.2 && cyc < 6.4) { pose = 'wipe'; dir = 'down'; }
+  } else if (who === 'pak_rt') {
+    const cyc = (t + 2.0) % 9.2;
+    if (w.cutscene === 1 || (!near && !allSafe && cyc < 2.0)) { pose = 'point'; dir = 'down'; }
+    else if (!near && cyc >= 4.6 && cyc < 6.6) { pose = 'radio_check'; dir = 'down'; }
+  }
+  const talking = w.dialogue?.portrait === who || (who === 'pak_rt' && pose === 'radio_check');
+  const glancePhase = Math.floor((t + seed) / 2.2) % 4;
   return {
     who, dir, pose, frame: Math.floor(t * 6) % 4, blink: (t + seed) % 4.7 > 4.55, holding: false, newShoes: false,
-    flutter: 0, breath: Math.floor((t + seed) / 1.1) % 2, mouth: talking && Math.floor(t * 7) % 2 === 0, glance: 0, sway: 0,
+    flutter: Math.floor(t * 3 + seed) % 2, breath: Math.floor((t + seed) / 1.1) % 2,
+    mouth: talking && Math.floor(t * 7) % 2 === 0,
+    glance: pose === 'stand' && dir === 'down' && !near ? (glancePhase === 1 ? -1 : glancePhase === 3 ? 1 : 0) : 0,
+    sway: 0,
+  };
+}
+
+/** Deterministic living patrol for Ibu Sari (village weaver) & Petugas Raka (Manggala Agni ranger). */
+function patrolNpc(
+  who: 'bu_sari' | 'manggala',
+  ax: number, ay: number, bx: number, by: number,
+  period: number, w: GameWorld, t: number, motion: boolean,
+): { x: number; y: number; vx: number; spec: FrameSpec } {
+  const p = w.player;
+  const allSafe = !w.fires.some(f => f.intensity > 0);
+  const raw = motion ? (t % period) / period : 0.2;
+  // Smooth ping-pong patrol with natural dwell pauses at each end (0..0.34 walk -> 0.34..0.50 pause -> 0.50..0.84 walk back -> 0.84..1.00 pause)
+  let u = 0, moving = false, forward = true;
+  if (raw < 0.34) { u = raw / 0.34; moving = motion; forward = true; }
+  else if (raw < 0.50) { u = 1; moving = false; forward = true; }
+  else if (raw < 0.84) { u = 1 - (raw - 0.50) / 0.34; moving = motion; forward = false; }
+  else { u = 0; moving = false; forward = false; }
+
+  const x = Math.round(ax + (bx - ax) * u);
+  const y = Math.round(ay + (by - ay) * u);
+  const distP = Math.hypot(p.x - x, p.y - y);
+  const near = distP < 96;
+  if (near) moving = false;
+
+  let dir: Direction = 'down';
+  if (moving) {
+    if (Math.abs(bx - ax) >= Math.abs(by - ay)) dir = forward ? 'right' : 'left';
+    else dir = forward ? 'down' : 'up';
+  } else if (near) {
+    const dx = p.x - x, dy = p.y - y;
+    dir = Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down';
+  }
+
+  let pose: Pose = moving ? 'walk' : 'stand';
+  if (!moving) {
+    if (allSafe && ((t + (who === 'bu_sari' ? 0.8 : 2.1)) % 5.8) < 1.8) { pose = 'celebrate'; dir = 'down'; }
+    else if (near && (w.emote || ((t + 0.6) % 4.4) < 1.5)) { pose = 'wave'; if (w.emote) dir = 'down'; }
+    else if (who === 'manggala' && !allSafe) {
+      pose = raw < 0.50 ? 'point' : 'radio_check';
+      dir = raw < 0.50 ? 'right' : 'down';
+    } else if (who === 'bu_sari' && raw >= 0.34 && raw < 0.50) {
+      pose = 'wipe'; dir = 'down';
+    }
+  }
+
+  const walkFrame = Math.floor(t * 7.5) & 7;
+  const idleFrame = Math.floor(t * 6) & 3;
+  const gait = (t * 0.95) % 1;
+  const seed = who === 'bu_sari' ? 1.7 : 3.4;
+  return {
+    x, y,
+    vx: moving && Math.abs(bx - ax) > 10 ? (forward ? 48 : -48) : 0,
+    spec: {
+      who, dir, pose,
+      frame: pose === 'walk' ? walkFrame : idleFrame,
+      blink: (t + seed) % 4.5 > 4.35,
+      holding: false, newShoes: false,
+      flutter: Math.floor(t * (moving ? 7 : 3)) % 2,
+      breath: Math.floor((t + seed) / 1.05) % 2,
+      mouth: (pose === 'radio_check' || pose === 'celebrate') && Math.floor(t * 6) % 2 === 0,
+      glance: 0, sway: moving ? 1 : 0, gait,
+    },
   };
 }
 
@@ -384,7 +480,9 @@ function playerSpec(w: GameWorld, m: Mem | null, t: number): FrameSpec {
   const emoteFps = w.emote?.id === 'six_seven' ? 7 : 6;
   const frame = (w.emote && !p.isMoving)
     ? Math.floor(w.emote.age * emoteFps) % 4
-    : Math.floor(p.animFrame / (GAIT_DISTANCE / 4)) % 4;
+    : pose === 'walk'
+      ? Math.floor(p.animFrame / (GAIT_DISTANCE / 8)) % 8
+      : Math.floor(p.animFrame / (GAIT_DISTANCE / 4)) % 4;
   const gait = (p.animFrame % GAIT_DISTANCE) / GAIT_DISTANCE;
   const still = m ? w.time - m.stillSince : 0;
   const g = Math.floor(still / 1.6) % 4;
@@ -984,6 +1082,18 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
     m.ripples.draw(c, snap, '#ccf9f0', isWater);
     drawPierFoam(c, t, wind.dir, snap);
   }
+  // Live shimmer & subsurface ripples on the Forest Sekat Bakar Peat Canal (x=1350..1414, y=394..620)
+  if (vRight > 1335 && vLeft < 1430 && vBot > 388 && vTop < 630) {
+    for (let i = 0; i < 14; i++) {
+      const cy = 402 + ((i * 15 + Math.floor(t * 8)) % 210);
+      if (cy > 474 && cy < 526) continue;
+      const cx = 1356 + Math.round(hash(i, 19) * 44);
+      c.globalAlpha = 0.28 + 0.2 * Math.sin(t * 2.4 + i);
+      R(c, snap(cx), snap(cy), 4, 6, i % 2 ? '#8ed4d0' : '#c6f2ec');
+    }
+    c.globalAlpha = 1;
+    m.ripples.draw(c, snap, '#bceee6', (rx, ry) => rx >= 1350 && rx <= 1414 && ry >= 394 && ry <= 620 && (ry < 476 || ry > 524));
+  }
   // damp boards at the water end of the jetty, with a slow travelling sheen
   for (let i = 0; i < 4; i++) {
     const yy = PIER.y1 - 6 - i * 9;
@@ -1236,14 +1346,24 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       } });
     });
     const budi = npcSpec('budi', 627, 272, world, t), rt = npcSpec('pak_rt', 825, 283, world, t);
+    const sari = patrolNpc('bu_sari', 246, 374, 322, 374, 15.5, world, t, motion);
+    const raka = patrolNpc('manggala', 934, 272, 954, 344, 14.0, world, t, motion);
     const npcMotion: MotionInfo = { dt: m?.dt ?? 0, vx: 0, vy: 0, speed: 0, lean: 0, wind, reduced: !motion };
     items.push({ y: 272, draw: () => { drawShadow(c, 627, 272); drawCharacter(c, 627, 272, budi, npcMotion); } });
     items.push({ y: 283, draw: () => { drawShadow(c, 825, 283); drawCharacter(c, 825, 283, rt, npcMotion); } });
+    items.push({ y: sari.y, draw: () => {
+      drawShadow(c, sari.x, sari.y);
+      drawCharacter(c, sari.x, sari.y, sari.spec, { ...npcMotion, vx: sari.vx, speed: Math.abs(sari.vx) });
+    } });
+    items.push({ y: raka.y, draw: () => {
+      drawShadow(c, raka.x, raka.y);
+      drawCharacter(c, raka.x, raka.y, raka.spec, { ...npcMotion, vx: raka.vx, speed: Math.abs(raka.vx) });
+    } });
     if (!preview) hens.forEach(h => items.push({ y: h.y, draw: () => {
       const moving = h.wait <= 0;
-      const spr = chickenSprite(Math.floor(h.dist / 6), !moving && Math.floor(t * 4 + h.x) % 3 === 0);
-      drawShadow(c, h.x, h.y, 14, 0.2);
-      c.save(); c.translate(snap(h.x), snap(h.y)); if (h.face < 0) c.scale(-1, 1); c.drawImage(spr, -14, -26, spr.width * 2, spr.height * 2); c.restore();
+      const spr = chickenSprite(Math.floor(h.dist / 6), !moving && Math.floor(t * 4 + h.x) % 3 === 0, !!h.rooster);
+      drawShadow(c, h.x, h.y, h.rooster ? 16 : 14, 0.22);
+      c.save(); c.translate(snap(h.x), snap(h.y)); if (h.face < 0) c.scale(-1, 1); c.drawImage(spr, -16, -28, spr.width * 2, spr.height * 2); c.restore();
     } }));
     world.fires.forEach((f, i) => {
       if (!preview && (f.x < cLeft || f.x > cRight || f.y < cTop || f.y > cBot)) return;
@@ -1284,15 +1404,67 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
   }
 
   const prog = progressOf(world);
-  if (village) {
+  if (village && !preview) {
+    const aLeft = x - width / scale / 2 - 80, aRight = x + width / scale / 2 + 80;
+    const aTop = y - height / scale / 2 - 80, aBot = y + height / scale / 2 + 80;
+
+    // 1. Skimming Turquoise & Emerald Dragonflies (Capung) over Danau Rantau & Forest Sekat Bakar Canal!
+    const dragonflies: [number, number, number, string][] = [
+      [278, 608, 22, '#6cf0e8'], [574, 616, 20, '#88f5b8'], [348, 706, 18, '#6cf0e8'],
+      [1374, 438, 14, '#7cf2ea'], [1388, 568, 15, '#96f7ba'],
+    ];
+    dragonflies.forEach(([ox, oy, rad, col], i) => {
+      if (ox < aLeft || ox > aRight || oy < aTop || oy > aBot) return;
+      const dart = motion ? Math.sin(t * 1.9 + i * 2.1) : 0;
+      const dx = snap(ox + Math.cos(t * 1.4 + i * 1.7) * rad + dart * 8);
+      const dy = snap(oy + Math.sin(t * 2.2 + i * 1.3) * (rad * 0.45));
+      const wingOpen = !motion || Math.floor(t * 22 + i) % 2 === 0;
+      c.globalAlpha = 0.25; R(c, dx - 2, dy + 8, 6, 2, '#0d1f22'); c.globalAlpha = 1;
+      if (wingOpen) {
+        R(c, dx - 4, dy - 2, 4, 2, '#dffaf8'); R(c, dx + 2, dy - 2, 4, 2, '#dffaf8');
+      } else {
+        R(c, dx - 2, dy - 3, 2, 2, '#dffaf8'); R(c, dx + 2, dy - 3, 2, 2, '#dffaf8');
+      }
+      R(c, dx - 1, dy, 5, 2, col); R(c, dx - 2, dy, 2, 2, '#1d383a');
+    });
+
+    // 2. Dappled Golden Rainforest Canopy Sunbeams & Drifting Forest Pollen/Firefly Spores in cleared forest glades!
+    if (aRight > 980) {
+      const clearRatio = 0.25 + (prog / 100) * 0.75;
+      for (const [bx, by] of [[1126, 290], [1382, 488], [1578, 392], [1710, 560], [1642, 780]] as [number, number][]) {
+        if (bx < aLeft - 80 || bx > aRight + 80 || by < aTop - 80 || by > aBot + 80) continue;
+        if (world.fires.some(f => f.intensity > 0 && Math.hypot(f.x - bx, f.y - by) < 210)) continue;
+        c.globalAlpha = (0.045 + (motion ? 0.015 * Math.sin(t * 1.3 + bx * 0.01) : 0)) * clearRatio;
+        poly(c, [[bx - 28, by - 120], [bx + 6, by - 120], [bx + 44, by + 24], [bx - 6, by + 24]], '#fff1b5');
+      }
+      c.globalAlpha = 1;
+      for (let i = 0; i < 22; i++) {
+        const sx0 = 980 + hash(i, 31) * 900, sy0 = 130 + hash(i, 37) * 800;
+        const mx = sx0 + (motion ? Math.sin(t * 0.8 + i * 1.7) * 14 + wind.dir * 6 : 0);
+        const my = sy0 + (motion ? Math.cos(t * 0.65 + i * 2.3) * 10 : 0);
+        if (mx < aLeft || mx > aRight || my < aTop || my > aBot) continue;
+        const twinkle = motion ? (0.3 + 0.6 * Math.sin(t * 2.4 + i * 1.9) ** 2) : 0.5;
+        c.globalAlpha = twinkle * clearRatio;
+        R(c, snap(mx), snap(my), 2, 2, i % 3 === 0 ? '#c8f79e' : '#ffeaa1');
+      }
+      c.globalAlpha = 1;
+    }
+
+    // 3. Returning Sky Bird Flock across full 1960px Desa Rantau & Rainforest!
     const flock = Math.floor(prog / 20);
     if (flock > 0) {
-      const cycle = Math.floor(t / 14), ph = (t % 14) / 14;
-      for (let i = 0; i < flock + 1; i++) drawBird(c, -60 + ph * 1520 - i * 20, 110 + Math.sin(cycle) * 40 + (i % 2) * 12 + i * 4 + Math.sin(t * 2 + i) * 3, Math.floor(t * 8 + i) % 2 === 0, wind);
+      const cycle = Math.floor(t / 16), ph = (t % 16) / 16;
+      for (let i = 0; i < flock + 2; i++) {
+        drawBird(c, -80 + ph * 2080 - i * 22, 110 + Math.sin(cycle) * 40 + (i % 2) * 12 + i * 4 + Math.sin(t * 2 + i) * 3, Math.floor(t * 8 + i) % 2 === 0, wind);
+      }
     }
-    if (prog >= 60) getTufts().slice(0, 3 + Math.floor((prog - 60) / 10)).forEach((tf, i) => {
+
+    // 4. Village & Borneo Rajah Brooke's Butterflies fluttering over flowers & forest glades
+    const bCount = prog >= 40 ? 4 + Math.floor((prog - 40) / 10) : 2;
+    getTufts().slice(0, bCount).forEach((tf, i) => {
       const bx = tf.x + Math.sin(t * 1.3 + i) * 24 + wind.dir * 6, by = tf.y - 24 + Math.sin(t * 2.1 + i * 2) * 10;
-      const col = ['#f2d36b', '#f0a2b8', '#e9edf0', '#a6c8f0'][i % 4];
+      if (bx < aLeft || bx > aRight || by < aTop || by > aBot) return;
+      const col = ['#f2d36b', '#f0a2b8', '#7cf0a8', '#a6c8f0'][i % 4];
       if (Math.floor(t * 12 + i) % 2) { R(c, snap(bx) - 4, snap(by), 4, 4, col); R(c, snap(bx) + 2, snap(by), 4, 4, col); }
       else R(c, snap(bx) - 2, snap(by) - 2, 4, 6, col);
       R(c, snap(bx), snap(by), 2, 4, '#2b302a');

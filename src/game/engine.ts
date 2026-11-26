@@ -263,7 +263,7 @@ export class GameEngine {
       ? [{ id: 'exit', x: 351, y: 511 }, { id: 'radio', x: 640, y: 250 }]
       : [{ id: 'home', x: 210, y: 144 }, { id: 'shop', x: 565, y: 111 },
         { id: 'shop', x: 491, y: 174 }, { id: 'chief', x: 825, y: 171 },
-        { id: 'lake', x: 522, y: 454 }, { id: 'fire', x: 884, y: 362 }];
+        { id: 'lake', x: 522, y: 454 }, { id: 'canal', x: 1326, y: 446 }, { id: 'fire', x: 884, y: 362 }];
     const signRadius = touch ? 58 : 42;
     const sign = !clicked ? signAnchors.find(s => Math.hypot(s.x - point.x, s.y - point.y) < signRadius) : null;
     if (sign?.id === 'fire' && this.progress === 100) {
@@ -336,7 +336,11 @@ export class GameEngine {
       if (p.waterUnits===p.maxWaterUnits) { this.notify('Ember sudah penuh. Saatnya menuju titik api.', 'info'); return; }
       // Face open water naturally: off pier end if at tip, otherwise nearest left/right side of pier or south shore
       let tx = p.x, ty = p.y + 38;
-      if (p.y >= 546 && p.x >= 405 && p.x <= 479) {
+      const isCanal = target.id === 'canal' || p.x > 1100;
+      if (isCanal) {
+        if (p.y <= 500) { p.dir = 'up'; tx = 1382; ty = 452; }
+        else { p.dir = 'down'; tx = 1382; ty = 548; }
+      } else if (p.y >= 546 && p.x >= 405 && p.x <= 479) {
         if (p.y >= 604) { p.dir = 'down'; tx = p.x; ty = 652; }
         else if (p.x <= 442) { p.dir = 'left'; tx = 386; ty = p.y + 10; }
         else { p.dir = 'right'; tx = 498; ty = p.y + 10; }
@@ -346,7 +350,7 @@ export class GameEngine {
       p.waterUnits = p.maxWaterUnits;
       w.action={type:'fill',age:0,target:{x:tx,y:ty}};
       soundEngine.playWaterFill();
-      this.notify(`Menimba air danau: ${p.maxWaterUnits} takar penuh!`, 'success');
+      this.notify(`Menimba air ${isCanal ? 'kanal sekat bakar' : 'danau'}: ${p.maxWaterUnits} takar penuh!`, 'success');
     } else if (target.kind === 'fire') {
       if (p.bucketType==='none') { this.notify('Kamu memerlukan ember dari Warung Budi.', 'error'); return; }
       if (p.waterUnits===0) { this.notify('Air habis. Isi kembali ember di danau.', 'error'); return; }

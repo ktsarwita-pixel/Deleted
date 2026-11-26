@@ -13,7 +13,7 @@ export function findPath(scene: SceneType, start: Point, end: Point): Point[] {
   if (!valid(ex, ey)) {
     let closest: Point | null = null;
     let best = Infinity;
-    for (let r = 1; r <= 12 && !closest; r++) {
+    for (let r = 1; r <= 16 && !closest; r++) {
       for (let x = ex - r; x <= ex + r; x++) for (let y = ey - r; y <= ey + r; y++) {
         const dist = Math.hypot(x * CELL - end.x, y * CELL - end.y);
         if (valid(x, y) && dist < best) { best = dist; closest = { x, y }; }
@@ -28,7 +28,7 @@ export function findPath(scene: SceneType, start: Point, end: Point): Point[] {
   const scores = new Map<string, number>([[keyOf(sx, sy), 0]]);
   const closed = new Set<string>();
   let count = 0;
-  while (open.length && count++ < 6000) {
+  while (open.length && count++ < 18000) {
     let index = 0;
     for (let i = 1; i < open.length; i++) if (open[i].f < open[index].f) index = i;
     const node = open.splice(index, 1)[0];

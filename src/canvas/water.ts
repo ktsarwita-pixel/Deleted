@@ -6,19 +6,29 @@ export const PIER = { x0: 405, x1: 479, y0: 504, y1: 634 };
 export const PIER_WALK = { x0: 418, x1: 467, y1: 625 };
 /** Open water bounds (inside the shoreline, before the deck is subtracted). */
 export const WATER = { x0: 202, x1: 650, y0: 549, y1: 734 };
+export const CANAL = { x0: 1350, x1: 1414, y0: 394, y1: 620 };
+export const CANAL_BRIDGE = { x0: 1340, x1: 1424, y0: 476, y1: 524 };
 /** Pilings driven into the lake bed: ripples radiate from these, not the deck. */
 export const PIER_POSTS: [number, number][] = [
   [406, 552], [478, 552], [406, 586], [478, 586], [406, 620], [478, 620],
 ];
 
 export const onPier = (x: number, y: number) =>
-  x > PIER_WALK.x0 - 14 && x < PIER_WALK.x1 + 14 && y > PIER.y0 - 4 && y < PIER_WALK.y1 + 10;
+  (x > PIER_WALK.x0 - 14 && x < PIER_WALK.x1 + 14 && y > PIER.y0 - 4 && y < PIER_WALK.y1 + 10) ||
+  (x >= CANAL_BRIDGE.x0 && x <= CANAL_BRIDGE.x1 && y >= CANAL_BRIDGE.y0 && y <= CANAL_BRIDGE.y1);
 
 export const inDeck = (x: number, y: number) =>
   x >= PIER.x0 - 2 && x <= PIER.x1 + 2 && y >= PIER.y0 - 2 && y <= PIER.y1 + 2;
 
 /** True only for visible open water: shoreline inset, deck excluded. */
+export function isCanalWater(x: number, y: number) {
+  if (x < CANAL.x0 || x > CANAL.x1 || y < CANAL.y0 || y > CANAL.y1) return false;
+  if (y >= CANAL_BRIDGE.y0 - 2 && y <= CANAL_BRIDGE.y1 + 2) return false;
+  return true;
+}
+
 export function isWater(x: number, y: number) {
+  if (isCanalWater(x, y)) return true;
   if (x < WATER.x0 || x > WATER.x1 || y < WATER.y0 || y > WATER.y1) return false;
   // the shoreline steps in at the corners
   if (y < WATER.y0 + 12 && (x < WATER.x0 + 18 || x > WATER.x1 - 20)) return false;

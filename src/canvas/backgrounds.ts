@@ -939,77 +939,233 @@ function drawForestFern(c: CanvasRenderingContext2D, x: number, y: number, scale
   R(c, x - 1, y - 1, 2, 2, '#9bc46b');
 }
 
+function drawPitcherPlant(c: CanvasRenderingContext2D, x: number, y: number) {
+  // Iconic Borneo Kantong Semar (Nepenthes) cluster on peat moss!
+  R(c, x - 5, y + 2, 10, 3, '#1a241677');
+  R(c, x - 4, y - 2, 4, 2, '#4a7538'); R(c, x + 1, y - 3, 4, 2, '#5e8c46');
+  // Hanging crimson-spotted pitcher cups + lids
+  R(c, x - 5, y - 1, 3, 5, '#8ca34b'); R(c, x - 5, y + 1, 3, 3, '#b84638');
+  R(c, x - 6, y - 3, 4, 1, '#c95c48'); // lid 1
+  R(c, x + 3, y - 2, 3, 5, '#96ad52'); R(c, x + 3, y, 3, 3, '#a83c32');
+  R(c, x + 3, y - 4, 4, 1, '#d46a52'); // lid 2
+}
+
+function drawToadstools(c: CanvasRenderingContext2D, x: number, y: number, glow = false) {
+  const cap = glow ? '#e8a642' : '#c9533b';
+  const hi = glow ? '#fff0a6' : '#f29f7e';
+  R(c, x - 1, y, 2, 3, '#dfd3b8'); R(c, x - 3, y - 2, 6, 2, cap); R(c, x - 2, y - 3, 4, 1, hi);
+  R(c, x + 4, y + 1, 1, 2, '#dfd3b8'); R(c, x + 3, y - 1, 4, 2, cap); R(c, x + 4, y - 1, 2, 1, hi);
+}
+
+function drawSekatBakarCanal(c: CanvasRenderingContext2D) {
+  // Authentic Kalimantan Peat Re-Wetting Canal (Kanal Sekat Bakar) at x=1348..1416, y=392..622
+  // 1. Grassy/mossy peat embankment & damp sandy-peat slope
+  poly(c, [
+    [1338, 386], [1426, 386], [1432, 404], [1430, 610],
+    [1424, 628], [1340, 628], [1334, 610], [1334, 404],
+  ], '#475933');
+  poly(c, [
+    [1344, 390], [1420, 390], [1424, 406], [1422, 608],
+    [1418, 624], [1346, 624], [1340, 608], [1340, 406],
+  ], '#6e5839');
+
+  // 2. Deep tea-dark / emerald-slate Kalimantan peat canal water (exact CANAL 1350..1414 x 394..620)
+  R(c, 1349, 394, 66, 226, '#2b4d50');
+  R(c, 1354, 398, 56, 218, '#234044');
+  R(c, 1361, 404, 42, 206, '#1b3337');
+
+  // Subtle vertical canal flow ribbons & shoreline foam
+  for (let wy = 404; wy < 610; wy += 16) {
+    if (wy > 470 && wy < 530) continue;
+    R(c, 1351, wy, 3, 8, '#6da8a880');
+    R(c, 1410, wy + 4, 3, 8, '#6da8a880');
+    R(c, 1366 + (wy % 17), wy + 2, 3, 10, '#38666a70');
+  }
+
+  // 3. Wooden Sekat Bakar Check-Dam Weirs (North y=395 & South y=613) holding water in the peatland!
+  for (const wy of [395, 612]) {
+    R(c, 1344, wy, 76, 7, '#4a3421');
+    R(c, 1344, wy, 76, 2, '#9c7448');
+    for (let px = 1348; px <= 1414; px += 11) {
+      R(c, px, wy - 3, 4, 11, '#5e4229');
+      R(c, px, wy - 3, 2, 3, '#c49b66');
+    }
+    // White-water spillway trickle through center notch of the check-dam!
+    R(c, 1375, wy + 1, 14, 5, '#7dc2c2');
+    R(c, 1378, wy + 2, 8, 3, '#d8f5f2');
+  }
+
+  // Floating canal lily pads & shoreline reeds + Kantong Semar pitcher plants
+  for (const [lx, ly, bloom] of [[1364, 432, true], [1396, 452, false], [1366, 558, false], [1394, 584, true]] as [number, number, boolean][]) {
+    R(c, lx - 5, ly - 3, 11, 7, '#477842'); R(c, lx - 3, ly - 2, 6, 4, '#6aa158');
+    if (bloom) { R(c, lx - 1, ly - 5, 4, 3, '#f2aec2'); R(c, lx, ly - 4, 2, 1, '#fff099'); }
+  }
+  drawPitcherPlant(c, 1336, 442);
+  drawPitcherPlant(c, 1428, 566);
+
+  // 4. Sturdy Kayu Ulin Ranger Footbridge & Water-Scooping Bay (walkable y=476..524, x=1338..1426!)
+  // Stone/timber bridge abutments
+  R(c, 1332, 476, 12, 48, '#665b49'); R(c, 1334, 478, 8, 44, '#8f826b');
+  R(c, 1420, 476, 12, 48, '#665b49'); R(c, 1422, 478, 8, 44, '#8f826b');
+  // Bridge shadow on canal water
+  R(c, 1348, 524, 68, 9, '#102024aa');
+  // Under-deck heavy ironwood stringers
+  R(c, 1338, 476, 88, 48, '#3d2c1d');
+  // Vertical ironwood deck planks running across the canal
+  for (let bx = 1340; bx < 1424; bx += 7) {
+    const sh = ((bx / 7) | 0) % 3;
+    const col = sh === 0 ? '#ad8652' : sh === 1 ? '#9e7745' : '#b8915c';
+    R(c, bx, 479, 6, 42, col);
+    R(c, bx, 479, 2, 42, '#cfa974');
+    R(c, bx + 5, 479, 1, 42, '#573d26');
+    R(c, bx + 2, 483, 2, 2, '#3b2919');
+    R(c, bx + 2, 516, 2, 2, '#3b2919');
+  }
+  // Low timber side curbs & corner bollards (center north/south notch left open for scooping water!)
+  for (const [rx, rw] of [[1340, 26], [1398, 26]] as [number, number][]) {
+    R(c, rx, 476, rw, 4, '#6e4e30'); R(c, rx, 476, rw, 1, '#d4b27a');
+    R(c, rx, 520, rw, 4, '#6e4e30'); R(c, rx, 520, rw, 1, '#d4b27a');
+  }
+  for (const px of [1340, 1364, 1398, 1420]) {
+    for (const py of [474, 518]) {
+      R(c, px, py, 6, 7, '#543b24'); R(c, px, py, 6, 2, '#d6b47e');
+    }
+  }
+  // Coiled rope & brass dipper hook beside center scooping bay
+  R(c, 1399, 479, 7, 5, '#d2be8e'); R(c, 1401, 480, 3, 3, '#968258');
+}
+
 function forestBackdrop(c: CanvasRenderingContext2D) {
-  // 1. Feathered mossy meadow-to-rainforest transition (#647b49 -> #526b3d -> #3f5531)
+  const FW = 1960, FH = 1020;
+  // 1. Feathered mossy meadow-to-rainforest transition (#647b49 -> #4e673a -> #3b512e)
   const outerEdge = [
-    [926, 0], [1400, 0], [1400, 820], [944, 820],
-    [930, 742], [948, 668], [922, 594], [942, 518],
-    [918, 444], [950, 368], [962, 316], [934, 256],
-    [914, 182], [932, 108], [912, 44],
+    [926, 0], [FW, 0], [FW, FH], [936, FH],
+    [918, 936], [944, 858], [924, 780], [948, 700],
+    [922, 614], [942, 528], [918, 444], [950, 368],
+    [962, 316], [934, 256], [914, 182], [932, 108], [912, 44],
   ];
   poly(c, outerEdge, '#4e673a');
-  for (let y = 60; y < 800; y += 18) {
+  for (let y = 56; y < FH - 24; y += 18) {
     const jx = 918 + Math.floor(hash(y, 13) * 32);
     drawPixelBlob(c, jx, y, 14 + (y % 7), 7, '#587241');
   }
 
-  // 2. Deeper shaded rainforest understory (#3c522e)
+  // 2. Deeper shaded rainforest understory (#3b512e) + Ancient Eastern Dipterocarp Sanctuary (#314626)
   const midWood = [
-    [964, 0], [1400, 0], [1400, 820], [980, 820],
-    [966, 735], [986, 650], [956, 575], [976, 495],
-    [954, 420], [984, 348], [990, 305], [966, 238],
-    [950, 160], [970, 85],
+    [964, 0], [FW, 0], [FW, FH], [974, FH],
+    [958, 920], [982, 838], [966, 745], [986, 654],
+    [956, 575], [976, 495], [954, 420], [984, 348],
+    [990, 305], [966, 238], [950, 160], [970, 85],
   ];
   poly(c, midWood, '#3b512e');
 
-  // 3. Organic Kalimantan peatland (tanah gambut) basin under the fire hotspots
-  const peatOuter = [
-    [994, 152], [1070, 134], [1165, 146], [1278, 138], [1376, 164],
-    [1392, 285], [1386, 445], [1390, 610], [1362, 706],
-    [1246, 724], [1118, 708], [1014, 688], [982, 612],
-    [996, 520], [978, 430], [1002, 344], [984, 246],
+  const deepSanctuary = [
+    [1520, 64], [FW, 64], [FW, FH - 30], [1538, FH - 30],
+    [1504, 860], [1542, 740], [1496, 620], [1534, 500],
+    [1498, 380], [1536, 260], [1506, 150],
   ];
-  poly(c, peatOuter, '#4a412d');
+  poly(c, deepSanctuary, '#324727');
 
-  const peatInner = [
-    [1022, 178], [1115, 162], [1238, 168], [1346, 192],
-    [1366, 330], [1358, 505], [1334, 668], [1210, 686],
-    [1086, 672], [1012, 634], [1018, 515], [1004, 412],
-    [1024, 315], [1008, 228],
-  ];
-  poly(c, peatInner, '#3f3524');
+  // 3. Two Rich Kalimantan Peatland (Tanah Gambut) Basins flanking the Sekat Bakar Canal
+  // West Peat Basin
+  poly(c, [
+    [994, 150], [1120, 134], [1268, 146], [1332, 198],
+    [1336, 380], [1330, 628], [1298, 748], [1164, 768],
+    [1028, 738], [984, 640], [996, 510], [980, 410], [1000, 320], [984, 230],
+  ], '#4a412d');
+  poly(c, [
+    [1020, 178], [1148, 164], [1282, 184], [1312, 340],
+    [1306, 610], [1258, 714], [1120, 728], [1018, 684], [1008, 440], [1018, 280],
+  ], '#3f3524');
 
-  // 4. Dappled canopy sun-flecks & mossy peat hummocks across the forest floor
-  for (let i = 0; i < 56; i++) {
-    const mx = 944 + hash(i, 17) * 424, my = 92 + hash(i, 29) * 668;
-    const rx = 10 + Math.floor(hash(i, 31) * 15), ry = 5 + Math.floor(hash(i, 37) * 7);
-    const col = mx < 1012 ? '#546e3d' : (i % 4 === 0 ? '#5c7540' : i % 2 === 0 ? '#475b32' : '#4d422e');
+  // East Deep-Forest Peat Basin
+  poly(c, [
+    [1436, 156], [1588, 138], [1754, 152], [1866, 206],
+    [1884, 380], [1876, 590], [1844, 768], [1710, 826],
+    [1536, 818], [1444, 744], [1432, 590], [1434, 370],
+  ], '#483e2b');
+  poly(c, [
+    [1468, 188], [1620, 168], [1786, 192], [1846, 356],
+    [1838, 608], [1790, 748], [1648, 786], [1492, 756], [1462, 560], [1464, 340],
+  ], '#3c3222');
+
+  // 4. Dappled canopy sun-flecks & mossy peat hummocks across the full 1020x1020 forest floor
+  for (let i = 0; i < 135; i++) {
+    const mx = 944 + hash(i, 17) * 958, my = 86 + hash(i, 29) * 868;
+    if (mx > 1334 && mx < 1430 && my > 384 && my < 632) continue;
+    const rx = 10 + Math.floor(hash(i, 31) * 17), ry = 5 + Math.floor(hash(i, 37) * 8);
+    const col = mx < 1012 ? '#546e3d' : (i % 5 === 0 ? '#5d7741' : i % 2 === 0 ? '#465a32' : '#4d422e');
     drawPixelBlob(c, mx, my, rx, ry, col);
   }
 
-  // 5. Winding forest ranger footpath branching seamlessly off the East Village Road (x=982, y=314)
-  const trailNodes: [number, number, number][] = [
-    [980, 314, 34], [998, 311, 28], [1018, 306, 23], [1038, 301, 20], [1058, 298, 18], [1078, 303, 16],
-    [1036, 322, 17], [1048, 344, 16], [1056, 368, 15], [1061, 394, 15], [1059, 420, 14],
-    [1066, 448, 14], [1074, 478, 13], [1082, 508, 13], [1087, 538, 12],
+  // 5. Branching Kalimantan Ranger Trail Network (Village Road -> Canal Bridge -> North & South Deep Forest + South Meadow Link!)
+  const trailBranches: [number, number, number][][] = [
+    // Main West-to-Canal Trunk (from East Village Road 980,314 -> Canal Bridge 1340,500)
+    [
+      [980, 314, 34], [1002, 312, 28], [1026, 309, 24], [1052, 312, 22], [1078, 320, 21],
+      [1106, 330, 20], [1134, 340, 20], [1164, 346, 20], [1194, 356, 19], [1220, 374, 19],
+      [1244, 398, 19], [1268, 426, 19], [1290, 456, 20], [1312, 482, 21], [1334, 498, 24],
+    ],
+    // West Southward Spur toward southern hotspots & connecting to Southern Village Meadow!
+    [
+      [1054, 326, 18], [1062, 358, 17], [1068, 392, 16], [1072, 430, 16], [1078, 470, 16],
+      [1082, 514, 16], [1076, 560, 16], [1062, 608, 16], [1044, 656, 16], [1024, 704, 16],
+      [996, 752, 17], [962, 794, 18], [924, 824, 18],
+    ],
+    // East of Canal Bridge -> Northeast Dipterocarp Trail
+    [
+      [1428, 498, 24], [1454, 488, 21], [1478, 468, 19], [1502, 444, 19], [1528, 422, 19],
+      [1558, 412, 19], [1588, 404, 18], [1616, 386, 18], [1642, 362, 17], [1668, 336, 17],
+      [1696, 312, 16], [1724, 294, 16],
+    ],
+    // East of Canal Bridge -> Southeast Peat Hollow Trail
+    [
+      [1454, 504, 19], [1474, 534, 18], [1490, 568, 17], [1502, 606, 17], [1508, 646, 17],
+      [1524, 682, 17], [1556, 702, 16], [1594, 700, 16], [1634, 684, 16], [1674, 664, 16],
+      [1712, 648, 16],
+    ],
   ];
-  for (const [tx, ty, tw] of trailNodes) {
-    drawPixelBlob(c, tx, ty, tw * 0.56, 8, '#665336');
+  for (const branch of trailBranches) {
+    for (const [tx, ty, tw] of branch) drawPixelBlob(c, tx, ty, tw * 0.58, 8, '#665336');
   }
-  for (const [tx, ty, tw] of trailNodes) {
-    drawPixelBlob(c, tx, ty, tw * 0.44, 6, '#876e47');
-    drawPixelBlob(c, tx, ty - 1, Math.max(3, tw * 0.28), 3, '#a4885a');
+  for (const branch of trailBranches) {
+    for (const [tx, ty, tw] of branch) {
+      drawPixelBlob(c, tx, ty, tw * 0.44, 6, '#876e47');
+      drawPixelBlob(c, tx, ty - 1, Math.max(3, tw * 0.28), 3, '#a4885a');
+    }
   }
 
-  // 5b. Natural dry-peat depressions & sun-cracked kindling beds beneath every Karhutla hotspot
+  // Timber Corduroy Peat Boardwalks (Titian Kayu Ulin) over damp forest trail sections!
+  for (const [bx0, by0, count] of [[1138, 337, 8], [1548, 405, 8]] as [number, number, number][]) {
+    R(c, bx0 - 2, by0 - 5, count * 7 + 2, 13, '#2b2116aa');
+    R(c, bx0, by0 - 4, count * 7 - 2, 2, '#5c4128');
+    R(c, bx0, by0 + 5, count * 7 - 2, 2, '#5c4128');
+    for (let k = 0; k < count; k++) {
+      const px = bx0 + k * 7;
+      R(c, px, by0 - 6, 5, 13, k % 2 ? '#a67f4b' : '#b58d57');
+      R(c, px, by0 - 6, 2, 13, '#d1af7a');
+      R(c, px + 2, by0 - 4, 1, 1, '#3b2919'); R(c, px + 2, by0 + 4, 1, 1, '#3b2919');
+    }
+  }
+
+  // Carved Wooden Trail KM Posts beside the boardwalks!
+  for (const [mx, my] of [[1132, 326], [1542, 394]] as [number, number][]) {
+    R(c, mx - 2, my + 2, 8, 3, '#1a150f88');
+    R(c, mx, my - 10, 5, 13, '#7d5b38'); R(c, mx, my - 10, 2, 13, '#b58b58');
+    R(c, mx - 1, my - 11, 7, 3, '#c94838'); // red ranger trail-blaze cap!
+    R(c, mx + 1, my - 6, 3, 3, '#f2e6c4');
+  }
+
+  // 5b. Sekat Bakar Peat Canal & Ironwood Bridge
+  drawSekatBakarCanal(c);
+
+  // 5c. Natural dry-peat depressions & sun-cracked kindling beds beneath every Karhutla hotspot
   INITIAL_FIRE_HOTSPOTS.forEach((fh, idx) => {
     const hx = fh.x, hy = fh.y;
-    // Outer dry mineral-peat transition ring (scalloped pixel ellipse, zero rectangles!)
     drawPixelBlob(c, hx, hy + 1, 38, 17, '#4d3e29');
     drawPixelBlob(c, hx - 6, hy + 2, 28, 13, '#3b2e1e');
     drawPixelBlob(c, hx + 5, hy, 29, 13, '#382b1c');
     drawPixelBlob(c, hx, hy + 1, 24, 11, '#2f2317');
-    // Sun-baked dry peat cracks & scattered dry kindling twigs around the hollow rim
     for (let k = 0; k < 7; k++) {
       const a = (k / 7) * Math.PI * 2 + idx * 0.7;
       const rx = Math.round(hx + Math.cos(a) * (22 + (k % 3) * 5));
@@ -1019,94 +1175,115 @@ function forestBackdrop(c: CanvasRenderingContext2D) {
     }
   });
 
-  // 6. Tannin-rich peat swamp pools (rawa gambut) with lily pads & reeds
-  for (const [wx, wy, ww, wh] of [[1074, 248, 32, 14], [1188, 382, 36, 15], [1062, 636, 34, 14], [1292, 528, 30, 13]] as [number, number, number, number][]) {
+  // 6. Tannin-rich peat swamp pools (rawa gambut) with lily pads, reeds & Borneo pitcher plants!
+  const peatPools: [number, number, number, number][] = [
+    [1074, 248, 32, 14], [1188, 434, 36, 15], [1052, 774, 38, 15],
+    [1276, 658, 34, 14], [1548, 294, 38, 16], [1632, 528, 42, 16],
+    [1464, 838, 36, 15], [1812, 438, 38, 16], [1748, 796, 40, 16],
+  ];
+  peatPools.forEach(([wx, wy, ww, wh], idx) => {
     drawPixelBlob(c, wx + ww / 2, wy + wh / 2, ww * 0.58, wh * 0.62, '#2b2419');
     drawPixelBlob(c, wx + ww / 2, wy + wh / 2, ww * 0.50, wh * 0.50, '#254245');
     drawPixelBlob(c, wx + ww / 2, wy + wh / 2 - 1, ww * 0.34, wh * 0.32, '#386164');
     R(c, wx + 8, wy + 4, 7, 2, '#7ab0b0');
-    // Floating green peat-lily pad
     R(c, wx + ww - 11, wy + wh - 6, 5, 3, '#588242');
     R(c, wx + ww - 10, wy + wh - 6, 3, 1, '#7ea85b');
-  }
+    if (idx % 2 === 0) drawPitcherPlant(c, wx - 4, wy + wh - 2);
+  });
 
-  // Forest floor leaf-litter, twigs, wild ginger blooms & scattered ferns
-  for (let i = 0; i < 250; i++) {
-    const x = 938 + hash(i, 61) * 440, y = 84 + hash(i, 67) * 704;
+  // Rich forest floor leaf-litter, fallen dipterocarp winged seeds, ferns & wild ginger blooms
+  for (let i = 0; i < 540; i++) {
+    const x = 938 + hash(i, 61) * 972, y = 80 + hash(i, 67) * 886;
+    if (x > 1336 && x < 1428 && y > 388 && y < 626) continue;
     const t = hash(i, 71);
     R(c, x, y, 3 + t * 8, 2, t > 0.76 ? '#705c3c' : t > 0.42 ? '#342c1f' : '#4f6537');
   }
-  for (let i = 0; i < 26; i++) {
-    const fx = Math.round(942 + hash(i, 83) * 412);
-    const fy = Math.round(96 + hash(i, 89) * 676);
-    drawForestFern(c, fx, fy, fx > 1220 && i % 3 === 0 ? 2 : 1);
-    if (i % 5 === 0) {
-      // Tiny wild red Kalimantan torch-ginger bloom
-      R(c, fx + 5, fy - 4, 2, 3, '#d44b38');
-      R(c, fx + 5, fy - 5, 2, 1, '#ff9c6b');
+  for (let i = 0; i < 64; i++) {
+    const fx = Math.round(942 + hash(i, 83) * 956);
+    const fy = Math.round(92 + hash(i, 89) * 862);
+    if (fx > 1332 && fx < 1434 && fy > 382 && fy < 632) continue;
+    drawForestFern(c, fx, fy, fx > 1480 && i % 3 === 0 ? 2 : 1);
+    if (i % 4 === 0) {
+      // Scarlet Kalimantan torch-ginger (kecombrang) or golden forest orchid!
+      const orchid = i % 8 === 0;
+      R(c, fx + 5, fy - 4, 2, 3, orchid ? '#d99b26' : '#d44b38');
+      R(c, fx + 5, fy - 5, 2, 1, orchid ? '#fff2a6' : '#ff9c6b');
     }
   }
 
-  // Mossy nurse logs with orange shelf fungi, stumps & mossy boulders
-  for (const [lx, ly] of [[1002, 664], [1176, 632], [1288, 236], [1064, 486], [1310, 452]] as [number, number][]) {
+  // Mossy nurse logs with shelf fungi, glowing amber toadstools, buttress stumps & boulders
+  const nurseLogs: [number, number][] = [
+    [1002, 622], [1174, 636], [1282, 224], [1132, 488], [1302, 344],
+    [1462, 336], [1602, 232], [1694, 494], [1586, 612], [1828, 348],
+    [1688, 768], [1834, 712],
+  ];
+  nurseLogs.forEach(([lx, ly], idx) => {
     R(c, lx - 2, ly + 8, 40, 4, '#18140f66');
     R(c, lx - 1, ly - 1, 37, 11, '#291e14');
     R(c, lx, ly, 35, 9, '#4e3b27');
     R(c, lx, ly, 35, 3, '#785c3d');
     R(c, lx - 2, ly - 1, 5, 11, '#8d6c45'); R(c, lx - 1, ly + 1, 3, 7, '#cfaea0');
     R(c, lx + 7, ly - 1, 10, 3, '#537a3b'); R(c, lx + 21, ly, 7, 2, '#699149');
-    // Bracket/shelf mushrooms on decaying log
     R(c, lx + 15, ly + 4, 4, 2, '#d9843b'); R(c, lx + 16, ly + 4, 2, 1, '#f7c97e');
-  }
-  for (const [sx, sy] of [[1012, 300], [1178, 420], [1268, 556], [1096, 660]] as [number, number][]) {
+    if (idx % 2 === 0) drawToadstools(c, lx + 30, ly + 7, idx % 4 === 0);
+  });
+
+  for (const [sx, sy] of [
+    [1012, 292], [1178, 536], [1268, 594], [1114, 796],
+    [1478, 628], [1614, 466], [1742, 354], [1846, 562],
+  ] as [number, number][]) {
     R(c, sx - 3, sy + 8, 20, 3, '#1e191388');
     R(c, sx, sy, 14, 10, '#362b21'); R(c, sx + 2, sy - 2, 10, 4, '#594634');
     R(c, sx + 3, sy - 1, 7, 2, '#997e5f');
-    R(c, sx - 2, sy + 7, 4, 3, '#4b3a2b'); R(c, sx + 12, sy + 7, 4, 3, '#4b3a2b'); // root flares
+    R(c, sx - 2, sy + 7, 4, 3, '#4b3a2b'); R(c, sx + 12, sy + 7, 4, 3, '#4b3a2b');
   }
-  for (const [rx, ry] of [[1042, 300], [1198, 520], [1266, 664], [978, 424]] as [number, number][]) {
+
+  for (const [rx, ry] of [
+    [1042, 296], [1198, 520], [1256, 738], [978, 424],
+    [1494, 298], [1668, 282], [1578, 798], [1828, 628],
+  ] as [number, number][]) {
     R(c, rx, ry + 8, 18, 3, '#1f241f88');
     R(c, rx, ry, 16, 10, '#555e57'); R(c, rx + 1, ry - 2, 13, 10, '#717b72');
     R(c, rx + 3, ry - 3, 8, 3, '#9ba69b'); R(c, rx + 1, ry + 5, 7, 4, '#4f753d');
   }
 
-  // 7. Multi-Depth Kalimantan Dipterocarp Rainforest Panorama along North (y < 76) & Far-East (x > 1364) Rim!
-  // Layer A: Deep atmospheric highland forest backdrop
-  R(c, 0, 0, 1400, 54, '#1b2e24');
-  for (let x = -20; x < 1420; x += 34) {
+  // 7. Multi-Depth Kalimantan Dipterocarp Rainforest Panorama along North (y < 68), East (x > 1924) & Southeast Rim!
+  R(c, 0, 0, FW, 54, '#1b2e24');
+  for (let x = -20; x < FW + 20; x += 34) {
     const r = 20 + Math.floor(hash(x, 11) * 12);
     drawPixelBlob(c, x + 14, 24 + Math.floor(hash(x, 15) * 8), r, Math.round(r * 0.72), '#243c2e');
   }
-
-  // Layer B: Flared buttress trunks, shaded forest interior & hanging rotan lianas beneath the north treeline (y=42..70)
-  R(c, 0, 44, 1400, 18, '#233824');
-  for (let x = 14; x < 1390; x += 29) {
+  R(c, 0, 44, FW, 18, '#233824');
+  for (let x = 14; x < FW - 10; x += 29) {
     const tx = x + Math.floor(hash(x, 41) * 9);
     const base = 58 + Math.floor(hash(x, 43) * 11);
     R(c, tx - 5, base + 2, 14, 3, '#1a281988');
-    // Buttress trunk + lit bark ridge
     poly(c, [[tx - 4, base + 3], [tx - 2, 36], [tx + 3, 36], [tx + 6, base + 3]], '#3b2b1e');
     R(c, tx - 1, 38, 2, base - 36, '#614630');
-    // Hanging forest vine / liana
     if (x % 58 === 14) {
       R(c, tx + 9, 38, 1, 18, '#36542f');
       R(c, tx + 8, 46, 2, 4, '#567d44');
     }
   }
-
-  // Layer C: Sculpted multi-lobed rainforest tree crowns along the entire northern border
-  for (let x = -12; x < 1416; x += 26) {
+  for (let x = -12; x < FW + 16; x += 26) {
     const r = 17 + Math.floor(hash(x, 19) * 11);
     const cy = 34 + Math.floor(hash(x, 23) * 14);
     drawRainforestCrown(c, x + 10, cy, r, x > 880 || x % 52 === 14);
   }
 
-  // Layer D: Lush Eastern rainforest border wall (x > 1364) with trunks & rounded multi-tiered crowns
-  R(c, 1374, 40, 26, 780, '#1e3322');
-  for (let y = 44; y < 820; y += 28) {
+  // Lush Far-Eastern rainforest border wall (x > 1926)
+  R(c, FW - 28, 40, 28, FH - 40, '#1e3322');
+  for (let y = 44; y < FH; y += 28) {
     const r = 18 + Math.floor(hash(y, 31) * 9);
-    const cx = 1386 - Math.floor(hash(y, 37) * 6);
+    const cx = FW - 14 - Math.floor(hash(y, 37) * 6);
     drawRainforestCrown(c, cx, y + 8, r, y % 56 < 28);
+  }
+
+  // Lush Southern rainforest rim along bottom of forest (x = 930..1960, y > 988)
+  R(c, 936, FH - 22, FW - 936, 22, '#1e3322');
+  for (let x = 944; x < FW; x += 30) {
+    const r = 16 + Math.floor(hash(x, 53) * 9);
+    drawRainforestCrown(c, x + 8, FH - 6, r, x % 60 < 30);
   }
 }
 
@@ -1380,11 +1557,102 @@ function drawDanauRantau(c: CanvasRenderingContext2D) {
   for (let y = 635; y < 655; y += 6) { R(c, 431, y, 22, 3, '#b58d56'); R(c, 431, y, 22, 1, '#dab882'); }
 }
 
+function drawVillageMicroDetails(c: CanvasRenderingContext2D) {
+  // 1. Ranger Karhutla Equipment Rack (x=946, y=222) beside Posko RT: red fire buckets, gepyok fire-beaters & sandbags!
+  {
+    const rx = 946, ry = 222;
+    R(c, rx - 4, ry + 12, 48, 5, '#00000030');
+    R(c, rx, ry - 18, 4, 32, '#6b4d2e'); R(c, rx + 36, ry - 18, 4, 32, '#6b4d2e');
+    R(c, rx - 3, ry - 24, 46, 7, '#8f4733'); R(c, rx - 3, ry - 24, 46, 2, '#c2694d');
+    R(c, rx + 2, ry - 8, 36, 3, '#8d6a42');
+    // Hanging red Karhutla water buckets
+    for (const bx of [rx + 6, rx + 16]) {
+      R(c, bx, ry - 4, 7, 8, '#c94130'); R(c, bx, ry - 4, 7, 2, '#ee7b64');
+      R(c, bx + 1, ry - 6, 5, 2, '#d8d2c2');
+    }
+    // Rattan fire-swatters (gepyok api) leaning on right side + sandbags below
+    for (const gx of [rx + 27, rx + 32]) {
+      R(c, gx, ry - 14, 2, 24, '#b89058');
+      R(c, gx - 2, ry - 16, 5, 7, '#d4b278'); R(c, gx - 1, ry - 15, 3, 5, '#9c7844');
+    }
+    R(c, rx + 4, ry + 7, 13, 6, '#cbb88c'); R(c, rx + 5, ry + 7, 11, 2, '#e3d4ad');
+    R(c, rx + 18, ry + 8, 12, 5, '#bfa97c');
+  }
+
+  // 2. Kalimantan Rattan Weaving & Sun-Drying Yard (Jemuran Rotan & Tikar Anyaman) east of Danau Rantau (x=736, y=548)
+  {
+    const tx = 736, ty = 548;
+    // Woven Dayak geometric sun-mat (tikar rotan) flat on meadow grass (walkable!)
+    R(c, tx - 2, ty + 2, 56, 36, '#384a2866');
+    R(c, tx, ty, 52, 34, '#c7a467');
+    R(c, tx + 2, ty + 2, 48, 30, '#dfc084');
+    for (let yy = ty + 4; yy < ty + 30; yy += 6) {
+      for (let xx = tx + 4; xx < tx + 48; xx += 8) {
+        R(c, xx, yy, 4, 3, ((xx + yy) % 12 === 0) ? '#9e3e2f' : '#8a6839');
+      }
+    }
+    // Coiled golden raw rattan bundles & woven basket beside mat
+    for (const [cx, cy] of [[tx + 60, ty + 8], [tx + 72, ty + 18]] as [number, number][]) {
+      R(c, cx - 6, cy + 5, 14, 3, '#00000028');
+      R(c, cx - 5, cy - 3, 12, 9, '#b89252'); R(c, cx - 3, cy - 1, 8, 5, '#647b49');
+      R(c, cx - 4, cy - 3, 10, 2, '#e3c483');
+    }
+  }
+
+  // 3. Southern Lakeside Meadow Footpath (wrapping east of lake x=698, y=476..836 & south of lake x=216..924, y=832)
+  const meadowStones: [number, number][] = [];
+  for (let y = 482; y <= 824; y += 26) meadowStones.push([704 + Math.round(Math.sin(y * 0.03) * 8), y]);
+  for (let x = 224; x <= 916; x += 28) meadowStones.push([x, 832 + Math.round(Math.sin(x * 0.025) * 7)]);
+  for (const [sx, sy] of meadowStones) {
+    drawPixelBlob(c, sx, sy, 9, 5, '#786847');
+    drawPixelBlob(c, sx, sy - 1, 7, 4, '#b5a480');
+    R(c, sx - 3, sy - 2, 5, 2, '#d8ccb0');
+  }
+
+  // 4. Wooden Lakeside Viewing Bench & Bamboo Fishing Pole South of Danau Rantau (x=258, y=812)
+  {
+    const bx = 258, by = 812;
+    R(c, bx - 4, by + 10, 48, 5, '#00000030');
+    R(c, bx, by + 4, 5, 8, '#5c3f26'); R(c, bx + 35, by + 4, 5, 8, '#5c3f26');
+    R(c, bx - 2, by, 44, 5, '#9e7446'); R(c, bx - 2, by, 44, 2, '#cfa76e');
+    R(c, bx, by - 8, 40, 4, '#8c653b'); R(c, bx, by - 8, 40, 1, '#c49b63');
+    // Tiny woven thermos/cup left on bench + leaning bamboo fishing rod toward lake!
+    R(c, bx + 30, by - 5, 4, 5, '#46828e'); R(c, bx + 30, by - 6, 4, 1, '#d9e8ea');
+    for (let i = 0; i < 14; i++) R(c, bx + 44 + i, by + 4 - i * 2, 2, 2, '#bfa062');
+  }
+
+  // 5. Community Vegetable & Pandan Garden Beds (Kebun Warga) in Southern Meadow (x=492, y=866)
+  for (let b = 0; b < 3; b++) {
+    const gx = 492 + b * 66, gy = 866;
+    R(c, gx - 2, gy + 2, 54, 28, '#2b361e55');
+    R(c, gx, gy, 50, 26, '#6e4f32'); // timber raised-bed frame
+    R(c, gx + 2, gy + 2, 46, 22, '#4a3824'); // rich dark compost soil
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 5; col++) {
+        const px = gx + 7 + col * 9, py = gy + 7 + row * 10;
+        R(c, px - 2, py - 2, 5, 4, '#477538');
+        R(c, px - 1, py - 4, 3, 4, '#6da14f');
+        if (b === 1 && (col + row) % 2 === 0) R(c, px, py - 5, 2, 2, '#f0784a'); // chili/marigold!
+        if (b === 2 && col % 2 === 0) R(c, px, py - 5, 2, 2, '#f5d76e');
+      }
+    }
+  }
+  // Blue watering can beside garden bed
+  R(c, 474, 878, 9, 8, '#467d91'); R(c, 474, 878, 9, 2, '#82b7c9'); R(c, 483, 879, 4, 2, '#699fb3');
+}
+
 function villageBackground(c: CanvasRenderingContext2D) {
-  R(c, 0, 0, 1400, 820, '#647b49');
-  for (let y = 0; y < 820; y += 10) for (let x = 0; x < 1400; x += 10) {
+  R(c, 0, 0, 1960, 1020, '#647b49');
+  for (let y = 0; y < 1020; y += 10) for (let x = 0; x < 1020; x += 10) {
     const n = hash(x, y);
-    if (n > .66) { R(c, x, y, 4, 4, n > .89 ? '#869654' : '#536d40'); R(c, x + 3, y + 3, 3, 2, '#75884c'); }
+    if (n > .64) { R(c, x, y, 4, 4, n > .88 ? '#869654' : '#536d40'); R(c, x + 3, y + 3, 3, 2, '#75884c'); }
+  }
+  // Subtle clover & wildflower clusters across the western & southern village meadows
+  for (let i = 0; i < 85; i++) {
+    const wx = 36 + hash(i, 101) * 860, wy = 78 + hash(i, 107) * 900;
+    if ((wy > 268 && wy < 360) || (wx > 168 && wx < 688 && wy > 508 && wy < 782)) continue;
+    drawPixelBlob(c, wx, wy, 8 + (i % 5), 4 + (i % 3), i % 2 ? '#597340' : '#70894f');
+    if (i % 4 === 0) R(c, wx + 2, wy - 1, 2, 2, i % 8 === 0 ? '#f4df82' : '#f5efe2');
   }
   forestBackdrop(c);
   // Unified Concentric 5-Pass Kalimantan Road Network — ZERO internal cuts at 3-way T-junction, forecourts, or forest trail!
@@ -1579,11 +1847,12 @@ function villageBackground(c: CanvasRenderingContext2D) {
   pottedRow(c, 480, 262, 2);
   pottedRow(c, 650, 260, 2);
   for (let i = 0; i < 5; i++) R(c, 366 + (i % 2) * 5, 396 - i * 13, 13, 7, i % 2 ? '#b3a277' : '#a89468');
+  drawVillageMicroDetails(c);
 }
 
 export function getBackground(scene: SceneType) {
   const previous=cache.get(scene); if(previous) return previous;
-  const canvas=document.createElement('canvas'); canvas.width=scene==='house'?1280:1400; canvas.height=scene==='house'?620:820;
+  const canvas=document.createElement('canvas'); canvas.width=scene==='house'?1280:1960; canvas.height=scene==='house'?620:1020;
   const c=canvas.getContext('2d')!; c.imageSmoothingEnabled=false;
   if(scene==='house') { c.translate(200,0); houseBackground(c); } else villageBackground(c);
   cache.set(scene,canvas); return canvas;

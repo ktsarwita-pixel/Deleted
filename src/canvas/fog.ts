@@ -269,7 +269,7 @@ export function drawScreenAtmosphere(
   let activeCount = 0;
   for (let i = 0; i < fires.length; i++) if (fires[i].intensity > 0) activeCount++;
   const remaining = activeCount / Math.max(1, fires.length);
-  const eastness = clamp01((camX - 420) / 680);
+  const eastness = clamp01((camX - 420) / 1120);
 
   if (remaining > 0) {
     const hazeIntensity = remaining * (0.28 + eastness * 0.72);
