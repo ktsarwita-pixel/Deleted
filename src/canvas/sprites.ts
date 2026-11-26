@@ -127,8 +127,8 @@ function mirror(src: HTMLCanvasElement) {
   return c;
 }
 
-// 8-frame walk cycle bob: contact(0), down/recoil(1), passing(2), high-point(3), contact(4), down(5), passing(6), high(7)
-const WALK_BOB_8 = [0, 1, 0, -1, 0, 1, 0, -1];
+// 8-frame walk cycle bob: crisp 1px weight-acceptance cushion on frames 1 & 5, zero pogo bounce
+const WALK_BOB_8 = [0, 1, 0, 0, 0, 1, 0, 0];
 
 export function upperOffset(s: Pick<FrameSpec, 'pose' | 'frame' | 'breath'>) {
   const f4 = s.frame & 3;
@@ -165,33 +165,40 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   const sleeveShade = L.vest ? L.innerShade : L.topShade;
   const sleeveLight = L.vest ? '#fff7df' : L.topLight;
 
-  // ---------- Articulated Front/Back Leg with Knee Highlight & Boot Tread ----------
-  const legFront = (x: number, bottom: number, lift: number, kneeShift = 0) => {
-    const footY = bottom - lift;
-    const thighH = Math.max(2, Math.floor((footY - 3 - legTop) * 0.55));
+  // ---------- Articulated Front/Back Leg with Z-Depth Shading & Grounded Stride ----------
+  const legFront = (x: number, footY: number, zDepth = 0, showSole = false) => {
+    const legSpan = Math.max(4, footY - 3 - legTop);
+    const thighH = Math.max(2, Math.floor(legSpan * 0.52));
     const shinY = legTop + thighH;
     const shinH = Math.max(2, footY - 3 - shinY);
+    const receded = back ? zDepth > 0 : zDepth < 0;
+    const forward = back ? zDepth < 0 : zDepth > 0;
+    const pMain = receded ? L.pantsShade : L.pants;
+    const pLit = receded ? L.pants : L.pantsLight;
     // Thigh
-    P(x, legTop, 4, thighH, L.pants);
-    P(x, legTop, 1, thighH, L.pantsLight);
+    P(x, legTop, 4, thighH, pMain);
+    if (!receded) P(x, legTop, 1, thighH, pLit);
     P(x + 3, legTop, 1, thighH, L.pantsShade);
     // Knee + Shin
-    const sx = x + kneeShift;
-    P(sx, shinY, 4, shinH, L.pants);
-    P(sx + 1, shinY, 2, 1, L.pantsLight); // knee cap catchlight
-    P(sx + 3, shinY, 1, shinH, L.pantsShade);
-    P(sx, footY - 4, 4, 1, L.pantsShade); // trouser cuff
-    // Boot / Sneaker
-    P(sx, footY - 3, 4, 3, shoe.a);
-    P(sx, footY - 3, 3, 1, shoe.b);
-    if (s.newShoes) {
-      P(sx + 1, footY - 2, 2, 1, shoe.stripe);
-      P(sx + 1, footY - 4, 2, 1, shoe.lace);
-    } else if (s.who === 'bu_sari') {
-      P(sx + 1, footY - 2, 2, 1, shoe.stripe);
+    P(x, shinY, 4, shinH, pMain);
+    if (forward) P(x + 1, shinY, 2, 1, L.pantsLight); // forward knee catchlight
+    else if (!receded) P(x + 1, shinY, 1, 1, pLit);
+    P(x + 3, shinY, 1, shinH, L.pantsShade);
+    P(x, footY - 4, 4, 1, L.pantsShade); // trouser cuff
+    // Boot / Sandal-Shoe
+    const shoeMain = receded ? shoe.sole : shoe.a;
+    const shoeHi = receded ? shoe.a : shoe.b;
+    P(x, footY - 3, 4, 3, shoeMain);
+    if (!back) P(x + (forward ? 0 : 1), footY - 3, forward ? 3 : 2, 1, shoeHi);
+    if (!back && s.newShoes) {
+      P(x + 1, footY - 2, 2, 1, shoe.stripe);
+      if (!receded) P(x + 1, footY - 4, 2, 1, shoe.lace);
+    } else if (!back && s.who === 'bu_sari' && !receded) {
+      P(x + 1, footY - 2, 2, 1, shoe.stripe);
     }
-    P(sx, footY, 4, 1, shoe.sole);
-    P(sx, footY, 1, 1, '#00000050'); P(sx + 3, footY, 1, 1, '#00000050');
+    P(x, footY, 4, 1, showSole ? '#1a1410' : shoe.sole);
+    if (showSole && back) P(x + 1, footY - 1, 2, 1, shoe.sole); // lifted heel tread visible from behind
+    P(x, footY, 1, 1, '#00000045'); P(x + 3, footY, 1, 1, '#00000045');
   };
 
   // ---------- Articulated Side-View Two-Segment Leg (Thigh -> Knee -> Calf -> angled Foot) ----------
@@ -222,7 +229,7 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   const ty = 23 + Ub;
   // Smooth 8-frame sinusoidal arm swing (-3..+3)
   const swing8 = walking ? [3, 2, 0, -2, -3, -2, 0, 2][f8] : 0;
-  const shoulderTwist = walking && !side ? [1, 1, 0, -1, -1, -1, 0, 1][f8] : 0;
+  const shoulderTwist = 0;
 
   // Far arm behind torso in side view (with elbow bend!)
   if (side && s.pose !== 'pour' && s.pose !== 'point') {
@@ -234,37 +241,39 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
     P(handX, ty + 6 - (Math.abs(aOff) > 1 ? 1 : 0), 3, 2, L.skinShade);
   }
 
-  // ---------- Legs (8-Frame Fluid Walk + Action Stances) ----------
+  // ---------- Legs (8-Frame Grounded Z-Depth Walk + Action Stances) ----------
   if (!side) {
     if (walking) {
-      // 8-frame front/back stride: [leftBot, rightBot, leftLift, rightLift, lKneeShift, rKneeShift]
-      const g = [
-        [44, 43, 0, 2,  0,  0], // 0: L plant, R toe-off
-        [44, 42, 0, 3,  0,  0], // 1: L recoil, R swing start
-        [44, 41, 0, 3,  0,  0], // 2: R passing high
-        [43, 43, 1, 0,  0,  0], // 3: R reach forward
-        [43, 44, 2, 0,  0,  0], // 4: R plant, L toe-off
-        [42, 44, 3, 0,  0,  0], // 5: R recoil, L swing start
-        [41, 44, 3, 0,  0,  0], // 6: L passing high
-        [43, 43, 0, 1,  0,  0], // 7: L reach forward
-      ][f8];
-      // Draw higher/back leg first so passing knee overlaps naturally
-      if (g[2] > g[3]) {
-        legFront(13, g[0], g[2], g[4]); legFront(19, g[1], g[3], g[5]);
+      // [lFootY, rFootY, lZ, rZ, lSole, rSole] — stance foot stays planted at y=44 every frame; passing lift is a clean 1-2px!
+      const g: [number, number, number, number, boolean, boolean] = ([
+        [43, 44, -1,  1, false, false], // 0: R contact forward (44), L trailing back (43)
+        [42, 44, -1,  1, true,  false], // 1: R planted cushion (44), L toe-off behind (42)
+        [42, 44,  1,  0, true,  false], // 2: L passing knee forward (42), R mid-stance (44)
+        [43, 44,  1, -1, false, false], // 3: L reaching toward viewer (43), R heel-off (44)
+        [44, 43,  1, -1, false, false], // 4: L contact forward (44), R trailing back (43)
+        [44, 42,  1, -1, false, true ], // 5: L planted cushion (44), R toe-off behind (42)
+        [44, 42,  0,  1, false, true ], // 6: R passing knee forward (42), L mid-stance (44)
+        [44, 43, -1,  1, false, false], // 7: R reaching toward viewer (43), L heel-off (44)
+      ] as [number, number, number, number, boolean, boolean][])[f8];
+      // Draw receded leg first, forward leg second
+      if (g[2] <= g[3]) {
+        legFront(13, g[0], g[2], g[4]);
+        legFront(19, g[1], g[3], g[5]);
       } else {
-        legFront(19, g[1], g[3], g[5]); legFront(13, g[0], g[2], g[4]);
+        legFront(19, g[1], g[3], g[5]);
+        legFront(13, g[0], g[2], g[4]);
       }
     } else {
-      let lb = 44, rb = 44, ll = 0, rl = 0;
+      let lFoot = 44, rFoot = 44;
       if (s.pose === 'juggle67') {
-        if (f4 === 0) { rl = 1; rb = 43; }
-        else if (f4 === 2) { ll = 1; lb = 43; }
+        if (f4 === 0) rFoot = 43;
+        else if (f4 === 2) lFoot = 43;
       } else if (s.pose === 'celebrate' && (f4 === 1 || f4 === 2)) {
-        lb = 42; rb = 42; ll = 2; rl = 2;
+        lFoot = 41; rFoot = 41;
       }
       const spread = (crouch >= 2 || s.pose === 'juggle67' || s.pose === 'pour') ? 1 : 0;
-      legFront(13 - spread, lb, ll);
-      legFront(19 + spread, rb, rl);
+      legFront(13 - spread, lFoot, 0, false);
+      legFront(19 + spread, rFoot, 0, false);
     }
   } else {
     if (walking) {
@@ -381,18 +390,26 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
       P(21, ty + 6, 2, 4, '#e89b6c'); // striped kitchen towel tucked at hip!
     }
 
-    // Wrapped sarong / hip sash
+    // Wrapped sarong / hip sash (tailored silhouette + subtle swaying center wiru pleat when walking!)
     if (L.sarong) {
       const sl = L.sarongLight ?? '#ffffff', sd = L.sarongShade ?? '#000000';
-      const sarH = L.kebaya ? 7 : 6;
-      P(11, ty + 6, 14, sarH, L.sarong);
-      P(11, ty + 6, 14, 1, sl);
-      P(11, ty + 5 + sarH, 14, 1, sd);
-      for (let xx = 0; xx < 14; xx += 3) {
-        P(11 + xx, ty + 8 + (xx % 6 === 0 ? 0 : 1), 2, 1, sl);
+      const sx0 = L.kebaya ? 12 : 11;
+      const sw = L.kebaya ? 12 : 14;
+      const sarH = L.kebaya ? 6 : 5;
+      const pleatShift = walking ? ([1, 1, 0, -1, -1, -1, 0, 1][f8]) : 0;
+      P(sx0, ty + 6, sw, sarH, L.sarong);
+      P(sx0, ty + 6, sw, 1, sl);
+      P(sx0, ty + 5 + sarH, sw, 1, sd);
+      for (let xx = 1; xx < sw - 1; xx += 3) {
+        P(sx0 + xx, ty + 8 + (xx % 6 === 1 ? 0 : 1), 2, 1, sl);
       }
-      P(11, ty + 6, 1, sarH, sl);
-      P(24, ty + 6, 1, sarH, sd);
+      if (L.kebaya && !back) {
+        // Traditional vertical batik front pleat (wiru) swaying gently with her step
+        P(17 + pleatShift, ty + 6, 2, sarH, sl);
+        P(18 + pleatShift, ty + 7, 1, sarH - 1, sd);
+      }
+      P(sx0, ty + 6, 1, sarH - 1, sl);
+      P(sx0 + sw - 1, ty + 6, 1, sarH, sd);
     } else {
       P(tx0, ty + 9, 12, 1, '#2b241d'); // belt
       P(17, ty + 9, 2, 1, '#d9b55b');   // belt buckle
@@ -431,18 +448,32 @@ function paint(ctx: CanvasRenderingContext2D, s: FrameSpec) {
   }
 
   // ---------- Articulated Arms & Expressive Hand Poses ----------
+  // swingVal > 0: arm swings forward toward viewer; swingVal < 0: arm swings back behind hip
   const drawFrontArm = (ax: number, ay: number, isLeft: boolean, swingVal: number) => {
-    const lift = swingVal < 0 ? -1 : 0;
-    const drop = swingVal > 0 ? 1 : 0;
-    // Rounded shoulder cap + rolled sleeve cuff
-    P(ax, ay, 3, 4, sleeve);
-    P(ax + (isLeft ? 0 : 2), ay, 1, 3, isLeft ? sleeveLight : sleeveShade);
-    P(ax, ay + 3, 3, 1, sleeveShade);
-    // Forearm + hand with thumb pixel
-    P(ax, ay + 4 + lift, 3, 4 + drop, L.skin);
-    P(ax + (isLeft ? 2 : 0), ay + 4 + lift, 1, 4 + drop, L.skinShade);
-    P(ax + (isLeft ? 0 : 2), ay + 4 + lift, 1, 2, L.skinLight);
-    P(ax + (isLeft ? 2 : 0), ay + 7 + lift + drop, 1, 1, L.skinLight); // thumb
+    const fwd = back ? -swingVal : swingVal;
+    const armFwd = fwd >= 2;
+    const armBack = fwd <= -2;
+    // Rounded shoulder cap + sleeve cuff (subtle 1px shoulder roll)
+    const sy = ay + (armFwd ? 0 : armBack ? 1 : 0);
+    P(ax, sy, 3, 3, armBack ? sleeveShade : sleeve);
+    if (!armBack) P(ax + (isLeft ? 0 : 2), sy, 1, 2, isLeft ? sleeveLight : sleeveShade);
+    P(ax, sy + 2, 3, 1, sleeveShade);
+    // Forearm + hand: foreshortened & lit when swinging forward, shaded & tucked when swinging back
+    if (armFwd) {
+      const hx = ax + (isLeft ? 1 : -1);
+      P(ax, sy + 3, 3, 2, L.skin);
+      P(hx, sy + 4, 3, 3, L.skin);
+      P(hx + (isLeft ? 0 : 1), sy + 4, 2, 2, L.skinLight); // sunlit forward hand/knuckles
+      P(hx + (isLeft ? 2 : 0), sy + 6, 1, 1, L.skinShade);
+    } else if (armBack) {
+      P(ax, sy + 3, 3, 3, L.skinShade);
+      P(ax + (isLeft ? 0 : 2), sy + 3, 1, 2, L.skin);
+    } else {
+      P(ax, sy + 3, 3, 5, L.skin);
+      P(ax + (isLeft ? 2 : 0), sy + 3, 1, 5, L.skinShade);
+      P(ax + (isLeft ? 0 : 2), sy + 3, 1, 3, L.skinLight);
+      P(ax + (isLeft ? 2 : 0), sy + 7, 1, 1, L.skinLight); // thumb
+    }
   };
 
   if (!side) {
@@ -760,10 +791,9 @@ export function resetRigs() {}
 export function drawCharacter(c: CanvasRenderingContext2D, x: number, y: number, s: FrameSpec, m?: MotionInfo) {
   const reduced = !m || !!m.reduced;
   const frame = getFrame(s);
-  const phase = (s.gait ?? ((s.frame & 7) / 8)) * Math.PI * 4;
-  const bobPx = m && !reduced && s.pose === 'walk' ? Math.round((1 - Math.cos(phase)) * 0.7) : 0;
-  const leanPx = m && !reduced ? Math.round(Math.max(-2, Math.min(2, m.vx / 140))) : 0;
-  c.drawImage(frame, Math.round(x) - (W / 2) * SCALE + leanPx, Math.round(y - bobPx) - 45 * SCALE, W * SCALE, H * SCALE);
+  const sideOnly = s.dir === 'left' || s.dir === 'right';
+  const leanPx = m && !reduced && sideOnly ? Math.round(Math.max(-1, Math.min(1, m.vx / 150))) * SCALE : 0;
+  c.drawImage(frame, Math.round(x) - (W / 2) * SCALE + leanPx, Math.round(y) - 45 * SCALE, W * SCALE, H * SCALE);
 }
 
 export function drawShadow(c: CanvasRenderingContext2D, x: number, y: number, w = 32, alpha = 0.26) {
@@ -1013,6 +1043,11 @@ export function warmupSprites() {
   for (const who of ['budi', 'pak_rt', 'bu_sari', 'manggala'] as Who[]) {
     for (const dir of ['down', 'left', 'right'] as Direction[]) {
       getFrame({ who, dir, pose: 'stand', frame: 0, blink: false, holding: false, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
+      if (who === 'bu_sari' || who === 'manggala') {
+        for (let frame = 0; frame < 8; frame++) {
+          getFrame({ who, dir, pose: 'walk', frame, blink: false, holding: false, newShoes: false, flutter: 0, breath: 0, mouth: false, glance: 0, sway: 0 });
+        }
+      }
     }
   }
 }

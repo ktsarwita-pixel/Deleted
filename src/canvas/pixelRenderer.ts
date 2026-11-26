@@ -68,6 +68,7 @@ interface Mem {
   propBurn: Map<number, number>; wasPierInWater: boolean;
   fillSplashAt: number; fillBubbleNext: number; fillDripNext: number;
   doors: DoorRig;
+  patrols: Record<'bu_sari' | 'manggala', { u: number; forward: boolean; dwell: number; dist: number; nearHold: boolean }>;
   jumpShadows: { ox: number; oy: number; tx: number; dir: -1 | 1; dySwim: number; t0: number; tJump: number; tLand: number; tEnd: number; seed: number; jumped: boolean; landed: boolean }[];
 }
 let mem: Mem | null = null;
@@ -154,6 +155,10 @@ function freshMem(w: GameWorld, prevDoors?: DoorRig): Mem {
     wasPierInWater: false,
     fillSplashAt: -1, fillBubbleNext: 0, fillDripNext: 0, jumpShadows: [],
     doors,
+    patrols: {
+      bu_sari: { u: 0.25, forward: true, dwell: 0, dist: 0, nearHold: false },
+      manggala: { u: 0.65, forward: false, dwell: 0, dist: 0, nearHold: false },
+    },
   };
 }
 
@@ -447,62 +452,88 @@ function npcSpec(who: Who, x: number, y: number, w: GameWorld, t: number): Frame
   };
 }
 
-/** Deterministic living patrol for Ibu Sari (village weaver) & Petugas Raka (Manggala Agni ranger). */
+/** Stateful, distance-locked patrol for Ibu Sari (village weaver) & Petugas Raka (Manggala Agni ranger). */
 function patrolNpc(
   who: 'bu_sari' | 'manggala',
   ax: number, ay: number, bx: number, by: number,
-  period: number, w: GameWorld, t: number, motion: boolean,
+  m: Mem | null, w: GameWorld, t: number, motion: boolean,
 ): { x: number; y: number; vx: number; spec: FrameSpec } {
   const p = w.player;
   const allSafe = !w.fires.some(f => f.intensity > 0);
-  const raw = motion ? (t % period) / period : 0.2;
-  // Smooth ping-pong patrol with natural dwell pauses at each end (0..0.34 walk -> 0.34..0.50 pause -> 0.50..0.84 walk back -> 0.84..1.00 pause)
-  let u = 0, moving = false, forward = true;
-  if (raw < 0.34) { u = raw / 0.34; moving = motion; forward = true; }
-  else if (raw < 0.50) { u = 1; moving = false; forward = true; }
-  else if (raw < 0.84) { u = 1 - (raw - 0.50) / 0.34; moving = motion; forward = false; }
-  else { u = 0; moving = false; forward = false; }
+  const segLen = Math.max(1, Math.hypot(bx - ax, by - ay));
+  const strollSpeed = 34; // calm village strolling pace (px/s)
+  const st = m ? m.patrols[who] : { u: 0.25, forward: true, dwell: 0, dist: 0, nearHold: false };
 
-  const x = Math.round(ax + (bx - ax) * u);
-  const y = Math.round(ay + (by - ay) * u);
-  const distP = Math.hypot(p.x - x, p.y - y);
-  const near = distP < 96;
-  if (near) moving = false;
+  let curX = ax + (bx - ax) * st.u;
+  let curY = ay + (by - ay) * st.u;
+  const distP = Math.hypot(p.x - curX, p.y - curY);
+  // Hysteresis prevents rapid walk/stand toggling at the greeting radius boundary
+  if (st.nearHold) {
+    if (distP > 106) st.nearHold = false;
+  } else if (distP < 86) {
+    st.nearHold = true;
+  }
+
+  let moving = false;
+  let vx = 0;
+  const dt = m && motion ? m.dt : 0;
+  if (motion && !st.nearHold) {
+    if (st.dwell > 0) {
+      st.dwell = Math.max(0, st.dwell - dt);
+    } else {
+      moving = true;
+      const stepPx = strollSpeed * dt;
+      const du = stepPx / segLen;
+      if (st.forward) {
+        st.u += du;
+        if (st.u >= 1) { st.u = 1; st.forward = false; st.dwell = 2.6; moving = false; }
+      } else {
+        st.u -= du;
+        if (st.u <= 0) { st.u = 0; st.forward = true; st.dwell = 2.4; moving = false; }
+      }
+      if (moving) {
+        st.dist += stepPx;
+        vx = ((bx - ax) / segLen) * strollSpeed * (st.forward ? 1 : -1);
+      }
+    }
+  }
+  curX = Math.round(ax + (bx - ax) * st.u);
+  curY = Math.round(ay + (by - ay) * st.u);
 
   let dir: Direction = 'down';
   if (moving) {
-    if (Math.abs(bx - ax) >= Math.abs(by - ay)) dir = forward ? 'right' : 'left';
-    else dir = forward ? 'down' : 'up';
-  } else if (near) {
-    const dx = p.x - x, dy = p.y - y;
-    dir = Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down';
+    if (Math.abs(bx - ax) >= Math.abs(by - ay)) dir = st.forward ? 'right' : 'left';
+    else dir = st.forward ? 'down' : 'up';
+  } else if (st.nearHold) {
+    const dx = p.x - curX, dy = p.y - curY;
+    dir = Math.abs(dx) > Math.abs(dy) * 1.25 ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down';
   }
 
   let pose: Pose = moving ? 'walk' : 'stand';
   if (!moving) {
     if (allSafe && ((t + (who === 'bu_sari' ? 0.8 : 2.1)) % 5.8) < 1.8) { pose = 'celebrate'; dir = 'down'; }
-    else if (near && (w.emote || ((t + 0.6) % 4.4) < 1.5)) { pose = 'wave'; if (w.emote) dir = 'down'; }
-    else if (who === 'manggala' && !allSafe) {
-      pose = raw < 0.50 ? 'point' : 'radio_check';
-      dir = raw < 0.50 ? 'right' : 'down';
-    } else if (who === 'bu_sari' && raw >= 0.34 && raw < 0.50) {
+    else if (st.nearHold && (w.emote || ((t + 0.6) % 4.6) < 1.4)) { pose = 'wave'; if (w.emote) dir = 'down'; }
+    else if (!st.nearHold && who === 'manggala' && !allSafe) {
+      pose = st.u > 0.5 ? 'radio_check' : 'point';
+      dir = st.u > 0.5 ? 'down' : 'right';
+    } else if (!st.nearHold && who === 'bu_sari' && st.u > 0.5) {
       pose = 'wipe'; dir = 'down';
     }
   }
 
-  const walkFrame = Math.floor(t * 7.5) & 7;
-  const idleFrame = Math.floor(t * 6) & 3;
-  const gait = (t * 0.95) % 1;
+  const npcGaitLen = 84;
+  const walkFrame = Math.floor(st.dist / (npcGaitLen / 8)) & 7;
+  const idleFrame = Math.floor(t * 5.5) & 3;
+  const gait = (st.dist % npcGaitLen) / npcGaitLen;
   const seed = who === 'bu_sari' ? 1.7 : 3.4;
   return {
-    x, y,
-    vx: moving && Math.abs(bx - ax) > 10 ? (forward ? 48 : -48) : 0,
+    x: curX, y: curY, vx,
     spec: {
       who, dir, pose,
       frame: pose === 'walk' ? walkFrame : idleFrame,
       blink: (t + seed) % 4.5 > 4.35,
       holding: false, newShoes: false,
-      flutter: Math.floor(t * (moving ? 7 : 3)) % 2,
+      flutter: Math.floor(t * (moving ? 6 : 3)) % 2,
       breath: Math.floor((t + seed) / 1.05) % 2,
       mouth: (pose === 'radio_check' || pose === 'celebrate') && Math.floor(t * 6) % 2 === 0,
       glance: 0, sway: moving ? 1 : 0, gait,
@@ -1422,9 +1453,9 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
     if (preview || (627 >= cLeft && 627 <= cRight && 272 >= cTop && 272 <= cBot)) pushSort(272, 8, 0);
     if (preview || (825 >= cLeft && 825 <= cRight && 283 >= cTop && 283 <= cBot)) pushSort(283, 8, 1);
 
-    sariData = patrolNpc('bu_sari', 246, 374, 322, 374, 15.5, world, t, motion);
+    sariData = patrolNpc('bu_sari', 246, 374, 322, 374, m, world, t, motion);
     if (preview || (sariData.x >= cLeft && sariData.x <= cRight && sariData.y >= cTop && sariData.y <= cBot)) pushSort(sariData.y, 9, 0);
-    rakaData = patrolNpc('manggala', 934, 272, 954, 344, 14.0, world, t, motion);
+    rakaData = patrolNpc('manggala', 934, 272, 954, 344, m, world, t, motion);
     if (preview || (rakaData.x >= cLeft && rakaData.x <= cRight && rakaData.y >= cTop && rakaData.y <= cBot)) pushSort(rakaData.y, 9, 1);
 
     if (!preview) {
