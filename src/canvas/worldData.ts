@@ -60,7 +60,8 @@ const VILLAGE_OBSTACLES = [
   { x: 80, y: 340, w: 50, h: 34 },
   { x: 890, y: 232, w: 40, h: 22 },
   { x: 944, y: 214, w: 46, h: 24 }, // ranger karhutla tool rack
-  { x: 256, y: 808, w: 44, h: 18 }, // southern lakeside wooden viewing bench
+  { x: 268, y: 486, w: 60, h: 15 }, // northern lakeside kayu ulin bench
+  { x: 252, y: 798, w: 60, h: 16 }, // southern lakeside kayu ulin bench
   { x: 704, y: 618, w: 76, h: 36 }, // saung tepi danau lakeside pavilion
 ];
 

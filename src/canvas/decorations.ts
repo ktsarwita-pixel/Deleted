@@ -21,7 +21,9 @@ export type StaticDecorKind =
   | 'scarecrow'
   | 'rafflesia'
   | 'hollow_snag'
-  | 'stone_lantern';
+  | 'stone_lantern'
+  | 'lake_bench_front'
+  | 'lake_bench_back';
 
 export interface WorldDecor {
   x: number;
@@ -276,6 +278,76 @@ function getStaticDecorSprite(kind: StaticDecorKind, variant = 0): { c: HTMLCanv
     P(9, 25, 3, 1, '#ffe08c');
     P(18, 30, 5, 2, '#d47b30'); P(19, 30, 3, 1, '#ffd97d');
     res = { c: outline(c, [24, 18, 13]), ax: 16, ay: 40 };
+  } else if (kind === 'lake_bench_front') {
+    // Kalimantan Kayu Ulin Lakeside Bench facing SOUTH (overlooking Danau Rantau from the north bank)
+    const { c, ctx } = makeCanvas(36, 26);
+    const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
+    // Rear backrest stiles (continuous from finial cap down to ground legs)
+    for (const sx of [5, 28]) {
+      P(sx, 4, 3, 19, '#593b22');
+      P(sx, 4, 1, 18, '#9e7244');
+      P(sx, 3, 3, 2, '#dfb878'); // carved ulin finial cap
+    }
+    // Center vertical backrest brace
+    P(17, 6, 2, 8, '#593b22'); P(17, 6, 1, 8, '#8c6239');
+    // Twin horizontal slatted backrest rails with sunlit top bevels
+    P(7, 5, 22, 3, '#8c6239'); P(7, 5, 22, 1, '#cfa468'); P(7, 7, 22, 1, '#593b22');
+    P(7, 9, 22, 3, '#7d5632'); P(7, 9, 22, 1, '#bd9258'); P(7, 11, 22, 1, '#4a311c');
+    // Deep 3-plank seat projecting forward toward the lake
+    P(4, 13, 28, 5, '#6e4b2a');
+    P(5, 13, 26, 1, '#52361e'); // backrest cast shadow on rear plank
+    P(5, 14, 26, 2, '#b0844f'); // middle sunlit plank
+    P(4, 16, 28, 2, '#c99d63'); // front bullnose seat lip
+    P(4, 16, 28, 1, '#e6c387');
+    P(4, 18, 28, 1, '#472e1a'); // under-seat apron shadow
+    // Sculpted side armrests & front support posts
+    for (const ax of [3, 30]) {
+      P(ax, 10, 3, 4, '#7d5632');
+      P(ax, 10, 3, 1, '#d6ae72');
+    }
+    // Front ironwood legs + lower stretcher rail
+    P(6, 18, 1, 1, '#3b2615'); P(29, 18, 1, 1, '#3b2615');
+    P(4, 18, 3, 6, '#4f341e'); P(4, 18, 1, 6, '#8f653c');
+    P(29, 18, 3, 6, '#4f341e'); P(29, 18, 1, 6, '#8f653c');
+    P(7, 20, 22, 1, '#593b22');
+    // Woven pandan sun-hat (caping kecil) resting neatly on left end of seat
+    P(8, 12, 7, 2, '#d4ad63'); P(9, 11, 5, 1, '#ebd08e'); P(10, 10, 3, 1, '#f5e0a6');
+    P(9, 12, 5, 1, '#b54330'); // red woven hat band
+    res = { c: outline(c), ax: 18, ay: 24 };
+  } else if (kind === 'lake_bench_back') {
+    // Kalimantan Kayu Ulin Lakeside Bench facing NORTH (on south shore looking north across Danau Rantau)
+    const { c, ctx } = makeCanvas(38, 26);
+    const P = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
+    // Lake-facing front legs & peeking front seat edge (further north = higher up in 3/4 view)
+    P(6, 13, 2, 6, '#472e1a'); P(28, 13, 2, 6, '#472e1a');
+    P(4, 10, 28, 4, '#9c7244'); P(5, 10, 26, 1, '#cfa468'); // seat planks facing the water
+    // Forward-curving armrests on left & right ends
+    P(3, 8, 3, 5, '#7a5430'); P(3, 8, 3, 1, '#d4ac70');
+    P(30, 8, 3, 5, '#7a5430'); P(30, 8, 3, 1, '#d4ac70');
+    // Enamel kopi mug resting on right armrest
+    P(30, 6, 3, 3, '#4b8794'); P(30, 6, 3, 1, '#e6f2f2');
+    // Foreground sculpted backrest: continuous rear ulin posts + twin horizontal rails + center stile
+    for (const px of [5, 29]) {
+      P(px, 5, 3, 18, '#5c3d22');
+      P(px, 5, 1, 18, '#9e7346');
+      P(px, 4, 3, 2, '#e3be7e'); // carved post cap
+      P(px + 1, 7, 1, 1, '#332012'); P(px + 1, 12, 1, 1, '#332012'); // iron tenon pegs
+    }
+    P(17, 6, 2, 10, '#5c3d22'); P(17, 6, 1, 10, '#8f653b'); // center back brace
+    // Upper & lower backrest slats (seen from behind with wood grain & bevels)
+    P(8, 6, 21, 4, '#875e36'); P(8, 6, 21, 1, '#cfa468'); P(8, 9, 21, 1, '#4a311c');
+    P(8, 11, 21, 4, '#78522e'); P(8, 11, 21, 1, '#bd9258'); P(8, 14, 21, 1, '#422b18');
+    // Rear apron & sturdy lower cross-stretcher between rear legs
+    P(8, 15, 21, 2, '#52361e');
+    P(8, 19, 21, 2, '#4a311c'); P(8, 19, 21, 1, '#78522e');
+    // Woven fisherman's creel basket (kepis ikan) tucked beside left bench leg
+    P(1, 17, 4, 5, '#b58b4c'); P(1, 17, 4, 1, '#e3c382'); P(2, 19, 2, 1, '#7d592e');
+    // Slender tapered bamboo fishing rod leaning cleanly against right post toward lake
+    P(33, 15, 2, 7, '#7d5830'); // butt handle
+    P(34, 10, 2, 5, '#b89252');
+    P(35, 5, 1, 6, '#d9b874');
+    P(36, 2, 1, 4, '#ebd298'); // fine rod tip
+    res = { c: outline(c), ax: 18, ay: 23 };
   } else {
     // Carved Kalimantan River-Stone Garden Lantern (stone_lantern)
     const { c, ctx } = makeCanvas(18, 28);
@@ -341,16 +413,18 @@ export const VILLAGE_DECORS: WorldDecor[] = [
   { x: 108, y: 266, kind: 'papaya' },
   { x: 318, y: 262, kind: 'hibiscus', variant: 0 },
   { x: 154, y: 264, kind: 'bougainvillea', variant: 0 },
-  { x: 468, y: 264, kind: 'bougainvillea', variant: 1 },
+  { x: 432, y: 258, kind: 'bougainvillea', variant: 1 },
   { x: 638, y: 248, kind: 'pottery_rack' },
   { x: 772, y: 254, kind: 'hibiscus', variant: 1 },
 
-  // Lakeside Saung Pavilion, Stone Lanterns, Southern Kebun Scarecrow & Papayas
+  // Lakeside Saung Pavilion, Kayu Ulin Benches, Stone Lanterns, Southern Kebun Scarecrow & Papayas
   { x: 742, y: 654, kind: 'saung' },
+  { x: 298, y: 500, kind: 'lake_bench_front' },
   { x: 392, y: 512, kind: 'stone_lantern' },
   { x: 494, y: 512, kind: 'stone_lantern' },
-  { x: 240, y: 816, kind: 'hibiscus', variant: 0 },
-  { x: 312, y: 816, kind: 'bougainvillea', variant: 0 },
+  { x: 218, y: 816, kind: 'hibiscus', variant: 0 },
+  { x: 282, y: 814, kind: 'lake_bench_back' },
+  { x: 348, y: 816, kind: 'bougainvillea', variant: 0 },
   { x: 460, y: 868, kind: 'scarecrow' },
   { x: 706, y: 882, kind: 'papaya' },
   { x: 562, y: 924, kind: 'papaya' },
@@ -376,7 +450,7 @@ export function drawWorldDecor(
 
   // Soft ground contact shadow
   c.fillStyle = 'rgba(18, 24, 16, 0.24)';
-  const sw = d.kind === 'saung' ? 96 : d.kind === 'pottery_rack' ? 52 : 28;
+  const sw = d.kind === 'saung' ? 96 : (d.kind === 'lake_bench_front' || d.kind === 'lake_bench_back') ? 64 : d.kind === 'pottery_rack' ? 52 : 28;
   c.fillRect(dx - (sw >> 1), dy - 3, sw, 6);
 
   if (d.kind === 'street_lamp') {

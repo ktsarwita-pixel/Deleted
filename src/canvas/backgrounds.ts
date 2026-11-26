@@ -1640,16 +1640,14 @@ function drawVillageMicroDetails(c: CanvasRenderingContext2D) {
     R(c, sx - 3, sy - 2, 5, 2, '#d8ccb0');
   }
 
-  // 4. Wooden Lakeside Viewing Bench & Bamboo Fishing Pole South of Danau Rantau (x=258, y=812)
-  {
-    const bx = 258, by = 812;
-    R(c, bx - 4, by + 10, 48, 5, '#00000030');
-    R(c, bx, by + 4, 5, 8, '#5c3f26'); R(c, bx + 35, by + 4, 5, 8, '#5c3f26');
-    R(c, bx - 2, by, 44, 5, '#9e7446'); R(c, bx - 2, by, 44, 2, '#cfa76e');
-    R(c, bx, by - 8, 40, 4, '#8c653b'); R(c, bx, by - 8, 40, 1, '#c49b63');
-    // Tiny woven thermos/cup left on bench + leaning bamboo fishing rod toward lake!
-    R(c, bx + 30, by - 5, 4, 5, '#46828e'); R(c, bx + 30, by - 6, 4, 1, '#d9e8ea');
-    for (let i = 0; i < 14; i++) R(c, bx + 44 + i, by + 4 - i * 2, 2, 2, '#bfa062');
+  // 4. Compacted sandy-pebble footing pads beneath North & South Lakeside 3D Benches
+  for (const [px, py] of [[298, 500], [282, 812]] as [number, number][]) {
+    drawPixelBlob(c, px, py - 1, 34, 9, '#576f3e');
+    drawPixelBlob(c, px, py - 1, 28, 7, '#8f7d58');
+    for (const dx of [-20, -7, 8, 21]) {
+      R(c, px + dx, py - 3 + ((dx & 1) * 2), 5, 3, '#b8ab8c');
+      R(c, px + dx + 1, py - 3 + ((dx & 1) * 2), 3, 1, '#dcd2b8');
+    }
   }
 
   // 5. Community Vegetable & Pandan Garden Beds (Kebun Warga) in Southern Meadow (x=492, y=866)
@@ -1712,11 +1710,14 @@ function drawVillageMicroDetails(c: CanvasRenderingContext2D) {
     R(c, cx + 1, 391, 6, 4, '#858c82'); R(c, cx + 2, 397, 4, 2, '#4f753d');
   }
 
-  // 9. Lakeside Woven Bamboo Fish Traps (Bubu Ikan) & Drying Fish Net on Danau Rantau Bank!
-  for (const [bx, by] of [[208, 504], [224, 508]] as [number, number][]) {
-    R(c, bx - 1, by + 5, 16, 3, '#00000026');
-    R(c, bx, by, 14, 6, '#9c7844'); R(c, bx + 1, by + 1, 12, 2, '#cfa96e');
-    R(c, bx + 4, by, 2, 6, '#6e4e2a'); R(c, bx + 9, by, 2, 6, '#6e4e2a');
+  // 9. Tapered Conical Woven Bamboo Fish Traps (Bubu Ikan) & Drying Fish Net on Danau Rantau Bank!
+  for (const [bx, by] of [[198, 505], [218, 509]] as [number, number][]) {
+    poly(c, [[bx, by + 6], [bx + 17, by + 4], [bx + 17, by + 7], [bx, by + 8]], '#00000024');
+    // Conical rattan body tapering from dark funnel mouth (left) to tied tail (right)
+    poly(c, [[bx, by + 1], [bx + 12, by + 2], [bx + 18, by + 4], [bx + 12, by + 6], [bx, by + 7]], '#9c7642');
+    poly(c, [[bx + 1, by + 2], [bx + 13, by + 3], [bx + 13, by + 4], [bx + 1, by + 4]], '#cfa96e');
+    R(c, bx, by + 2, 3, 4, '#3d2a18'); // hollow funnel entrance
+    R(c, bx + 6, by + 2, 1, 5, '#694a26'); R(c, bx + 11, by + 2, 1, 4, '#694a26');
   }
   // Drying fishing net (jaring ikan) hung between two bamboo poles on northeast lake bank (x=642..682, y=514)
   R(c, 642, 496, 3, 22, '#7d5c37'); R(c, 678, 496, 3, 22, '#7d5c37');
