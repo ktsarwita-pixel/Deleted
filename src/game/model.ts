@@ -3,7 +3,7 @@ import type { ActiveEmote, EmoteId } from '../canvas/emotes';
 
 export interface Point { x: number; y: number }
 export type Panel = 'shop' | 'map' | 'help' | 'pause' | 'victory' | null;
-export type Destination = 'exit' | 'savings' | 'wallet' | 'radio' | 'window' | 'home' | 'shop' | 'lake' | 'fire' | 'chief';
+export type Destination = 'exit' | 'savings' | 'wallet' | 'radio' | 'window' | 'home' | 'shop' | 'lake' | 'canal' | 'fire' | 'chief';
 export interface Interaction extends Point {
   id: string;
   label: string;

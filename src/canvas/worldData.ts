@@ -61,6 +61,7 @@ const VILLAGE_OBSTACLES = [
   { x: 890, y: 232, w: 40, h: 22 },
   { x: 944, y: 214, w: 46, h: 24 }, // ranger karhutla tool rack
   { x: 256, y: 808, w: 44, h: 18 }, // southern lakeside wooden viewing bench
+  { x: 704, y: 618, w: 76, h: 36 }, // saung tepi danau lakeside pavilion
 ];
 
 export function canStand(scene: SceneType, x: number, y: number): boolean {

@@ -15,6 +15,7 @@ import { drawPierFoam, drawPierReflections, fishJumpStaysInWater, isWater, onPie
 import { drawFireGround, drawFirePit, fireLightRadius } from './fire';
 import { drawScreenAtmosphere, drawWorldCanopySmoke, drawWorldGroundFog } from './fog';
 import { bumpSign, drawSign, type SignStyle } from './signs';
+import { drawWorldDecor, getSunbeamSprite, VILLAGE_DECORS, warmupDecorations } from './decorations';
 
 export interface RenderOptions { preview?: boolean }
 
@@ -90,6 +91,49 @@ function getFireGlowSprite(): HTMLCanvasElement {
   return c;
 }
 const fx = new FxSystem();
+
+// Pre-baked 18x22 grass & wildflower tuft sprites (1 drawImage per tuft instead of 8 fillRects!)
+const tuftSpriteCache = new Map<string, HTMLCanvasElement>();
+function getTuftSprite(lean: number, flatten: number, bloomColor: string | null): HTMLCanvasElement {
+  const key = `${lean}|${flatten}|${bloomColor ?? ''}`;
+  const hit = tuftSpriteCache.get(key);
+  if (hit) return hit;
+  const c = document.createElement('canvas'); c.width = 18; c.height = 22;
+  const ctx = c.getContext('2d')!; ctx.imageSmoothingEnabled = false;
+  const ox = 9, oy = 20;
+  const midLean = lean >> 1;
+  R(ctx, ox - 4, oy - 6 + flatten, 2, 6 - flatten, '#4b6d3b');
+  R(ctx, ox, oy - 8 + flatten, 2, 8 - flatten, '#567a42');
+  R(ctx, ox + 4, oy - 5 + flatten, 2, 5 - flatten, '#4b6d3b');
+  R(ctx, ox - 4 + midLean, oy - 8 + flatten, 2, 2, '#86a058');
+  R(ctx, ox + midLean, oy - 10 + flatten, 4, 2, '#9db564');
+  if (bloomColor) {
+    R(ctx, ox + midLean, oy - 12 + flatten, 2, 4, '#567a42');
+    R(ctx, ox - 2 + lean, oy - 14 + flatten, 6, 2, bloomColor);
+    R(ctx, ox + lean, oy - 16 + flatten, 2, 6, bloomColor);
+    R(ctx, ox + lean, oy - 14 + flatten, 2, 2, '#e3a13c');
+  }
+  tuftSpriteCache.set(key, c);
+  return c;
+}
+
+// Reusable zero-allocation depth-sort command pool (eliminates ~200 closure allocations every frame!)
+// kind: 0=collectible, 1=player, 2=sign, 3=cat, 4=houseFrontDoor, 5=villageDoors, 6=tree, 7=prop, 8=npcStatic, 9=npcPatrol, 10=hen, 11=fire, 12=decor
+interface SortSlot { y: number; kind: number; idx: number; a: number; b: number; cFlag: boolean }
+const sortPool: SortSlot[] = [];
+const sortOrder: number[] = [];
+let sortCount = 0;
+function resetSortQueue() { sortCount = 0; }
+function pushSort(y: number, kind: number, idx = 0, a = 0, b = 0, cFlag = false) {
+  let slot = sortPool[sortCount];
+  if (!slot) {
+    slot = { y: 0, kind: 0, idx: 0, a: 0, b: 0, cFlag: false };
+    sortPool[sortCount] = slot;
+  }
+  slot.y = y; slot.kind = kind; slot.idx = idx; slot.a = a; slot.b = b; slot.cFlag = cFlag;
+  sortOrder[sortCount] = sortCount;
+  sortCount++;
+}
 
 const progressOf = (w: GameWorld) => w.fires.filter(f => f.intensity === 0).length * 10;
 
@@ -1106,20 +1150,18 @@ function drawVillageGround(c: CanvasRenderingContext2D, w: GameWorld, m: Mem, vi
   // grass bends with the wind and parts where Wira walks
   const prog = progressOf(w);
   const p = w.player;
-  for (const tf of getTufts()) {
+  const tuftsArr = getTufts();
+  for (let i = 0, len = tuftsArr.length; i < len; i++) {
+    const tf = tuftsArr[i];
     if (tf.x < vLeft || tf.x > vRight || tf.y < vTop || tf.y > vBot) continue;
     const gust = wind.dir * (1.2 + wind.gust * 1.8) + Math.sin(t * 1.7 + tf.x * 0.05) * 0.8;
-    const d = Math.hypot(tf.x - p.x, tf.y - p.y);
-    const parted = d < 32 ? ((tf.x - p.x) / 32) * 2.2 : 0;
+    const dxP = tf.x - p.x, dyP = tf.y - p.y;
+    const d2 = dxP * dxP + dyP * dyP;
+    const parted = d2 < 1024 ? (dxP / 32) * 2.2 : 0;
     const lean = Math.max(-4, Math.min(4, Math.round((gust + parted) * 0.55) * 2));
-    const midLean = lean >> 1;
-    const flatten = d < 26 ? 2 : 0;
-    R(c, tf.x - 4, tf.y - 6 + flatten, 2, 6 - flatten, '#4b6d3b'); R(c, tf.x, tf.y - 8 + flatten, 2, 8 - flatten, '#567a42'); R(c, tf.x + 4, tf.y - 5 + flatten, 2, 5 - flatten, '#4b6d3b');
-    R(c, tf.x - 4 + midLean, tf.y - 8 + flatten, 2, 2, '#86a058'); R(c, tf.x + midLean, tf.y - 10 + flatten, 4, 2, '#9db564');
-    if (prog >= tf.bloomAt && prog > 0) {
-      R(c, tf.x + midLean, tf.y - 12 + flatten, 2, 4, '#567a42');
-      R(c, tf.x - 2 + lean, tf.y - 14 + flatten, 6, 2, tf.color); R(c, tf.x + lean, tf.y - 16 + flatten, 2, 6, tf.color); R(c, tf.x + lean, tf.y - 14 + flatten, 2, 2, '#e3a13c');
-    }
+    const flatten = d2 < 676 ? 2 : 0;
+    const spr = getTuftSprite(lean, flatten, prog >= tf.bloomAt && prog > 0 ? tf.color : null);
+    c.drawImage(spr, tf.x - 9, tf.y - 20);
   }
   const now = w.time;
   w.fires.forEach((f, idx) => {
@@ -1253,59 +1295,179 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       }
       fx.update(dt, world.player);
     }
-    const due = pending.filter(e => e.at <= world.time); pending = pending.filter(e => e.at > world.time); due.forEach(e => e.run());
+    if (pending.length) {
+      let pw = 0;
+      for (let i = 0; i < pending.length; i++) {
+        const ev = pending[i];
+        if (ev.at <= world.time) ev.run();
+        else pending[pw++] = ev;
+      }
+      pending.length = pw;
+    }
   }
 
   c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
   R(c, 0, 0, width, height, '#1d2c24');
   const sx = m && motion ? m.shakeX.value : 0, sy = m && motion ? m.shakeY.value : 0;
   c.setTransform(scale, 0, 0, scale, Math.round(width / 2 - x * scale + sx), Math.round(height / 2 - y * scale + sy));
-  c.drawImage(getBackground(world.scene), village ? 0 : -200, 0);
+
+  // Viewport-cropped 9-arg background blit (cuts 60-75% pixel transfer vs blitting full 1960x1020 canvas!)
+  const bg = getBackground(world.scene);
+  const bgOffX = village ? 0 : -200;
+  const halfW = width / scale / 2 + 16, halfH = height / scale / 2 + 16;
+  const srcX0 = Math.max(0, Math.floor(x - halfW - bgOffX));
+  const srcY0 = Math.max(0, Math.floor(y - halfH));
+  const srcX1 = Math.min(bg.width, Math.ceil(x + halfW - bgOffX));
+  const srcY1 = Math.min(bg.height, Math.ceil(y + halfH));
+  if (srcX1 > srcX0 && srcY1 > srcY0) {
+    const sw = srcX1 - srcX0, sh = srcY1 - srcY0;
+    c.drawImage(bg, srcX0, srcY0, sw, sh, bgOffX + srcX0, srcY0, sw, sh);
+  }
+
+  const cLeft = x - width / scale / 2 - 150, cRight = x + width / scale / 2 + 150;
+  const cTop = y - height / scale / 2 - 150, cBot = y + height / scale / 2 + 170;
 
   const doorRig = m ? m.doors : createDoorRig(world.scene);
   if (village && m) drawVillageGround(c, world, m, view, t); else if (!village) drawHouseLife(c, world, doorRig, t, motion);
-  if (!preview) fx.draw(c, true);
+  if (!preview) fx.draw(c, true, cLeft, cRight, cTop, cBot);
   if (world.destination) {
     const d = world.destination;
     const s = motion ? 14 - Math.floor((t * 24) % 8) : 10;
     c.globalAlpha = 0.7;
     for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) R(c, d.x + dx * s - (dx < 0 ? 0 : 6), d.y + dy * s * 0.5 - (dy < 0 ? 0 : 2), 6, 2, '#f0d79c');
     c.globalAlpha = 1;
-    world.path.forEach((p, i) => { if (i % 3 === 0) { c.globalAlpha = 0.25 + 0.35 * ((i / 3 + Math.floor(t * 6)) % 2); R(c, snap(p.x), snap(p.y), 2, 2, '#f3dca6'); } });
+    for (let i = 0; i < world.path.length; i += 3) {
+      const pt = world.path[i];
+      if (!preview && (pt.x < cLeft || pt.x > cRight || pt.y < cTop || pt.y > cBot)) continue;
+      c.globalAlpha = 0.25 + 0.35 * ((i / 3 + Math.floor(t * 6)) % 2);
+      R(c, snap(pt.x), snap(pt.y), 2, 2, '#f3dca6');
+    }
     c.globalAlpha = 1;
   }
 
-  const items: { y: number; draw: () => void }[] = [];
-  world.collectibles.filter(i => i.scene === world.scene && !i.collected).forEach(i => items.push({ y: i.y, draw: () => drawCollectible(c, i, t) }));
+  // Zero-closure depth-sort queue population
+  resetSortQueue();
+  for (let i = 0; i < world.collectibles.length; i++) {
+    const col = world.collectibles[i];
+    if (col.scene !== world.scene || col.collected) continue;
+    if (!preview && (col.x < cLeft || col.x > cRight || col.y < cTop || col.y > cBot)) continue;
+    pushSort(col.y, 0, i);
+  }
   const pspec = playerSpec(world, m, t);
-  items.push({ y: world.player.y, draw: () => drawPlayer(c, world, pspec, m, t, wind) });
+  pushSort(world.player.y, 1);
 
-  // signage: posts and hanging boards, sorted into the same depth queue
-  for (const s of signsFor(world.scene)) {
-    items.push({ y: s.depth, draw: () => drawSign(c, { id: s.id, style: s.style, x: s.x, y: s.y, t, dt: m?.dt ?? 0, wind, reduced: !motion, dim: 1 }) });
+  const sceneSigns = signsFor(world.scene);
+  for (let i = 0; i < sceneSigns.length; i++) {
+    const s = sceneSigns[i];
+    if (!preview && (s.x < cLeft || s.x > cRight || s.y < cTop || s.depth > cBot + 40)) continue;
+    pushSort(s.depth, 2, i);
   }
 
+  let activeFires: FireHotspot[] = [];
+  let forestPropsList: ForestProp[] = [];
+  let sariData: ReturnType<typeof patrolNpc> | null = null;
+  let rakaData: ReturnType<typeof patrolNpc> | null = null;
+  const npcMotion: MotionInfo = { dt: m?.dt ?? 0, vx: 0, vy: 0, speed: 0, lean: 0, wind, reduced: !motion };
+
   if (!village) {
-    items.push({ y: 312, draw: () => drawCat(c, world, m, t, m?.dt ?? 0) });
-    items.push({ y: 534, draw: () => drawHouseFrontDoor(c, doorRig) });
+    pushSort(312, 3);
+    pushSort(534, 4);
   } else {
-    items.push({ y: 208, draw: () => drawVillageDoors(c, doorRig) });
-    const cLeft = x - width / scale / 2 - 150, cRight = x + width / scale / 2 + 150;
-    const cTop = y - height / scale / 2 - 150, cBot = y + height / scale / 2 + 170;
-    const active = world.fires.filter(f => f.intensity > 0);
-    VILLAGE_TREES.forEach(([tx, ty, s], i) => {
-      if (!preview && (tx < cLeft || tx > cRight || ty < cTop || ty > cBot)) return;
-      const burnt = active.some(f => Math.hypot(f.x - tx, f.y - ty) < 190);
+    if (preview || (cLeft < 900 && cBot > 160 && cTop < 270)) pushSort(208, 5);
+    activeFires = world.fires.filter(f => f.intensity > 0);
+    for (let i = 0; i < VILLAGE_TREES.length; i++) {
+      const [tx, ty, s] = VILLAGE_TREES[i];
+      if (!preview && (tx < cLeft || tx > cRight || ty < cTop || ty > cBot)) continue;
+      let burnt = false;
+      for (let fi = 0; fi < activeFires.length; fi++) {
+        const f = activeFires[fi];
+        if ((f.x - tx) ** 2 + (f.y - ty) ** 2 < 36100) { burnt = true; break; }
+      }
       let st = m?.treeState.get(i);
       if (m && (!st || st.burnt !== burnt)) { st = { burnt, since: st ? world.time : -99 }; m.treeState.set(i, st); }
       const since = st ? world.time - st.since : 99;
-      // canopy sway comes from the shared wind field, with a per-tree phase
       const w2 = windAt(tx, ty, t);
       const sway = motion ? (w2.dir * (1.2 + w2.gust * 2.1) + Math.sin(t * 1.15 + tx * 0.07 + ty * 0.03) * 0.85) * (0.65 + s * 0.3) : 0;
-      items.push({ y: ty, draw: () => {
+      pushSort(ty, 6, i, sway, since, burnt);
+    }
+
+    const pp = world.player;
+    forestPropsList = getForestProps();
+    for (let i = 0; i < forestPropsList.length; i++) {
+      const pr = forestPropsList[i];
+      if (!preview && (pr.x < cLeft || pr.x > cRight || pr.y < cTop || pr.y > cBot)) continue;
+      let scorch = 0;
+      for (let fi = 0; fi < activeFires.length; fi++) {
+        const f = activeFires[fi];
+        if ((f.x - pr.x) ** 2 + (f.y - pr.y) ** 2 < 27225) { scorch = 1; break; }
+      }
+      const prev = m?.propBurn.get(i) ?? scorch;
+      const eased = motion && m ? prev + (scorch - prev) * Math.min(1, (m.dt || 0) * 1.6) : scorch;
+      if (m) m.propBurn.set(i, eased);
+      const pw = windAt(pr.x, pr.y, t);
+      const dxP = pr.x - pp.x, dyP = pr.y - pp.y;
+      const d2 = dxP * dxP + dyP * dyP;
+      const parted = d2 < 900 ? (dxP / 30) * 5 : 0;
+      const sway = motion ? (pw.dir * (1.3 + pw.gust * 2.4) + Math.sin(t * 1.6 + pr.x * 0.05) * 0.75 + parted) : parted;
+      pushSort(pr.y, 7, i, sway, eased);
+    }
+
+    // 3D Kalimantan World Decorations (totems, street lamps, umbul-umbul, flagpole, kentongan, saung, papaya, Rafflesia)
+    for (let i = 0; i < VILLAGE_DECORS.length; i++) {
+      const dec = VILLAGE_DECORS[i];
+      if (!preview && (dec.x < cLeft || dec.x > cRight || dec.y < cTop || dec.y > cBot)) continue;
+      pushSort(dec.y, 12, i);
+    }
+
+    if (preview || (627 >= cLeft && 627 <= cRight && 272 >= cTop && 272 <= cBot)) pushSort(272, 8, 0);
+    if (preview || (825 >= cLeft && 825 <= cRight && 283 >= cTop && 283 <= cBot)) pushSort(283, 8, 1);
+
+    sariData = patrolNpc('bu_sari', 246, 374, 322, 374, 15.5, world, t, motion);
+    if (preview || (sariData.x >= cLeft && sariData.x <= cRight && sariData.y >= cTop && sariData.y <= cBot)) pushSort(sariData.y, 9, 0);
+    rakaData = patrolNpc('manggala', 934, 272, 954, 344, 14.0, world, t, motion);
+    if (preview || (rakaData.x >= cLeft && rakaData.x <= cRight && rakaData.y >= cTop && rakaData.y <= cBot)) pushSort(rakaData.y, 9, 1);
+
+    if (!preview) {
+      for (let i = 0; i < hens.length; i++) {
+        const h = hens[i];
+        if (h.x < cLeft || h.x > cRight || h.y < cTop || h.y > cBot) continue;
+        pushSort(h.y, 10, i);
+      }
+    }
+    for (let i = 0; i < world.fires.length; i++) {
+      const f = world.fires[i];
+      if (!preview && (f.x < cLeft || f.x > cRight || f.y < cTop || f.y > cBot)) continue;
+      pushSort(f.y, 11, i);
+    }
+  }
+
+  // Sort active command indices in-place and execute without a single closure allocation
+  sortOrder.length = sortCount;
+  sortOrder.sort((ia, ib) => sortPool[ia].y - sortPool[ib].y);
+
+  for (let n = 0; n < sortCount; n++) {
+    const slot = sortPool[sortOrder[n]];
+    switch (slot.kind) {
+      case 0: drawCollectible(c, world.collectibles[slot.idx], t); break;
+      case 1: drawPlayer(c, world, pspec, m, t, wind); break;
+      case 2: {
+        const s = sceneSigns[slot.idx];
+        drawSign(c, { id: s.id, style: s.style, x: s.x, y: s.y, t, dt: m?.dt ?? 0, wind, reduced: !motion, dim: 1 });
+        break;
+      }
+      case 3: drawCat(c, world, m, t, m?.dt ?? 0); break;
+      case 4: drawHouseFrontDoor(c, doorRig); break;
+      case 5: drawVillageDoors(c, doorRig); break;
+      case 6: {
+        const [tx, ty, s] = VILLAGE_TREES[slot.idx];
+        const sway = slot.a, since = slot.b, burnt = slot.cFlag;
         if (burnt) {
           drawTree(c, tx, ty, s, true, sway * 0.55);
-          if (active.some(f => Math.hypot(f.x - tx, f.y - ty) < 120)) {
+          let closeFire = false;
+          for (let fi = 0; fi < activeFires.length; fi++) {
+            if ((activeFires[fi].x - tx) ** 2 + (activeFires[fi].y - ty) ** 2 < 14400) { closeFire = true; break; }
+          }
+          if (closeFire) {
             const cc = canopyCenter(s, tx, ty);
             for (let k = 0; k < 3; k++) {
               const fx0 = snap(tx - cc.w * 0.22 + k * cc.w * 0.22), base = snap(cc.y + (k === 1 ? -10 : 4));
@@ -1321,56 +1483,60 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
               }
             }
           }
-        } else if (since < 1.6) { drawTree(c, tx, ty, s, true, sway); drawTree(c, tx, ty, s, false, sway, since / 1.6); }
-        else drawTree(c, tx, ty, s, false, sway);
-      } });
-    });
-    // forest floor: wind sway, parting around Wira, and gradual scorch/recovery
-    const pp = world.player;
-    getForestProps().forEach((pr, i) => {
-      if (!preview && (pr.x < cLeft || pr.x > cRight || pr.y < cTop || pr.y > cBot)) return;
-      const scorch = active.some(f => Math.hypot(f.x - pr.x, f.y - pr.y) < 165) ? 1 : 0;
-      const prev = m?.propBurn.get(i) ?? scorch;
-      const eased = motion && m ? prev + (scorch - prev) * Math.min(1, (m.dt || 0) * 1.6) : scorch;
-      if (m) m.propBurn.set(i, eased);
-      const pw = windAt(pr.x, pr.y, t);
-      const d = Math.hypot(pr.x - pp.x, pr.y - pp.y);
-      const parted = d < 30 ? (pr.x - pp.x) / 30 * 5 : 0;
-      const sway = motion ? (pw.dir * (1.3 + pw.gust * 2.4) + Math.sin(t * 1.6 + pr.x * 0.05) * 0.75 + parted) : parted;
-      // cross-fade between the scorched and living sprite while it recovers
-      items.push({ y: pr.y, draw: () => {
+        } else if (since < 1.6) {
+          drawTree(c, tx, ty, s, true, sway);
+          drawTree(c, tx, ty, s, false, sway, since / 1.6);
+        } else {
+          drawTree(c, tx, ty, s, false, sway);
+        }
+        break;
+      }
+      case 7: {
+        const pr = forestPropsList[slot.idx];
+        const sway = slot.a, eased = slot.b;
         if (eased > 0.02 && eased < 0.98) {
           drawProp(c, pr.kind, pr.x, pr.y, true, sway, pr.scale);
           drawPropAlpha(c, pr.kind, pr.x, pr.y, false, sway, pr.scale, 1 - eased);
-        } else drawProp(c, pr.kind, pr.x, pr.y, eased > 0.5, sway, pr.scale);
-      } });
-    });
-    const budi = npcSpec('budi', 627, 272, world, t), rt = npcSpec('pak_rt', 825, 283, world, t);
-    const sari = patrolNpc('bu_sari', 246, 374, 322, 374, 15.5, world, t, motion);
-    const raka = patrolNpc('manggala', 934, 272, 954, 344, 14.0, world, t, motion);
-    const npcMotion: MotionInfo = { dt: m?.dt ?? 0, vx: 0, vy: 0, speed: 0, lean: 0, wind, reduced: !motion };
-    items.push({ y: 272, draw: () => { drawShadow(c, 627, 272); drawCharacter(c, 627, 272, budi, npcMotion); } });
-    items.push({ y: 283, draw: () => { drawShadow(c, 825, 283); drawCharacter(c, 825, 283, rt, npcMotion); } });
-    items.push({ y: sari.y, draw: () => {
-      drawShadow(c, sari.x, sari.y);
-      drawCharacter(c, sari.x, sari.y, sari.spec, { ...npcMotion, vx: sari.vx, speed: Math.abs(sari.vx) });
-    } });
-    items.push({ y: raka.y, draw: () => {
-      drawShadow(c, raka.x, raka.y);
-      drawCharacter(c, raka.x, raka.y, raka.spec, { ...npcMotion, vx: raka.vx, speed: Math.abs(raka.vx) });
-    } });
-    if (!preview) hens.forEach(h => items.push({ y: h.y, draw: () => {
-      const moving = h.wait <= 0;
-      const spr = chickenSprite(Math.floor(h.dist / 6), !moving && Math.floor(t * 4 + h.x) % 3 === 0, !!h.rooster);
-      drawShadow(c, h.x, h.y, h.rooster ? 16 : 14, 0.22);
-      c.save(); c.translate(snap(h.x), snap(h.y)); if (h.face < 0) c.scale(-1, 1); c.drawImage(spr, -16, -28, spr.width * 2, spr.height * 2); c.restore();
-    } }));
-    world.fires.forEach((f, i) => {
-      if (!preview && (f.x < cLeft || f.x > cRight || f.y < cTop || f.y > cBot)) return;
-      items.push({ y: f.y, draw: () => drawFire(c, f, t, i, world.time, m?.fireVisual.get(f.id) ?? f.intensity / f.maxIntensity, wind, !motion) });
-    });
+        } else {
+          drawProp(c, pr.kind, pr.x, pr.y, eased > 0.5, sway, pr.scale);
+        }
+        break;
+      }
+      case 8: {
+        if (slot.idx === 0) {
+          const budi = npcSpec('budi', 627, 272, world, t);
+          drawShadow(c, 627, 272); drawCharacter(c, 627, 272, budi, npcMotion);
+        } else {
+          const rt = npcSpec('pak_rt', 825, 283, world, t);
+          drawShadow(c, 825, 283); drawCharacter(c, 825, 283, rt, npcMotion);
+        }
+        break;
+      }
+      case 9: {
+        const np = slot.idx === 0 ? sariData! : rakaData!;
+        drawShadow(c, np.x, np.y);
+        drawCharacter(c, np.x, np.y, np.spec, { ...npcMotion, vx: np.vx, speed: Math.abs(np.vx) });
+        break;
+      }
+      case 10: {
+        const h = hens[slot.idx];
+        const moving = h.wait <= 0;
+        const spr = chickenSprite(Math.floor(h.dist / 6), !moving && Math.floor(t * 4 + h.x) % 3 === 0, !!h.rooster);
+        drawShadow(c, h.x, h.y, h.rooster ? 16 : 14, 0.22);
+        c.save(); c.translate(snap(h.x), snap(h.y)); if (h.face < 0) c.scale(-1, 1); c.drawImage(spr, -16, -28, spr.width * 2, spr.height * 2); c.restore();
+        break;
+      }
+      case 11: {
+        const f = world.fires[slot.idx];
+        drawFire(c, f, t, slot.idx, world.time, m?.fireVisual.get(f.id) ?? f.intensity / f.maxIntensity, wind, !motion);
+        break;
+      }
+      case 12: {
+        drawWorldDecor(c, VILLAGE_DECORS[slot.idx], t, wind, motion);
+        break;
+      }
+    }
   }
-  items.sort((a, b) => a.y - b.y).forEach(i => i.draw());
 
   if (!preview && m) m.droplets.draw(c, snap);
 
@@ -1395,8 +1561,14 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
     if (!preview) drawWorldCanopySmoke(c, world.fires, view, world.time, t, wind, !motion);
   }
 
-  if (!preview) fx.draw(c, false);
-  world.effects.forEach(e => { c.globalAlpha = Math.max(0, 1 - e.age / e.duration); R(c, snap(e.x), snap(e.y), Math.max(2, snap(e.size)), Math.max(2, snap(e.size)), e.color); });
+  if (!preview) fx.draw(c, false, cLeft, cRight, cTop, cBot);
+  for (let i = 0; i < world.effects.length; i++) {
+    const e = world.effects[i];
+    if (!preview && (e.x < cLeft || e.x > cRight || e.y < cTop || e.y > cBot)) continue;
+    c.globalAlpha = Math.max(0, 1 - e.age / e.duration);
+    const sz = Math.max(2, snap(e.size));
+    R(c, snap(e.x), snap(e.y), sz, sz, e.color);
+  }
   c.globalAlpha = 1;
   if (!preview && world.emote) {
     const hopY = emoteHopOffset(world.emote, world.reducedMotion);
@@ -1434,8 +1606,8 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       for (const [bx, by] of [[1126, 290], [1382, 488], [1578, 392], [1710, 560], [1642, 780]] as [number, number][]) {
         if (bx < aLeft - 80 || bx > aRight + 80 || by < aTop - 80 || by > aBot + 80) continue;
         if (world.fires.some(f => f.intensity > 0 && Math.hypot(f.x - bx, f.y - by) < 210)) continue;
-        c.globalAlpha = (0.045 + (motion ? 0.015 * Math.sin(t * 1.3 + bx * 0.01) : 0)) * clearRatio;
-        poly(c, [[bx - 28, by - 120], [bx + 6, by - 120], [bx + 44, by + 24], [bx - 6, by + 24]], '#fff1b5');
+        c.globalAlpha = (0.048 + (motion ? 0.016 * Math.sin(t * 1.3 + bx * 0.01) : 0)) * clearRatio;
+        c.drawImage(getSunbeamSprite(), bx - 38, by - 128);
       }
       c.globalAlpha = 1;
       for (let i = 0; i < 22; i++) {
@@ -1507,4 +1679,15 @@ export function renderGameWorld(c: CanvasRenderingContext2D, world: GameWorld, v
       if ((BAYER[(yy / b) % 4][(xx / b) % 4] + 0.5) / 16 < alpha) c.fillRect(xx, yy, b, b);
     }
   }
+}
+
+let worldWarmed = false;
+export function warmupWorldAssets() {
+  if (worldWarmed || typeof document === 'undefined') return;
+  worldWarmed = true;
+  warmupDecorations();
+  getFireGlowSprite();
+  getTuftSprite(0, 0, null);
+  getTuftSprite(2, 0, null);
+  getTuftSprite(-2, 0, null);
 }

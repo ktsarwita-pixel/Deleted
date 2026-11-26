@@ -339,6 +339,37 @@ function houseBackground(c: CanvasRenderingContext2D) {
   // Round woven bamboo tampah tray mounted by the kitchen
   R(c, 748, 416, 16, 24, '#b88b4d'); R(c, 750, 419, 12, 18, '#dfc084'); R(c, 753, 423, 6, 10, '#c7523a');
 
+  // Woven Anyaman Entry Doormat & Neat Pair of Sandals inside front door (walkable!)
+  R(c, 414, 496, 52, 22, '#47301e66');
+  R(c, 416, 494, 48, 22, '#9e6f3e'); R(c, 419, 497, 42, 16, '#cfa468');
+  for (let mx = 423; mx < 457; mx += 7) R(c, mx, 502, 4, 6, ((mx / 7) | 0) % 2 ? '#a84230' : '#3d6950');
+  // Neat pair of house sandals tucked beside doorframe (x=472, y=502)
+  for (const sx of [472, 480]) {
+    R(c, sx, 502, 6, 12, '#3d5e58'); R(c, sx + 1, 504, 4, 3, '#e8cfa0');
+  }
+
+  // Carved Kalimantan Mandau Ceremonial Plaque &Framed School Certificate on North Wall
+  R(c, 578, 108, 32, 18, '#4a311f'); R(c, 580, 110, 28, 14, '#7d5535');
+  R(c, 583, 115, 22, 3, '#b88b4d'); R(c, 582, 114, 5, 5, '#c94432'); R(c, 601, 115, 4, 2, '#dfe6e2'); // sheathed mandau!
+  R(c, 256, 104, 18, 22, '#4a3220'); R(c, 258, 106, 14, 18, '#f5ecd4'); R(c, 261, 110, 8, 2, '#c94836'); R(c, 260, 115, 10, 2, '#6c7a68');
+
+  // Kitchen Hanging Dried Red Chili & Garlic Braids + Spice Jars Shelf!
+  R(c, 668, 414, 54, 4, '#8c6239'); R(c, 668, 414, 54, 1, '#cfa468');
+  for (let j = 0; j < 4; j++) {
+    const jx = 672 + j * 12;
+    R(c, jx, 405, 8, 9, '#dce8e6'); R(c, jx + 1, 408, 6, 5, ['#d45238', '#e3b23c', '#5e8c4a', '#b8763d'][j]);
+    R(c, jx + 1, 403, 6, 2, '#9e4430');
+  }
+  // Hanging chili & garlic braids on right side of spice shelf
+  for (let cy = 418; cy < 432; cy += 3) {
+    R(c, 726, cy, 4, 3, '#cf3b2b'); R(c, 732, cy, 4, 3, '#f2ead4');
+  }
+
+  // Cozy Batik Floor Cushion & Open Notebook on corner of Dayak rug (x=512, y=412)
+  R(c, 508, 410, 28, 18, '#3b201655');
+  R(c, 510, 407, 26, 18, '#386652'); R(c, 513, 409, 20, 13, '#588c70');
+  R(c, 517, 412, 12, 7, '#f2d588');
+
   // Small woven runner mat beside the West Bedroom Door (x=114..132, y=386..436)
   R(c, 114, 386, 18, 50, '#784830'); R(c, 116, 389, 14, 44, '#c89b5e');
   for (let ry = 394; ry < 430; ry += 9) R(c, 118, ry, 10, 4, '#3e664d');
@@ -1637,8 +1668,67 @@ function drawVillageMicroDetails(c: CanvasRenderingContext2D) {
       }
     }
   }
-  // Blue watering can beside garden bed
+  // Blue watering can, stacked split firewood & stone compost ring beside garden beds
   R(c, 474, 878, 9, 8, '#467d91'); R(c, 474, 878, 9, 2, '#82b7c9'); R(c, 483, 879, 4, 2, '#699fb3');
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 4 - (row === 2 ? 1 : 0); col++) {
+      const fx = 720 + col * 8 + (row === 2 ? 4 : 0), fy = 882 - row * 5;
+      R(c, fx, fy, 7, 5, '#6e4e30'); R(c, fx + 1, fy + 1, 3, 3, '#cfa972');
+    }
+  }
+
+  // 6. Brick & River-Stone Flower Planter Boxes framing Rumah Wira & Warung Budi Forecourts!
+  for (const [px, py, pw] of [[120, 254, 42], [262, 254, 38], [624, 254, 40]] as [number, number, number][]) {
+    R(c, px - 2, py + 9, pw + 4, 4, '#00000028');
+    R(c, px, py, pw, 10, '#8f4c36'); R(c, px, py, pw, 2, '#bf7052');
+    R(c, px + 2, py + 2, pw - 4, 4, '#473623');
+    for (let fx = px + 4; fx < px + pw - 5; fx += 7) {
+      R(c, fx, py - 4, 5, 6, '#4b7d3b');
+      R(c, fx + 1, py - 6, 3, 3, ((fx / 7) | 0) % 2 ? '#f7cf59' : '#f26d52');
+    }
+  }
+
+  // 7. Shady Outdoor Warung Kopi Table & Bamboo Stools on West Patio of Warung Budi (x=408, y=214)
+  {
+    const kx = 414, ky = 216;
+    R(c, kx - 16, ky + 8, 34, 6, '#00000028');
+    // Round wooden table + central leg
+    R(c, kx - 3, ky + 1, 6, 10, '#5c3f24');
+    drawPixelBlob(c, kx, ky - 2, 14, 7, '#7d5634');
+    drawPixelBlob(c, kx, ky - 3, 12, 6, '#b88b54');
+    // Red kopi thermos + two kopi glasses on table!
+    R(c, kx - 6, ky - 9, 4, 6, '#c93e2e'); R(c, kx - 6, ky - 10, 4, 2, '#f2ede0');
+    R(c, kx + 1, ky - 7, 3, 4, '#d9eef0'); R(c, kx + 6, ky - 6, 3, 4, '#d9eef0');
+    // Two woven bamboo stools flanking table
+    for (const sx of [kx - 20, kx + 18]) {
+      R(c, sx - 4, ky + 3, 9, 4, '#00000024');
+      R(c, sx - 4, ky - 2, 8, 6, '#8f683d'); R(c, sx - 4, ky - 3, 8, 2, '#d4af72');
+    }
+  }
+
+  // 8. Roadside Stone Culvert Headwalls flanking South Lake Road (x=402 & 480, y=384)
+  for (const cx of [400, 478]) {
+    R(c, cx, 382, 8, 18, '#666b64'); R(c, cx + 1, 383, 6, 4, '#9aa196');
+    R(c, cx + 1, 391, 6, 4, '#858c82'); R(c, cx + 2, 397, 4, 2, '#4f753d');
+  }
+
+  // 9. Lakeside Woven Bamboo Fish Traps (Bubu Ikan) & Drying Fish Net on Danau Rantau Bank!
+  for (const [bx, by] of [[208, 504], [224, 508]] as [number, number][]) {
+    R(c, bx - 1, by + 5, 16, 3, '#00000026');
+    R(c, bx, by, 14, 6, '#9c7844'); R(c, bx + 1, by + 1, 12, 2, '#cfa96e');
+    R(c, bx + 4, by, 2, 6, '#6e4e2a'); R(c, bx + 9, by, 2, 6, '#6e4e2a');
+  }
+  // Drying fishing net (jaring ikan) hung between two bamboo poles on northeast lake bank (x=642..682, y=514)
+  R(c, 642, 496, 3, 22, '#7d5c37'); R(c, 678, 496, 3, 22, '#7d5c37');
+  for (let nx = 645; nx < 678; nx += 4) {
+    const sag = Math.round(Math.sin(((nx - 645) / 33) * Math.PI) * 3);
+    R(c, nx, 499 + sag, 3, 1, '#d8d2be');
+    for (let ny = 501 + sag; ny < 513; ny += 3) R(c, nx + ((ny % 2) * 1), ny, 1, 2, '#bfc7c2aa');
+  }
+  // Stepping stones leading to Saung Tepi Danau pavilion (x=706..740, y=658)
+  for (const [sx, sy] of [[708, 658], [722, 662], [736, 664]] as [number, number][]) {
+    drawPixelBlob(c, sx, sy, 7, 4, '#aba086');
+  }
 }
 
 function villageBackground(c: CanvasRenderingContext2D) {

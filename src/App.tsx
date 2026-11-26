@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { GameEngine } from './game/engine';
 import type { Destination, GameSnapshot } from './game/model';
 import { CUTSCENE } from './canvas/worldData';
-import { renderGameWorld } from './canvas/pixelRenderer';
+import { renderGameWorld, warmupWorldAssets } from './canvas/pixelRenderer';
+import { warmupSprites } from './canvas/sprites';
+import { warmupTrees } from './canvas/trees';
 import { Icon, type IconName } from './components/Icon';
 import { BigBucketPixelIcon, FireFlameIcon, NewShoesPixelIcon, NormalBucketPixelIcon, PortraitPixelArt, RupiahCoinIcon } from './components/PixelIcons';
 import { Modal } from './components/Modal';
@@ -53,7 +55,7 @@ function currentMission(s: GameSnapshot): { number: string; title: string; descr
   if(!s.discovered) return { number:'01',title:'Ada sesuatu di luar...',description:'Wira mencium bau asap. Jelajahi rumah, lalu periksa keadaan di luar.',button:'Keluar rumah',destination:'exit',icon:'home' };
   if(s.scene==='house') return { number:'02',title:'Desa membutuhkanmu.',description:'Kembali ke luar dan lanjutkan perjalanan untuk menyelamatkan hutan.',button:'Keluar rumah',destination:'exit',icon:'home' };
   if(s.player.bucketType==='none') return { number:'02',title:'Siapkan perlengkapan.',description:'Kunjungi Warung Budi dan beli ember untuk mengambil air dari danau.',button:'Menuju Warung Budi',destination:'shop',icon:'bag' };
-  if(!s.player.waterUnits) return { number:'03',title:'Setiap tetes berarti.',description:'Embermu kosong. Berjalanlah ke dermaga dan isi air dari danau.',button:'Menuju danau',destination:'lake',icon:'drop' };
+  if(!s.player.waterUnits) { const nearCanal = s.scene==='village' && s.player.x > 920; return { number:'03',title:'Setiap tetes berarti.',description:nearCanal?'Embermu kosong. Isi ulang cepat di kanal sekat bakar hutan.':'Embermu kosong. Berjalanlah ke dermaga dan isi air dari danau.',button:nearCanal?'Menuju kanal gambut':'Menuju danau',destination:nearCanal?'canal':'lake',icon:'drop' }; }
   return { number:'04',title:'Bawa harapan ke hutan.',description:'Air sudah siap. Dekati titik api dan siram hingga seluruh api padam.',button:'Menuju titik api',destination:'fire',icon:'shield' };
 }
 
@@ -85,11 +87,18 @@ function VillageMap({ engine,state }: {engine:GameEngine;state:GameSnapshot}) {
   useEffect(()=>{
     const ctx=ref.current!.getContext('2d')!;
     const world={...engine.world,scene:'village' as const,prompt:null,path:[],destination:null,effects:[],action:null,transition:0,reducedMotion:true,player:{...engine.world.player,x:state.scene==='house'?210:engine.world.player.x,y:state.scene==='house'?300:engine.world.player.y}};
-    renderGameWorld(ctx,world,{x:700,y:410,width:700,height:410,scale:.5},{preview:true});
+    renderGameWorld(ctx,world,{x:980,y:510,width:745,height:388,scale:.38},{preview:true});
   },[engine,state.scene,state.progress]);
-  return <><p className="modal-description">{state.scene==='house'?'Kamu masih di dalam rumah. Keluar dahulu untuk menjelajahi desa.':'Pilih tujuan. Wira akan mencari jalan dan berinteraksi saat tiba.'}</p>
-    <div className="village-map"><canvas ref={ref} width={700} height={410} aria-label="Peta Desa Rantau dengan rumah, Warung Budi, danau, dan hutan"/>
-      {([{id:'home',label:'Rumah Wira',x:15,y:34,icon:'home'},{id:'shop',label:'Warung Budi',x:40,y:35,icon:'bag'},{id:'chief',label:'Posko Pak RT',x:59,y:32,icon:'shield'},{id:'lake',label:'Danau',x:32,y:73,icon:'drop'},{id:'fire',label:state.progress===100?'Hutan aman':'Titik api',x:81,y:51,icon:'leaf'}] as {id:Destination;label:string;x:number;y:number;icon:IconName}[]).map(p=><button key={p.id} className="map-marker" style={{left:`${p.x}%`,top:`${p.y}%`}} disabled={state.scene==='house'||!!state.dialogue||(p.id==='fire'&&state.progress===100)} onClick={()=>engine.go(p.id)}><Icon name={p.icon} size={14}/>{p.label}</button>)}
+  return <><p className="modal-description">{state.scene==='house'?'Kamu masih di dalam rumah. Keluar dahulu untuk menjelajahi desa.':'Pilih tujuan di Desa Rantau atau Hutan Gambut. Wira akan otomatis mencari jalan.'}</p>
+    <div className="village-map"><canvas ref={ref} width={745} height={388} aria-label="Peta Desa Rantau dengan rumah, Warung Budi, danau, kanal sekat bakar, dan hutan gambut"/>
+      {([
+        {id:'home',label:'Rumah Wira',x:11,y:28,icon:'home'},
+        {id:'shop',label:'Warung Budi',x:29,y:27,icon:'bag'},
+        {id:'chief',label:'Posko RT',x:43,y:29,icon:'shield'},
+        {id:'lake',label:'Danau',x:23,y:62,icon:'drop'},
+        {id:'canal',label:'Kanal Gambut',x:70,y:49,icon:'drop'},
+        {id:'fire',label:state.progress===100?'Hutan aman':'Titik api',x:86,y:38,icon:'leaf'},
+      ] as {id:Destination;label:string;x:number;y:number;icon:IconName}[]).map(p=><button key={p.id} className="map-marker" style={{left:`${p.x}%`,top:`${p.y}%`}} disabled={state.scene==='house'||!!state.dialogue||(p.id==='fire'&&state.progress===100)} onClick={()=>engine.go(p.id)}><Icon name={p.icon} size={14}/>{p.label}</button>)}
     </div>
     {state.scene==='house'&&<button className="button button-primary map-exit" onClick={()=>engine.go('exit')}>Keluar rumah<Icon name="arrow" size={17}/></button>}
   </>;
@@ -125,6 +134,14 @@ export default function App() {
   const [isFullscreen,setFullscreen]=useState(false);
   const [emoteWheelOpen,setEmoteWheelOpen]=useState(false);
   const [resetConfirmOpen,setResetConfirmOpen]=useState(false);
+
+  useEffect(()=>{
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    const run = () => { warmupSprites(); warmupTrees(); warmupWorldAssets(); };
+    if (idle) { const id = idle(run); return () => (window as unknown as { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); }
+    const t = window.setTimeout(run, 120);
+    return () => window.clearTimeout(t);
+  },[]);
 
   useEffect(()=>{
     if(state.panel||state.dialogue||state.cutscene>=0) setEmoteWheelOpen(false);
